@@ -21,7 +21,8 @@ import { createTemplate } from '../domain/templates.js';
 import { createPayment } from '../domain/payments.js';
 import { createSampleBill } from '../domain/sample-bill.js';
 import { relabelGeneratedNames } from '../domain/relabel.js';
-import { createWorker, removeWorker, setMark } from '../domain/labour.js';
+import { createWorker } from '../domain/labour.js';
+import * as labourOps from '../domain/labour-ops.js';
 import { convertEstimateToBill, createNextRunningBill, nextNumberFor } from '../domain/bill-kinds.js';
 import { DEFAULT_SIGNATURE_LAYOUT, normalizeSignatureLayout } from '../domain/signature-layout.js';
 import { moveDocument, normalizePrintSettings, toggleDocument } from '../domain/print-settings.js';
@@ -350,47 +351,39 @@ function createQuotationActions({ setData }) {
   };
 }
 
-/** Labour: workers, daily attendance, advances and wage payments. */
+/**
+ * Labour: workers, daily attendance, advances and wage payments.
+ * Every change goes through labour-ops (activity log, closed-month checks,
+ * soft delete); nothing here edits labour data directly.
+ */
 function createLabourActions({ setData }) {
-  const setLabour = (updater) => setData((current) => ({ ...current, labour: updater(current.labour) }));
+  const apply = (operation, ...args) => setData((current) => ({ ...current, labour: operation(current.labour, ...args, new Date()) }));
   return {
     /** Adds a worker. Returns the new worker. */
     addWorker(values) {
       const worker = createWorker(values);
-      setLabour((labour) => ({ ...labour, workers: [...labour.workers, worker] }));
+      apply(labourOps.addWorker, worker);
       return worker;
     },
-    updateWorker(workerId, patch) {
-      setLabour((labour) => ({ ...labour, workers: labour.workers.map((worker) => worker.id === workerId ? { ...worker, ...patch } : worker) }));
-    },
-    removeWorker(workerId) {
-      setLabour((labour) => removeWorker(labour, workerId));
-    },
+    updateWorker: (workerId, patch) => apply(labourOps.updateWorker, workerId, patch),
+    /** Moves a worker to the recycle bin (restorable for 30 days). */
+    deleteWorker: (workerId) => apply(labourOps.deleteWorker, workerId),
+    restoreWorker: (workerId) => apply(labourOps.restoreWorker, workerId),
+    purgeWorker: (workerId) => apply(labourOps.purgeDeletedWorker, workerId),
     /** Sets a worker's attendance for a day in P units; `null` clears it. */
-    mark(date, worker, units) {
-      setLabour((labour) => ({ ...labour, attendance: setMark(labour.attendance, date, worker, units) }));
-    },
-    /** Marks every listed worker for a day. */
-    markAll(date, workers, units) {
-      setLabour((labour) => ({
-        ...labour,
-        attendance: workers.reduce((attendance, worker) => setMark(attendance, date, worker, units), labour.attendance)
-      }));
-    },
-    addPayment(values) {
-      const payment = { id: newId(), note: '', ...values, amount: Number(values.amount) || 0 };
-      setLabour((labour) => ({ ...labour, payments: [...labour.payments, payment] }));
-      return payment;
-    },
-    updatePayment(paymentId, values) {
-      setLabour((labour) => ({
-        ...labour,
-        payments: labour.payments.map((payment) => payment.id === paymentId ? { ...payment, ...values, amount: Number(values.amount) || 0 } : payment)
-      }));
-    },
-    removePayment(paymentId) {
-      setLabour((labour) => ({ ...labour, payments: labour.payments.filter((payment) => payment.id !== paymentId) }));
-    }
+    mark: (date, worker, units) => apply(labourOps.markAttendance, date, [{ worker, units }]),
+    /** Marks every listed worker for a day (one log entry). */
+    markAll: (date, workers, units) => apply(labourOps.markAttendance, date, workers.map((worker) => ({ worker, units }))),
+    addPayment: (values) => apply(labourOps.addPayment, values),
+    updatePayment: (paymentId, values) => apply(labourOps.updatePayment, paymentId, values),
+    /** Moves a payment to the recycle bin. */
+    deletePayment: (paymentId) => apply(labourOps.deletePayment, paymentId),
+    restorePayment: (paymentId) => apply(labourOps.restorePayment, paymentId),
+    purgePayment: (paymentId) => apply(labourOps.purgeDeletedPayment, paymentId),
+    closeMonth: (month) => apply(labourOps.closeMonth, month),
+    unlockMonth: (month) => apply(labourOps.unlockMonth, month),
+    /** Undoes one activity-log entry. */
+    revert: (entryId) => apply(labourOps.revertEntry, entryId)
   };
 }
 

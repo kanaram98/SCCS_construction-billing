@@ -11,11 +11,11 @@ import Typography from '@mui/material/Typography';
 import DeleteIcon from '@mui/icons-material/DeleteOutlined';
 import DownloadIcon from '@mui/icons-material/Download';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import HistoryIcon from '@mui/icons-material/History';
+import LockIcon from '@mui/icons-material/LockOutlined';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdfOutlined';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
-import { EmptyState, StatCard, useNotify } from '../../components/ui';
-import { useBilling } from '../../state/BillingContext.jsx';
-import { useUndoable } from '../../hooks/useUndoable.js';
+import { EmptyState, StatCard, useConfirm, useNotify } from '../../components/ui';
 import { daysOfMonth, formatUnits, monthReport, registerCell, workerBalance, workerMonthMessage } from '../../domain/labour.js';
 import { formatCurrency } from '../../domain/formatters.js';
 import { PAYMENT_MODES } from '../../domain/payments.js';
@@ -25,6 +25,8 @@ import { getLanguage, makeTranslator, tr as t } from '../../i18n/translate.js';
 import LabourPaymentDialog from './LabourPaymentDialog.jsx';
 import MarkCounts from './MarkCounts.jsx';
 import MonthBar from './MonthBar.jsx';
+import ClosedMonthNotice from './ClosedMonthNotice.jsx';
+import { useLabour, useMonthLock } from './useLabour.js';
 import WorkerSheetDocument from './WorkerSheetDocument.jsx';
 
 /** Small attendance calendar for one worker's month. */
@@ -61,8 +63,18 @@ function Amount({ label, value, strong, color }) {
   );
 }
 
+/** "₹2,000 → ₹1,500", "Cash → UPI" … for a payment edit. */
+function paymentChangeLines(payment, values) {
+  const lines = [];
+  if (Number(payment.amount) !== Number(values.amount)) lines.push(`${formatCurrency(payment.amount)} → ${formatCurrency(values.amount)}`);
+  if (payment.date !== values.date) lines.push(`${payment.date} → ${values.date}`);
+  if (payment.mode !== values.mode) lines.push(`${t(PAYMENT_MODES[payment.mode] || 'Cash')} → ${t(PAYMENT_MODES[values.mode] || 'Cash')}`);
+  if ((payment.note || '') !== (values.note || '')) lines.push(`“${payment.note || '—'}” → “${values.note || '—'}”`);
+  return lines;
+}
+
 /** Advances / payments in the month with date, mode and description. Tap one to edit it. */
-function PaymentList({ payments, onEdit, onDelete }) {
+function PaymentList({ payments, locked, onEdit, onDelete }) {
   if (!payments.length) return null;
   return (
     <Box sx={{ mt: 1.5, p: 1, borderRadius: 1, bgcolor: 'action.hover' }}>
@@ -72,9 +84,10 @@ function PaymentList({ payments, onEdit, onDelete }) {
           <Box
             component="button"
             type="button"
-            onClick={() => onEdit(payment)}
+            onClick={() => !locked && onEdit(payment)}
+            disabled={locked}
             aria-label={t('Edit payment of {amount} on {date}', { amount: formatCurrency(payment.amount), date: payment.date })}
-            sx={{ all: 'unset', cursor: 'pointer', flex: 1, minWidth: 0, py: 0.5 }}
+            sx={{ all: 'unset', cursor: locked ? 'default' : 'pointer', flex: 1, minWidth: 0, py: 0.5 }}
           >
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
               {formatCurrency(payment.amount)} · {t(PAYMENT_MODES[payment.mode] || 'Cash')}
@@ -83,14 +96,14 @@ function PaymentList({ payments, onEdit, onDelete }) {
               {payment.date}{payment.note ? ` · ${payment.note}` : ''}
             </Typography>
           </Box>
-          <IconButton size="small" aria-label={t('Delete payment')} onClick={() => onDelete(payment)}><DeleteIcon fontSize="small" /></IconButton>
+          {!locked && <IconButton size="small" aria-label={t('Delete payment')} onClick={() => onDelete(payment)}><DeleteIcon fontSize="small" /></IconButton>}
         </Stack>
       ))}
     </Box>
   );
 }
 
-function WorkerCard({ row, busy, onPay, onPdf, onShare, onEditPayment, onDeletePayment }) {
+function WorkerCard({ row, busy, locked, onPay, onPdf, onShare, onHistory, onEditPayment, onDeletePayment }) {
   const [open, setOpen] = useState(false);
   const { worker } = row;
   return (
@@ -116,8 +129,9 @@ function WorkerCard({ row, busy, onPay, onPdf, onShare, onEditPayment, onDeleteP
         </Grid>
         <Collapse in={open} unmountOnExit>
           <MonthGrid month={row.month} marks={row.marks} />
+          <Button size="small" startIcon={<HistoryIcon />} onClick={onHistory}>{t('History of changes')}</Button>
         </Collapse>
-        <PaymentList payments={row.payments} onEdit={onEditPayment} onDelete={onDeletePayment} />
+        <PaymentList payments={row.payments} locked={locked} onEdit={onEditPayment} onDelete={onDeletePayment} />
         <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
           <Button fullWidth size="small" variant="outlined" startIcon={<DownloadIcon />} onClick={onPdf} disabled={busy} aria-label={t('PDF for {name}', { name: worker.name })}>PDF</Button>
           <Button
@@ -140,14 +154,15 @@ function WorkerCard({ row, busy, onPay, onPdf, onShare, onEditPayment, onDeleteP
 }
 
 /** Month summary for every worker: attendance, wages, payments and balance, with a PDF for each worker. */
-export default function ReportTab({ month, onMonthChange, onOpenSheet }) {
-  const { data, actions } = useBilling();
+export default function ReportTab({ month, onMonthChange, onOpenSheet, onOpenHistory }) {
+  const { labour, firm, actions } = useLabour();
   const notify = useNotify();
-  const undoable = useUndoable();
+  const confirm = useConfirm();
+  const lock = useMonthLock();
+  const closed = lock.isClosed(month);
   const sheetsRef = useRef(null);
   const [paying, setPaying] = useState(null); // { row, payment? }
   const [busyId, setBusyId] = useState('');
-  const { labour, firm } = data;
   const language = getLanguage();
   const docT = makeTranslator(language);
   const report = useMemo(() => monthReport(labour, month), [labour, month]);
@@ -180,19 +195,41 @@ export default function ReportTab({ month, onMonthChange, onOpenSheet }) {
       : t('Add the worker’s mobile number to open their chat directly.'), 'info');
   }
 
-  function savePayment(values) {
-    if (paying.payment) {
-      actions.labour.updatePayment(paying.payment.id, values);
+  async function savePayment(values) {
+    const { row, payment } = paying;
+    if (payment) {
+      const changes = paymentChangeLines(payment, values);
+      if (!changes.length) { setPaying(null); return; }
+      const ok = await confirm({
+        title: t('Change this payment?'),
+        message: `${row.worker.name}: ${changes.join(', ')}. ${t('The old values stay in History.')}`,
+        confirmLabel: t('Change')
+      });
+      if (!ok) return;
+      actions.updatePayment(payment.id, values);
     } else {
-      actions.labour.addPayment({ ...values, workerId: paying.row.workerId });
+      actions.addPayment({ ...values, workerId: row.workerId });
     }
     notify(t('Payment saved.'), 'success');
     setPaying(null);
   }
 
+  async function deletePayment(row, payment) {
+    const ok = await confirm({
+      title: t('Delete this payment?'),
+      message: `${row.worker.name}: ${formatCurrency(payment.amount)} · ${t(PAYMENT_MODES[payment.mode] || 'Cash')} · ${payment.date}. ${t('It moves to Recently deleted and can be restored for 30 days.')}`,
+      confirmLabel: t('Delete'),
+      danger: true
+    });
+    if (!ok) return;
+    actions.deletePayment(payment.id);
+    notify(t('Payment deleted.'), 'info', { label: t('Undo'), onClick: () => actions.restorePayment(payment.id) });
+  }
+
   return (
     <>
       <MonthBar month={month} onChange={onMonthChange} />
+      <ClosedMonthNotice month={month} />
       {!report.rows.length ? (
         <EmptyState title={t('Nothing this month')} description={t('Mark attendance to see wages here.')} compact />
       ) : (
@@ -209,7 +246,10 @@ export default function ReportTab({ month, onMonthChange, onOpenSheet }) {
                 <Typography variant="body2" sx={{ fontWeight: 700 }}>{t('Total {units}', { units: formatUnits(report.totals.units) })}</Typography>
               </Stack>
               <MarkCounts counts={report.totals.counts} showZero />
-              <Button size="small" startIcon={<PictureAsPdfIcon />} onClick={onOpenSheet} sx={{ mt: 1 }}>{t('All workers sheet / PDF')}</Button>
+              <Stack direction="row" sx={{ mt: 1, justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+                <Button size="small" startIcon={<PictureAsPdfIcon />} onClick={onOpenSheet}>{t('All workers sheet / PDF')}</Button>
+                {!closed && <Button size="small" variant="outlined" startIcon={<LockIcon />} onClick={() => lock.close(month)}>{t('Close month')}</Button>}
+              </Stack>
             </CardContent>
           </Card>
           {report.rows.map((row) => (
@@ -217,11 +257,13 @@ export default function ReportTab({ month, onMonthChange, onOpenSheet }) {
               key={row.workerId}
               row={row}
               busy={busyId === row.workerId}
+              locked={closed}
+              onHistory={() => onOpenHistory(row.workerId)}
               onPay={() => setPaying({ row })}
               onPdf={() => exportPdf(row)}
               onShare={() => share(row)}
               onEditPayment={(payment) => setPaying({ row, payment })}
-              onDeletePayment={(payment) => undoable(t('Payment deleted.'), () => actions.labour.removePayment(payment.id))}
+              onDeletePayment={(payment) => deletePayment(row, payment)}
             />
           ))}
           {/* Rendered worker sheets, used to make Hindi PDFs. */}

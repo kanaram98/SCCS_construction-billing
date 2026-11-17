@@ -11,8 +11,7 @@ import Typography from '@mui/material/Typography';
 import AddIcon from '@mui/icons-material/Add';
 import EngineeringIcon from '@mui/icons-material/EngineeringOutlined';
 import { ActionMenu, EmptyState, useConfirm, useNotify } from '../../components/ui';
-import { useBilling } from '../../state/BillingContext.jsx';
-import { useUndoable } from '../../hooks/useUndoable.js';
+import { useLabour } from './useLabour.js';
 import { workerBalance } from '../../domain/labour.js';
 import { formatCurrency } from '../../domain/formatters.js';
 import { tr as t } from '../../i18n/translate.js';
@@ -27,21 +26,19 @@ export function balanceText(balance) {
 
 /** Worker list: add, edit, pay, mark as left, delete. */
 export default function WorkersTab() {
-  const { data, actions } = useBilling();
+  const { labour, actions } = useLabour();
   const confirm = useConfirm();
   const notify = useNotify();
-  const undoable = useUndoable();
   const [editing, setEditing] = useState(null); // a worker, 'new' or null
   const [paying, setPaying] = useState(null);
-  const { labour } = data;
   const workers = [...labour.workers].sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name));
 
   function save(values) {
     if (editing === 'new') {
-      actions.labour.addWorker(values);
+      actions.addWorker(values);
       notify(t('{name} added.', { name: values.name }), 'success');
     } else {
-      actions.labour.updateWorker(editing.id, values);
+      actions.updateWorker(editing.id, values);
     }
     setEditing(null);
   }
@@ -49,11 +46,13 @@ export default function WorkersTab() {
   async function remove(worker) {
     const ok = await confirm({
       title: t('Delete {name}?', { name: worker.name }),
-      message: t('Their attendance and payments will also be deleted. To keep the record, mark them as left instead.'),
+      message: t('They move to Recently deleted with their attendance and payments, and can be restored for 30 days. If they only stopped working, mark them as left instead.'),
       confirmLabel: t('Delete'),
       danger: true
     });
-    if (ok) undoable(t('{name} deleted.', { name: worker.name }), () => actions.labour.removeWorker(worker.id));
+    if (!ok) return;
+    actions.deleteWorker(worker.id);
+    notify(t('{name} deleted.', { name: worker.name }), 'info', { label: t('Undo'), onClick: () => actions.restoreWorker(worker.id) });
   }
 
   return (
@@ -81,7 +80,7 @@ export default function WorkersTab() {
                     items={[
                       { label: t('Pay / advance'), onClick: () => setPaying(worker) },
                       { label: t('Edit'), onClick: () => setEditing(worker) },
-                      { label: worker.active ? t('Mark as left') : t('Mark as working'), onClick: () => actions.labour.updateWorker(worker.id, { active: !worker.active }) },
+                      { label: worker.active ? t('Mark as left') : t('Mark as working'), onClick: () => actions.updateWorker(worker.id, { active: !worker.active }) },
                       { label: t('Delete'), danger: true, onClick: () => remove(worker) }
                     ]}
                   />
@@ -110,7 +109,7 @@ export default function WorkersTab() {
         worker={paying}
         balance={paying ? workerBalance(labour, paying.id) : 0}
         onSave={(values) => {
-          actions.labour.addPayment({ ...values, workerId: paying.id });
+          actions.addPayment({ ...values, workerId: paying.id });
           notify(t('Payment saved.'), 'success');
           setPaying(null);
         }}

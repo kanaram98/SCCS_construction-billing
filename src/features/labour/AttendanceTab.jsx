@@ -18,15 +18,16 @@ import DoneAllIcon from '@mui/icons-material/DoneAll';
 import EngineeringIcon from '@mui/icons-material/EngineeringOutlined';
 import EventAvailableIcon from '@mui/icons-material/EventAvailableOutlined';
 import { EmptyState, ResponsiveDialog } from '../../components/ui';
-import { useBilling } from '../../state/BillingContext.jsx';
 import { useUndoable } from '../../hooks/useUndoable.js';
 import {
   ATTENDANCE_UNITS, dayLabel, daySummary, daysOfMonth, firstWeekday, formatUnits,
-  localToday, monthOf, shiftDate, weekdayNames, workerMonth
+  isDateClosed, localToday, monthOf, shiftDate, weekdayNames, workerMonth
 } from '../../domain/labour.js';
 import { formatCurrency } from '../../domain/formatters.js';
 import { getLanguage, tr as t } from '../../i18n/translate.js';
 import MonthBar from './MonthBar.jsx';
+import ClosedMonthNotice from './ClosedMonthNotice.jsx';
+import { useLabour, useMonthLock, useOldDateGuard } from './useLabour.js';
 
 const UNIT_LABELS = { 0: 'A', 0.5: '½P', 1: '1P', 1.5: '1½P', 2: '2P' };
 const unitLabel = (units) => UNIT_LABELS[units] ?? formatUnits(units);
@@ -89,7 +90,7 @@ function MonthCalendar({ month, renderTile }) {
 
 // ── Day sheet ─────────────────────────────────────────────────────────
 
-function WorkerRow({ worker, mark, onMark }) {
+function WorkerRow({ worker, mark, onMark, disabled }) {
   return (
     <Box sx={{ py: 1.25, borderBottom: 1, borderColor: 'divider', '&:last-child': { borderBottom: 0 } }}>
       <Stack direction="row" sx={{ alignItems: 'baseline', justifyContent: 'space-between', mb: 0.75 }}>
@@ -102,6 +103,7 @@ function WorkerRow({ worker, mark, onMark }) {
         exclusive
         fullWidth
         size="small"
+        disabled={disabled}
         value={mark ? String(mark.units) : null}
         aria-label={t('Attendance for {name}', { name: worker.name })}
         onChange={(_event, next) => onMark(next === null ? null : Number(next))}
@@ -130,9 +132,11 @@ function WorkerRow({ worker, mark, onMark }) {
 
 /** Everyone's attendance for one day, with ◀ ▶ to move between days of the month. */
 function DaySheet({ date, month, onDateChange, onClose }) {
-  const { data, actions } = useBilling();
+  const { labour, actions } = useLabour();
   const undoable = useUndoable();
-  const { labour } = data;
+  const allowOld = useOldDateGuard();
+  const closed = Boolean(date) && isDateClosed(labour, date);
+  const change = (apply) => async () => { if (await allowOld(date)) apply(); };
   const today = localToday();
   const workers = date ? workersOn(labour, date) : [];
   const marks = (date && labour.attendance[date]) || {};
@@ -153,20 +157,21 @@ function DaySheet({ date, month, onDateChange, onClose }) {
             </Typography>
             <IconButton aria-label={t('Next day')} disabled={monthOf(next) !== month || next > today} onClick={() => onDateChange(next)}><ChevronRightIcon /></IconButton>
           </Stack>
-          <Stack direction="row" spacing={1} sx={{ justifyContent: 'center', mb: 1 }}>
+          <ClosedMonthNotice month={month} />
+          <Stack direction="row" spacing={1} sx={{ justifyContent: 'center', mb: 1, display: closed ? 'none' : 'flex' }}>
             {unmarked.length > 0 && (
-              <Button size="small" variant="outlined" startIcon={<DoneAllIcon />} onClick={() => actions.labour.markAll(date, unmarked, 1)}>
+              <Button size="small" variant="outlined" startIcon={<DoneAllIcon />} onClick={change(() => actions.markAll(date, unmarked, 1))}>
                 {summary.marked > 0 ? t('Rest 1P') : t('All 1P')}
               </Button>
             )}
             {summary.marked > 0 && (
-              <Button size="small" color="inherit" onClick={() => undoable(t('Day cleared.'), () => actions.labour.markAll(date, workers, null))}>
+              <Button size="small" color="inherit" onClick={change(() => undoable(t('Day cleared.'), () => actions.markAll(date, workers, null)))}>
                 {t('Clear')}
               </Button>
             )}
           </Stack>
           {workers.map((worker) => (
-            <WorkerRow key={worker.id} worker={worker} mark={marks[worker.id]} onMark={(units) => actions.labour.mark(date, worker, units)} />
+            <WorkerRow key={worker.id} worker={worker} mark={marks[worker.id]} disabled={closed} onMark={(units) => change(() => actions.mark(date, worker, units))()} />
           ))}
           <Button fullWidth variant="contained" onClick={onClose} sx={{ mt: 2 }}>{t('Done')}</Button>
         </>
@@ -182,8 +187,9 @@ function DaySheet({ date, month, onDateChange, onClose }) {
  * attendance. One worker selected: tap a day to pick their mark directly.
  */
 export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
-  const { data, actions } = useBilling();
-  const { labour } = data;
+  const { labour, actions } = useLabour();
+  const allowOld = useOldDateGuard();
+  const closed = useMonthLock().isClosed(month);
   const today = localToday();
   const [workerId, setWorkerId] = useState('all');
   const [openDate, setOpenDate] = useState(null);
@@ -231,14 +237,15 @@ export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
         tone={tone}
         value={mark ? unitLabel(mark.units) : ''}
         ariaLabel={`${dayLabel(date, getLanguage())}: ${mark ? formatUnits(mark.units) : t('Not marked')}`}
-        onClick={(event) => setPicker({ anchor: event.currentTarget, date })}
+        onClick={(event) => (closed ? setOpenDate(date) : setPicker({ anchor: event.currentTarget, date }))}
       />
     );
   }
 
-  function pick(units) {
-    actions.labour.mark(picker.date, worker, units);
+  async function pick(units) {
+    const { date } = picker;
     setPicker(null);
+    if (await allowOld(date)) actions.mark(date, worker, units);
   }
 
   const showWorkers = [...active, ...(worker && !worker.active ? [worker] : [])];
@@ -246,6 +253,7 @@ export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
   return (
     <>
       <MonthBar month={month} onChange={onMonthChange} />
+      <ClosedMonthNotice month={month} />
 
       <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', pb: 1, mb: 1, mx: -0.5, px: 0.5 }}>
         <Chip label={t('All workers')} color={workerId === 'all' ? 'primary' : 'default'} variant={workerId === 'all' ? 'filled' : 'outlined'} onClick={() => setWorkerId('all')} />
@@ -273,7 +281,7 @@ export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
           {' · '}{formatCurrency(workerSummary.earned)}
         </Typography>
       ) : (
-        month === monthOf(today) && (
+        month === monthOf(today) && !closed && (
           <Button fullWidth variant="contained" startIcon={<EventAvailableIcon />} onClick={() => setOpenDate(today)} sx={{ mb: 1 }}>
             {t('Mark today’s attendance')}
           </Button>

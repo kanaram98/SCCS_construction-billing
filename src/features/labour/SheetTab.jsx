@@ -7,7 +7,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import PrintIcon from '@mui/icons-material/Print';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import { EmptyState, useNotify } from '../../components/ui';
-import { useBilling } from '../../state/BillingContext.jsx';
+import { useLabour } from './useLabour.js';
 import { monthLabel, monthReport } from '../../domain/labour.js';
 import { formatCurrency } from '../../domain/formatters.js';
 import { canSharePdfFiles, isShareCancelled } from '../../services/files.js';
@@ -20,11 +20,10 @@ const LANDSCAPE_WIDTH_PX = 1123; // A4 landscape at 96 dpi
 
 /** Attendance sheet with the firm header: preview, PDF, print and WhatsApp. */
 export default function SheetTab({ month, onMonthChange }) {
-  const { data } = useBilling();
+  const { labour, firm } = useLabour();
   const notify = useNotify();
   const previewRef = useRef(null);
   const [busy, setBusy] = useState(false);
-  const { labour, firm } = data;
   const language = getLanguage();
   const docT = makeTranslator(language);
   const report = useMemo(() => monthReport(labour, month), [labour, month]);

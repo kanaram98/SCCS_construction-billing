@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createLabourState, createWorker, daySummary, daysOfMonth, formatUnits, monthReport, normalizeLabour,
-  calendarWeeks, monthPayments, parseUnits, registerCell, removeWorker, setMark, shiftDate, shiftMonth, workerBalance, workerMonth
+  calendarWeeks, monthPayments, parseUnits, registerCell, purgeWorker, setMark, shiftDate, shiftMonth, workerBalance, workerMonth
 } from '../../src/domain/labour.js';
 import { hydrateState } from '../../src/domain/app-state.js';
 
@@ -42,8 +42,8 @@ test('attendance is shown and typed as P units', () => {
 });
 
 test('a mark saves the wage of that day; clearing removes empty days', () => {
-  let attendance = setMark({}, '2026-11-01', ramesh, 2);
-  assert.deepEqual(attendance['2026-11-01'].w1, { units: 2, wage: 600 });
+  let attendance = setMark({}, '2026-11-01', ramesh, 2, new Date('2026-11-01T10:00:00Z'));
+  assert.deepEqual(attendance['2026-11-01'].w1, { units: 2, wage: 600, at: '2026-11-01T10:00:00.000Z' });
   attendance = setMark(attendance, '2026-11-01', ramesh, null);
   assert.deepEqual(attendance, {});
 });
@@ -81,8 +81,8 @@ test('month report lists active workers and totals', () => {
   assert.equal(report.totals.balance, 2300);
 });
 
-test('removing a worker removes their attendance and payments', () => {
-  const labour = removeWorker(sample(), 'w1');
+test('purging a worker removes their attendance and payments', () => {
+  const labour = purgeWorker(sample(), 'w1');
   assert.deepEqual(labour.workers.map((worker) => worker.id), ['w2']);
   assert.deepEqual(Object.keys(labour.attendance), ['2026-11-01']);
   assert.equal(labour.payments.length, 0);
@@ -99,7 +99,8 @@ test('saved labour data is normalised and old saves get an empty labour book', (
   assert.deepEqual(normalizeLabour(null), createLabourState());
   const labour = normalizeLabour({ workers: [{ id: 'w1', name: 'A' }, {}], attendance: { bad: {}, '2026-11-01': { w1: { units: '1.5', wage: '600' }, w2: { units: -1 } } } });
   assert.equal(labour.workers.length, 1);
-  assert.deepEqual(labour.attendance, { '2026-11-01': { w1: { units: 1.5, wage: 600 } } });
+  assert.deepEqual(labour.attendance, { '2026-11-01': { w1: { units: 1.5, wage: 600, at: '' } } });
+  assert.deepEqual([labour.workers[0].version, labour.workers[0].deletedAt], [1, null]);
   const state = hydrateState({ bills: [{ id: 'b1', sections: [] }] });
   assert.deepEqual(state.labour, createLabourState());
 });

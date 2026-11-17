@@ -201,7 +201,7 @@ describe('Labour screen', () => {
     await user.click(within(day).getByRole('button', { name: 'Ramesh 2P' }));
     expect(await within(day).findByText('1 present')).toBeTruthy();
     const today = Object.keys(savedState().labour.attendance)[0];
-    expect(savedState().labour.attendance[today]).toEqual({ [savedState().labour.workers[0].id]: { units: 2, wage: 600 } });
+    expect(savedState().labour.attendance[today][savedState().labour.workers[0].id]).toMatchObject({ units: 2, wage: 600 });
 
     await user.click(within(day).getByRole('button', { name: 'Ramesh 1.5P' }));
     await user.click(within(day).getByRole('button', { name: 'Done' }));
@@ -233,5 +233,49 @@ describe('Labour screen', () => {
     expect((await screen.findAllByText('Labour attendance register')).length).toBeGreaterThan(0);
     expect(screen.getAllByText('Acme Interiors').length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'WhatsApp' })).toBeTruthy();
+  });
+});
+
+describe('Labour safety: history, recycle bin, closed months', () => {
+  const LABOUR_STATE = {
+    ...SAMPLE_STATE,
+    labour: {
+      workers: [{ id: 'w1', name: 'Ramesh', dailyWage: 600, role: '', phone: '', active: true }],
+      attendance: {},
+      payments: [{ id: 'p1', workerId: 'w1', date: `${new Date().toISOString().slice(0, 7)}-01`, amount: 2000, mode: 'cash', note: 'Advance' }]
+    }
+  };
+
+  it('deletes a payment to the recycle bin, restores it, and closes the month', async () => {
+    const { user } = renderApp(LABOUR_STATE);
+    await user.click(nav('Labour'));
+    await user.click(await screen.findByRole('tab', { name: 'Report' }));
+
+    // Delete asks first, then the payment can be restored from History.
+    await user.click(await screen.findByRole('button', { name: 'Delete payment' }));
+    const ask = await screen.findByRole('dialog');
+    expect(within(ask).getByText('Delete this payment?')).toBeTruthy();
+    await user.click(within(ask).getByRole('button', { name: 'Delete' }));
+    await waitFor(() => expect(screen.queryByText('₹2,000 · Cash')).toBeNull());
+    expect(savedState().labour.payments[0].deletedAt).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    await user.click(screen.getByRole('button', { name: 'History' }));
+    const history = await screen.findByRole('dialog');
+    expect(within(history).getByText('Payment deleted')).toBeTruthy();
+    await user.click(within(history).getByRole('tab', { name: 'Recently deleted' }));
+    await user.click(within(history).getByRole('button', { name: 'Restore' }));
+    await waitFor(() => expect(savedState().labour.payments[0].deletedAt).toBeNull());
+    await user.click(within(history).getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(await screen.findByText('₹2,000 · Cash')).toBeTruthy();
+
+    // Closing the month locks its payments.
+    await user.click(screen.getByRole('button', { name: 'Close month' }));
+    const close = await screen.findByRole('dialog');
+    await user.click(within(close).getByRole('button', { name: 'Close month' }));
+    expect(await screen.findByRole('button', { name: 'Unlock' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Delete payment' })).toBeNull();
+    expect(Object.keys(savedState().labour.closedMonths)).toHaveLength(1);
   });
 });

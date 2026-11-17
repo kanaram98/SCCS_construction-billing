@@ -79,7 +79,7 @@ export function FeedbackProvider({ children }) {
           <>
             <DialogTitle>{confirmation.title}</DialogTitle>
             {confirmation.message && (
-              <DialogContent><DialogContentText>{confirmation.message}</DialogContentText></DialogContent>
+              <DialogContent><DialogContentText sx={{ whiteSpace: 'pre-line' }}>{confirmation.message}</DialogContentText></DialogContent>
             )}
             <DialogActions>
               <Button onClick={() => close(false)}>{t('Cancel')}</Button>

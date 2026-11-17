@@ -4,7 +4,8 @@ import Grid from '@mui/material/Grid';
 import { ResponsiveDialog, SelectField, TextField } from '../../components/ui';
 import { PAYMENT_MODES, getPaymentErrors } from '../../domain/payments.js';
 import { formatCurrency } from '../../domain/formatters.js';
-import { DEFAULT_LABOUR_PAYMENT_MODE, localToday } from '../../domain/labour.js';
+import { DEFAULT_LABOUR_PAYMENT_MODE, isDateClosed, localToday } from '../../domain/labour.js';
+import { useLabour } from './useLabour.js';
 import { tr as t } from '../../i18n/translate.js';
 
 /**
@@ -37,7 +38,9 @@ export default function LabourPaymentDialog({ open, worker, payment, balance = 0
 function PaymentForm({ initial, balance, onSave, onClose }) {
   const [values, setValues] = useState(initial);
   const [submitted, setSubmitted] = useState(false);
+  const { raw } = useLabour();
   const errors = getPaymentErrors(values);
+  if (!errors.date && isDateClosed(raw, values.date)) errors.date = t('This month is closed. Unlock it first.');
   const update = (field) => (value) => setValues((current) => ({ ...current, [field]: value }));
 
   function save(event) {

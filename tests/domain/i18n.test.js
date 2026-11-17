@@ -11,6 +11,7 @@ import { BILL_SORTS } from '../../src/domain/bill-filters.js';
 import * as print from '../../src/domain/print-settings.js';
 import { NAVIGATION } from '../../src/config/app.js';
 import { DOCUMENT_COLUMNS } from '../../src/documents/document-model.js';
+import { LOG_TITLES } from '../../src/domain/labour-log.js';
 
 /** Codes and examples that read the same in Hindi. */
 const SAME_IN_HINDI = new Set(['PDF', 'UPI', 'UPI ID', 'IFSC', 'GSTIN', 'sqft', 'name@okbank', 'SBIN0001234', 'English', 'हिंदी', 'Language']);
@@ -47,6 +48,7 @@ function listLabels() {
     ...[print.ORIENTATIONS, print.HEADER_MODES, print.PAGE_BREAKS, print.SUMMARY_DETAILS, print.SIGNATURE_MODES, print.BILL_LANGUAGES].flatMap(Object.values),
     ...NAVIGATION.flatMap((entry) => [entry.label, entry.shortLabel].filter(Boolean)),
     ...Object.values(DOCUMENT_COLUMNS).flat(),
+    ...Object.values(LOG_TITLES), 'Month closed', 'Undone', 'Deleted forever',
     'Length', 'Width', 'Height', 'Section', 'Area', 'Floor', 'Room', 'Saving…', 'Saved on this device', 'Save failed'
   ];
 }

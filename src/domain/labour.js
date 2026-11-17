@@ -6,12 +6,17 @@
  * 1.5P = day and a half, 2P = double. Each mark saves the worker's daily wage
  * at that time, so changing a wage later does not rewrite past months.
  *
- * Shape:
+ * Shape (records carry createdAt / updatedAt / deletedAt / version so they can
+ * be synced to a server later):
  *   labour = {
- *     workers:    [{ id, name, phone, role, dailyWage, active }],
- *     attendance: { 'YYYY-MM-DD': { [workerId]: { units, wage } } },
- *     payments:   [{ id, workerId, date, amount, mode, note }]   // advances and wage payments
+ *     workers:      [{ id, name, phone, role, dailyWage, active, ...meta }],
+ *     attendance:   { 'YYYY-MM-DD': { [workerId]: { units, wage, at } } },
+ *     payments:     [{ id, workerId, date, amount, mode, note, ...meta }],  // advances and wage payments
+ *     closedMonths: { 'YYYY-MM': { closedAt } },                            // locked after wages are paid
+ *     log:          [{ id, at, entity, action, … }]                        // append-only activity log
  *   }
+ * Deleting only sets deletedAt (recycle bin); screens read `liveLabour(labour)`.
+ * All changes go through labour-ops.js, which also writes the activity log.
  */
 import { newId } from './ids.js';
 import { formatCurrency, roundTo2, text } from './formatters.js';
@@ -25,18 +30,43 @@ export const DEFAULT_LABOUR_PAYMENT_MODE = 'cash';
 export const ATTENDANCE_UNITS = Object.freeze([0, 0.5, 1, 1.5, 2]);
 export const MAX_UNITS = 3;
 
+/** Deleted workers and payments can be restored for this many days. */
+export const RECYCLE_DAYS = 30;
+/** The activity log keeps this many days (and at most LOG_MAX entries) on the phone. */
+export const LOG_DAYS = 180;
+export const LOG_MAX = 5000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 export function createLabourState() {
-  return { workers: [], attendance: {}, payments: [] };
+  return { workers: [], attendance: {}, payments: [], closedMonths: {}, log: [] };
 }
 
-export function createWorker(values = {}) {
-  return { id: newId(), name: '', phone: '', role: '', dailyWage: '', active: true, ...values };
+/** Sync metadata for a new record. */
+export function recordMeta(now = new Date()) {
+  const at = now.toISOString();
+  return { createdAt: at, updatedAt: at, deletedAt: null, version: 1 };
 }
+
+export function createWorker(values = {}, now = new Date()) {
+  return { id: newId(), name: '', phone: '', role: '', dailyWage: '', active: true, ...recordMeta(now), ...values };
+}
+
+/** Fills in sync metadata on records saved before it existed. */
+const withMeta = (record) => ({
+  ...record,
+  createdAt: record.createdAt || '',
+  updatedAt: record.updatedAt || record.createdAt || '',
+  deletedAt: record.deletedAt || null,
+  version: Number(record.version) || 1
+});
 
 const isObject = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 
-/** Fills in missing parts of saved labour data and drops anything malformed. */
-export function normalizeLabour(saved) {
+/**
+ * Fills in missing parts of saved labour data, drops anything malformed,
+ * empties the recycle bin of items older than RECYCLE_DAYS and trims the log.
+ */
+export function normalizeLabour(saved, now = new Date()) {
   if (!isObject(saved)) return createLabourState();
   const attendance = {};
   if (isObject(saved.attendance)) {
@@ -45,19 +75,67 @@ export function normalizeLabour(saved) {
       const day = {};
       for (const [workerId, mark] of Object.entries(marks)) {
         const units = Number(mark?.units);
-        if (Number.isFinite(units) && units >= 0) day[workerId] = { units, wage: Number(mark.wage) || 0 };
+        if (Number.isFinite(units) && units >= 0) day[workerId] = { units, wage: Number(mark.wage) || 0, at: mark.at || '' };
       }
       if (Object.keys(day).length) attendance[date] = day;
     }
   }
-  return {
-    workers: Array.isArray(saved.workers) ? saved.workers.filter((worker) => worker?.id).map((worker) => createWorker(worker)) : [],
+  const labour = {
+    workers: Array.isArray(saved.workers)
+      ? saved.workers.filter((worker) => worker?.id).map((worker) => withMeta({ name: '', phone: '', role: '', dailyWage: '', active: true, ...worker }))
+      : [],
     attendance,
     payments: Array.isArray(saved.payments)
-      ? saved.payments.filter((payment) => payment?.id && payment.workerId).map((payment) => ({ ...payment, mode: PAYMENT_MODES[payment.mode] ? payment.mode : DEFAULT_LABOUR_PAYMENT_MODE, note: payment.note || '' }))
-      : []
+      ? saved.payments.filter((payment) => payment?.id && payment.workerId).map((payment) => withMeta({ ...payment, mode: PAYMENT_MODES[payment.mode] ? payment.mode : DEFAULT_LABOUR_PAYMENT_MODE, note: payment.note || '' }))
+      : [],
+    closedMonths: isObject(saved.closedMonths)
+      ? Object.fromEntries(Object.entries(saved.closedMonths).filter(([month, value]) => /^\d{4}-\d{2}$/.test(month) && isObject(value)))
+      : {},
+    log: Array.isArray(saved.log) ? saved.log.filter((entry) => entry?.id && entry.at && entry.entity) : []
+  };
+  return { ...emptyExpiredBin(labour, now), log: pruneLog(labour.log, now) };
+}
+
+const expired = (record, now) => Boolean(record.deletedAt) && now - Date.parse(record.deletedAt) > RECYCLE_DAYS * DAY_MS;
+
+/** Permanently removes workers and payments deleted more than RECYCLE_DAYS ago. */
+export function emptyExpiredBin(labour, now = new Date()) {
+  const gone = labour.workers.filter((worker) => expired(worker, now)).map((worker) => worker.id);
+  const purged = gone.reduce(purgeWorker, labour);
+  return { ...purged, payments: purged.payments.filter((payment) => !expired(payment, now)) };
+}
+
+/** Keeps the last LOG_DAYS days of activity, at most LOG_MAX entries. */
+export function pruneLog(log, now = new Date()) {
+  const since = now - LOG_DAYS * DAY_MS;
+  return log.filter((entry) => Date.parse(entry.at) >= since).slice(-LOG_MAX);
+}
+
+/**
+ * What the screens and documents show: deleted workers and payments (and the
+ * deleted workers' attendance) left out.
+ */
+export function liveLabour(labour) {
+  const deleted = new Set(labour.workers.filter((worker) => worker.deletedAt).map((worker) => worker.id));
+  let attendance = labour.attendance;
+  if (deleted.size) {
+    attendance = {};
+    for (const [date, marks] of Object.entries(labour.attendance)) {
+      const kept = Object.fromEntries(Object.entries(marks).filter(([workerId]) => !deleted.has(workerId)));
+      if (Object.keys(kept).length) attendance[date] = kept;
+    }
+  }
+  return {
+    ...labour,
+    workers: labour.workers.filter((worker) => !worker.deletedAt),
+    attendance,
+    payments: labour.payments.filter((payment) => !payment.deletedAt && !deleted.has(payment.workerId))
   };
 }
+
+/** Whether a month has been closed (its attendance and payments are locked). */
+export const isMonthClosed = (labour, month) => Boolean(labour.closedMonths?.[month]);
+export const isDateClosed = (labour, date) => Boolean(date) && isMonthClosed(labour, date.slice(0, 7));
 
 /** "A", "0.5P", "1P", "1.5P", "2P". */
 export function formatUnits(units) {
@@ -158,10 +236,17 @@ export function dayLabel(isoDate, language = 'en') {
 // ── Attendance ────────────────────────────────────────────────────────
 
 /** Returns attendance with one worker's mark for a day set (or cleared with `units === null`). */
-export function setMark(attendance, date, worker, units) {
+export function setMark(attendance, date, worker, units, now = new Date()) {
+  return putMark(attendance, date, worker.id, units === null || units === undefined
+    ? null
+    : { units, wage: Number(worker.dailyWage) || 0, at: now.toISOString() });
+}
+
+/** Returns attendance with a worker's mark for a day replaced by `mark` (or removed when null). */
+export function putMark(attendance, date, workerId, mark) {
   const day = { ...(attendance[date] || {}) };
-  if (units === null || units === undefined) delete day[worker.id];
-  else day[worker.id] = { units, wage: Number(worker.dailyWage) || 0 };
+  if (!mark) delete day[workerId];
+  else day[workerId] = mark;
   const next = { ...attendance };
   if (Object.keys(day).length) next[date] = day;
   else delete next[date];
@@ -273,14 +358,15 @@ export function workerBalance(labour, workerId) {
   return roundTo2(earnedWhere(labour, workerId, () => true).earned - paidWhere(labour, workerId, () => true));
 }
 
-/** Removes a worker and everything recorded for them. */
-export function removeWorker(labour, workerId) {
+/** Permanently removes a worker and everything recorded for them. */
+export function purgeWorker(labour, workerId) {
   const attendance = {};
   for (const [date, marks] of Object.entries(labour.attendance)) {
     const { [workerId]: _removed, ...rest } = marks;
     if (Object.keys(rest).length) attendance[date] = rest;
   }
   return {
+    ...labour,
     workers: labour.workers.filter((worker) => worker.id !== workerId),
     attendance,
     payments: labour.payments.filter((payment) => payment.workerId !== workerId)
