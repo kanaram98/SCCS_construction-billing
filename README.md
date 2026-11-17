@@ -33,9 +33,12 @@ npm run emulators
 
 This runs the Firebase Auth, Firestore and Hosting emulators under the offline demo project `demo-sccs`. Nothing connects to a real Firebase project. The Emulator UI is at http://localhost:4000.
 
+The database layout, validators and security rules are described in [docs/backend-schema.md](docs/backend-schema.md). `npm run test:rules` starts the Firestore emulator and tests the security rules (if the emulators are already running, use `npx vitest run --config vitest.rules.config.js` instead).
+
 ## Testing
 
-- `npm test` runs everything: `test:unit` (domain and document logic, with Node's test runner) and `test:ui` (screens rendered at phone size with Vitest + Testing Library).
+- `npm test` runs `test:unit` (domain, document and backend mapping logic, with Node's test runner) and `test:ui` (screens rendered at phone size with Vitest + Testing Library).
+- `npm run test:rules` tests the Firestore security rules on the emulator (needs Java 21).
 - `npm run verify` runs the tests and the production build. Netlify runs it on every deploy, so a failing test stops a broken update from going live.
 - GitHub Actions (`.github/workflows/ci.yml`) runs the same checks on every push.
 

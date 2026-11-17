@@ -8,25 +8,29 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "npm run test:unit && npm run test:ui",
-    "test:unit": "node --test \"tests/**/*.test.js\"",
+    "test:unit": "node --test \"tests/domain/**/*.test.js\" \"tests/documents/**/*.test.js\" \"tests/backend/**/*.test.js\"",
     "test:ui": "vitest run",
     "test:watch": "vitest",
     "verify": "npm test && npm run build",
-    "emulators": "firebase emulators:start --project demo-sccs"
+    "emulators": "firebase emulators:start --project demo-sccs",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-sccs \"vitest run --config vitest.rules.config.js\""
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
     "@emotion/styled": "11.14.1",
     "@mui/icons-material": "9.5.0",
     "@mui/material": "9.5.0",
+    "firebase": "13.2.0",
     "html2canvas": "1.4.1",
     "jspdf": "4.2.1",
     "jspdf-autotable": "5.0.9",
     "qrcode-generator": "2.0.4",
     "react": "19.3.1",
-    "react-dom": "19.3.1"
+    "react-dom": "19.3.1",
+    "zod": "4.6.7"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "6.0.0",
     "@testing-library/dom": "10.4.2",
     "@testing-library/react": "16.3.3",
     "@testing-library/user-event": "14.6.8",
@@ -35,5 +39,10 @@
     "jsdom": "30.1.3",
     "vite": "8.3.8",
     "vitest": "5.1.0"
+  },
+  "overrides": {
+    "@firebase/firestore": {
+      "@grpc/grpc-js": "1.14.6"
+    }
   }
 }

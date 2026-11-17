@@ -1,11 +1,268 @@
 rules_version = '2';
 
-// Placeholder until Phase B1: nobody can read or write anything.
-// B1 replaces this with "only the owner's Google account" rules and tests them.
+// Security rules = the server-side validators for the cloud database.
+//
+// - Only accounts listed in owners/{uid} can use the database (the owners
+//   document is created once by hand; the app can't write it).
+// - Each owner can only reach their own data under users/{uid}.
+// - Every write is validated: allowed fields, types and sizes, the document
+//   id matches its path, `syncedAt` is the server time, and record versions
+//   only go up (a stale write from another device is rejected, so nothing
+//   is silently overwritten).
+// - Records are deleted for real only from the recycle bin (deletedAt set);
+//   history entries can't be changed.
+//
+// The same limits are in src/backend/schema.js; tests/rules checks both.
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if false;
+
+    // ── Who ─────────────────────────────────────────────────────────────
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid
+        && exists(/databases/$(database)/documents/owners/$(uid));
+    }
+
+    // ── Field checks ────────────────────────────────────────────────────
+    function str(value, max) {
+      return value is string && value.size() <= max;
+    }
+    function optStr(data, key, max) {
+      return !(key in data) || str(data[key], max);
+    }
+    function numberish(value) {
+      return value is number || str(value, 30);
+    }
+    function isoDate(value) {
+      return value is string && value.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+    }
+    function isMonth(value) {
+      return value is string && value.matches('^[0-9]{4}-[0-9]{2}$');
+    }
+    function image(value) {
+      return value == '' || (str(value, 700000) && value.matches('^data:image/[a-z+.-]+;base64,[A-Za-z0-9+/=]*$'));
+    }
+    function paymentMode(value) {
+      return value in ['upi', 'cash', 'bank', 'cheque'];
+    }
+
+    function data() {
+      return request.resource.data;
+    }
+    function fields(required, optional) {
+      return data().keys().hasAll(required) && data().keys().hasOnly(required.concat(optional));
+    }
+    function serverTime() {
+      return data().syncedAt == request.time;
+    }
+
+    // Records: sync metadata, id matches the path, versions only go up.
+    function recordKeys() {
+      return ['id', 'createdAt', 'updatedAt', 'deletedAt', 'version', 'syncedAt'];
+    }
+    function validMeta(id) {
+      return data().id == id
+        && str(data().createdAt, 40) && str(data().updatedAt, 40)
+        && (data().deletedAt == null || str(data().deletedAt, 40))
+        && data().version is int && data().version >= 1
+        && (!('order' in data()) || (data().order is int && data().order >= 0))
+        && serverTime();
+    }
+    function versionGoesUp() {
+      return resource == null || data().version > resource.data.version;
+    }
+    function inRecycleBin() {
+      return resource.data.deletedAt != null;
+    }
+
+    // ── Documents ───────────────────────────────────────────────────────
+    function validBill(id) {
+      let d = data();
+      return fields(recordKeys().concat(['number', 'date', 'projectName', 'clientId', 'client', 'clientPhone',
+          'clientAddress', 'clientGstin', 'firstLevelName', 'secondLevelName', 'discount', 'taxRate',
+          'gstEnabled', 'gstType', 'advance', 'payments', 'footer', 'sections']),
+          ['order', 'kind', 'isSample', 'raSeriesId', 'raNumber', 'convertedBillId', 'sourceEstimateId'])
+        && validMeta(id)
+        && str(d.number, 30) && str(d.date, 10)
+        && (!('kind' in d) || d.kind in ['bill', 'estimate'])
+        && (!('isSample' in d) || d.isSample is bool)
+        && str(d.projectName, 200) && str(d.clientId, 100) && str(d.client, 200)
+        && str(d.clientPhone, 30) && str(d.clientAddress, 5000) && str(d.clientGstin, 20)
+        && str(d.firstLevelName, 50) && str(d.secondLevelName, 50)
+        && numberish(d.discount) && numberish(d.taxRate) && numberish(d.advance)
+        && d.gstEnabled is bool && d.gstType in ['intra', 'inter']
+        && d.payments is list && d.payments.size() <= 500
+        && str(d.footer, 5000)
+        && d.sections is list && d.sections.size() <= 300
+        && optStr(d, 'raSeriesId', 100) && (!('raNumber' in d) || (d.raNumber is int && d.raNumber >= 1))
+        && optStr(d, 'convertedBillId', 100) && optStr(d, 'sourceEstimateId', 100);
+    }
+
+    function validRate(id) {
+      let d = data();
+      return fields(recordKeys().concat(['name', 'unit', 'type', 'rate']), ['order'])
+        && validMeta(id)
+        && str(d.name, 200) && str(d.unit, 20)
+        && d.type in ['area', 'length', 'lenw', 'volume', 'count', 'direct']
+        && numberish(d.rate);
+    }
+
+    function validClient(id) {
+      let d = data();
+      return fields(recordKeys().concat(['name', 'phone', 'address', 'gstin']), ['order'])
+        && validMeta(id)
+        && str(d.name, 200) && str(d.phone, 30) && str(d.address, 5000) && str(d.gstin, 20);
+    }
+
+    function validTemplate(id) {
+      let d = data();
+      return fields(recordKeys().concat(['name', 'type', 'content']), ['order'])
+        && validMeta(id)
+        && str(d.name, 200) && d.type in ['section', 'area'] && d.content is map;
+    }
+
+    function validWorker(id) {
+      let d = data();
+      return fields(recordKeys().concat(['name', 'phone', 'role', 'dailyWage', 'active']), ['order'])
+        && validMeta(id)
+        && str(d.name, 200) && str(d.phone, 30) && str(d.role, 100)
+        && numberish(d.dailyWage) && d.active is bool;
+    }
+
+    function validLabourPayment(id) {
+      let d = data();
+      return fields(recordKeys().concat(['workerId', 'date', 'amount', 'mode', 'note']), ['order'])
+        && validMeta(id)
+        && str(d.workerId, 100) && isoDate(d.date)
+        && d.amount is number && d.amount >= 0
+        && paymentMode(d.mode) && str(d.note, 5000);
+    }
+
+    function validAttendanceMonth(month) {
+      return fields(['id', 'marks', 'syncedAt'], [])
+        && data().id == month && isMonth(month)
+        && data().marks is map && data().marks.size() <= 31
+        && serverTime();
+    }
+
+    function validHistoryEntry(id, entities) {
+      let d = data();
+      return d.id == id && str(d.at, 40)
+        && d.entity in entities
+        && d.action in ['create', 'update', 'delete', 'restore', 'purge', 'close', 'unlock']
+        && optStr(d, 'revertOf', 100)
+        && d.keys().size() <= 20
+        && serverTime();
+    }
+
+    function validSetting(name) {
+      let d = data();
+      return d.id == name && serverTime() && (
+        (name == 'firm'
+          && fields(['id', 'version', 'syncedAt', 'name', 'address', 'phone', 'gstin', 'gstRegistered', 'bankName',
+              'accountName', 'accountNumber', 'ifsc', 'upiId', 'logo', 'signature', 'signatureLayout'],
+              ['createdAt', 'updatedAt', 'brandingApplied'])
+          && d.version is int && d.version >= 1 && versionGoesUp()
+          && str(d.name, 200) && str(d.address, 5000) && str(d.phone, 30) && str(d.gstin, 20)
+          && d.gstRegistered is bool && str(d.bankName, 200) && str(d.accountName, 200)
+          && str(d.accountNumber, 40) && str(d.ifsc, 20) && str(d.upiId, 100)
+          && image(d.logo) && image(d.signature) && d.signatureLayout is map)
+        || (name == 'quotation'
+          && fields(['id', 'version', 'syncedAt', 'title', 'clientName', 'validDays', 'terms', 'disclaimer'], ['createdAt', 'updatedAt'])
+          && d.version is int && d.version >= 1 && versionGoesUp()
+          && str(d.title, 200) && str(d.clientName, 200)
+          && d.validDays is int && d.validDays >= 0 && d.validDays <= 3650
+          && str(d.terms, 5000) && str(d.disclaimer, 5000))
+        || (name == 'printSettings'
+          && str(d.paper, 20) && str(d.orientation, 20) && d.keys().size() <= 40)
+        || (name == 'preferences'
+          && fields(['id', 'syncedAt', 'language', 'textSize'], [])
+          && d.language in ['en', 'hi'] && str(d.textSize, 20))
+        || (name == 'app'
+          && fields(['id', 'syncedAt', 'schemaVersion', 'activeBillId', 'meta'], [])
+          && d.schemaVersion is int && str(d.activeBillId, 100)
+          && d.meta is map && d.meta.keys().hasOnly(['lastBackupAt', 'onboarded']))
+      );
+    }
+
+    // ── Paths ───────────────────────────────────────────────────────────
+
+    // Allow-list: readable by that account only, never written by the app.
+    match /owners/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+      allow create, update: if isOwner(uid)
+        && fields(['schemaVersion', 'createdAt', 'syncedAt'], [])
+        && data().schemaVersion is int && str(data().createdAt, 40) && serverTime();
+      allow delete: if false;
+
+      match /bills/{id} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && validBill(id) && versionGoesUp();
+        allow delete: if isOwner(uid) && inRecycleBin();
+      }
+      match /rates/{id} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && validRate(id) && versionGoesUp();
+        allow delete: if isOwner(uid) && inRecycleBin();
+      }
+      match /clients/{id} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && validClient(id) && versionGoesUp();
+        allow delete: if isOwner(uid) && inRecycleBin();
+      }
+      match /templates/{id} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && validTemplate(id) && versionGoesUp();
+        allow delete: if isOwner(uid) && inRecycleBin();
+      }
+      match /workers/{id} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && validWorker(id) && versionGoesUp();
+        allow delete: if isOwner(uid) && inRecycleBin();
+      }
+      match /labourPayments/{id} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && validLabourPayment(id) && versionGoesUp();
+        allow delete: if isOwner(uid) && inRecycleBin();
+      }
+      // Marks are changed field by field (marks.DD.workerId), so two phones don't overwrite each other.
+      match /attendance/{month} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && validAttendanceMonth(month);
+        allow delete: if false;
+      }
+      match /closedMonths/{month} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid) && isMonth(month)
+          && fields(['id', 'closedAt', 'syncedAt'], []) && data().id == month && str(data().closedAt, 40) && serverTime();
+        allow update: if false;
+        allow delete: if isOwner(uid); // unlocking a month
+      }
+      // History is append-only: entries can be added and trimmed, never edited.
+      match /history/{id} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid) && validHistoryEntry(id, ['bills', 'rates', 'clients', 'templates', 'firm', 'quotation']);
+        allow update: if false;
+        allow delete: if isOwner(uid);
+      }
+      match /labourLog/{id} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid) && validHistoryEntry(id, ['attendance', 'payment', 'worker', 'month']);
+        allow update: if false;
+        allow delete: if isOwner(uid);
+      }
+      match /settings/{name} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && name in ['firm', 'quotation', 'printSettings', 'preferences', 'app'] && validSetting(name);
+        allow delete: if false;
+      }
     }
   }
 }

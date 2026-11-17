@@ -139,10 +139,10 @@ export function recordChanges(raw, nextLive, now = new Date()) {
   for (const entity of SINGLETONS) {
     const before = prevLive[entity];
     const after = nextLive[entity];
-    if (!before || !after || before === after) continue;
+    if (!before || !after || before === after || !changedFields(before, after).length) continue;
+    // Every change bumps the version (so it syncs); only tracked fields are logged.
     const fields = changedFields(before, after, UNTRACKED[entity]);
-    if (!fields.length) continue;
-    log = logUpdate(log, { entity, refId: entity, before: withoutKeys(before, UNTRACKED[entity]), after, fields }, now);
+    if (fields.length) log = logUpdate(log, { entity, refId: entity, before: withoutKeys(before, UNTRACKED[entity]), after, fields }, now);
     result[entity] = touch(after, {}, now);
   }
 
