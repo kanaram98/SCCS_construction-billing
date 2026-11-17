@@ -20,6 +20,7 @@ import { clientDetailsPatch, clientFromBill, getClientSaveError, getClientProfil
 import { createTemplate } from '../domain/templates.js';
 import { createPayment } from '../domain/payments.js';
 import { createSampleBill } from '../domain/sample-bill.js';
+import { relabelGeneratedNames } from '../domain/relabel.js';
 import { convertEstimateToBill, createNextRunningBill, nextNumberFor } from '../domain/bill-kinds.js';
 import { DEFAULT_SIGNATURE_LAYOUT, normalizeSignatureLayout } from '../domain/signature-layout.js';
 import { moveDocument, normalizePrintSettings, toggleDocument } from '../domain/print-settings.js';
@@ -329,7 +330,12 @@ function createPaymentActions({ setData }) {
 function createPreferenceActions({ setData }) {
   const setPreference = (patch) => setData((current) => ({ ...current, preferences: { ...current.preferences, ...patch } }));
   return {
-    setLanguage: (language) => setPreference({ language }),
+    /** Switches language and converts untouched generated names (e.g. "Floor 3") to it. */
+    setLanguage: (language) => setData((current) => ({
+      ...current,
+      bills: relabelGeneratedNames(current.bills, current.preferences?.language || 'en', language),
+      preferences: { ...current.preferences, language }
+    })),
     /** 'normal' or 'large' */
     setTextSize: (textSize) => setPreference({ textSize })
   };
