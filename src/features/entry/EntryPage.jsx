@@ -1,9 +1,7 @@
 import { useMemo, useState } from 'react';
-import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
-import Collapse from '@mui/material/Collapse';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
@@ -15,7 +13,7 @@ import StraightenIcon from '@mui/icons-material/Straighten';
 import UnfoldLessIcon from '@mui/icons-material/UnfoldLess';
 import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
 import { useBilling } from '../../state/BillingContext.jsx';
-import { BottomActionBar, EmptyState, MessageList, PageHeading, SelectField, useNotify } from '../../components/ui';
+import { BottomActionBar, EmptyState, IssuesAlert, PageHeading, SelectField, useNotify } from '../../components/ui';
 import { countBillContents, getBillTotals } from '../../domain/calculations.js';
 import { getBillValidation } from '../../domain/validation.js';
 import { formatCurrency, pluralize } from '../../domain/formatters.js';
@@ -30,7 +28,6 @@ export default function EntryPage({ onNavigate }) {
   const sections = bill.sections || [];
   const disclosure = useEntryDisclosure(sections);
   const [templatesOpen, setTemplatesOpen] = useState(false);
-  const [showIssues, setShowIssues] = useState(false);
 
   const totals = useMemo(() => getBillTotals(bill, data.rates), [bill, data.rates]);
   const errors = useMemo(() => getBillValidation(bill, data.rates), [bill, data.rates]);
@@ -89,16 +86,7 @@ export default function EntryPage({ onNavigate }) {
         />
       )}
 
-      {errors.length > 0 && counts.items > 0 && (
-        <Alert
-          severity="warning"
-          sx={{ mb: 1.5 }}
-          action={<Button color="inherit" size="small" onClick={() => setShowIssues((shown) => !shown)}>{showIssues ? 'Hide' : 'Show'}</Button>}
-        >
-          {errors.length} {pluralize(errors.length, 'issue')} to fix before export
-          <Collapse in={showIssues}><Box sx={{ mt: 1 }}><MessageList messages={errors} /></Box></Collapse>
-        </Alert>
-      )}
+      {counts.items > 0 && <IssuesAlert issues={errors} suffix="to fix before export" />}
 
       {sections.length === 0 && (
         <EmptyState

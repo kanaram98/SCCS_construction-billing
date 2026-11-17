@@ -185,8 +185,11 @@ function createClientActions({ data, bill, setData }) {
 
 function createRateActions({ setData }) {
   return {
-    add() {
-      setData((current) => ({ ...current, rates: [...current.rates, { id: newId(), ...createRate() }] }));
+    /** Adds a work item; `values` override the defaults. Returns the new rate. */
+    add(values = {}) {
+      const rate = { id: newId(), ...createRate(), ...values };
+      setData((current) => ({ ...current, rates: [...current.rates, rate] }));
+      return rate;
     },
     update(rateId, patch) {
       setData((current) => ({

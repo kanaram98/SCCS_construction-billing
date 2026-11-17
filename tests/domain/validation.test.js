@@ -58,3 +58,15 @@ test('export errors include missing details and duplicate bill numbers', () => {
     'Enter your firm name in Project details.'
   ]);
 });
+
+test('rate form errors require name, unit and a non-negative rate', async () => {
+  const { getRateErrors, isRateValid } = await import('../../src/domain/rates.js');
+  assert.deepEqual(getRateErrors({ name: ' ', unit: '', type: 'area', rate: '' }), {
+    name: 'Enter an item name.',
+    unit: 'Enter a unit, e.g. sqft.',
+    type: '',
+    rate: 'Enter a rate of zero or more.'
+  });
+  assert.equal(getRateErrors({ name: 'x', unit: 'u', type: 'bogus', rate: '-1' }).rate, 'Enter a rate of zero or more.');
+  assert.equal(isRateValid({ name: 'Putty', unit: 'sqft', type: 'area', rate: '0' }), true);
+});

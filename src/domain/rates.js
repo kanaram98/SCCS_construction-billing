@@ -50,6 +50,25 @@ export function createRate() {
   return { name: 'New work item', unit: 'nos', type: 'count', rate: 0 };
 }
 
+export function measurementTypeLabel(type) {
+  return MEASUREMENT_TYPES.find((entry) => entry.id === type)?.label || type;
+}
+
+/** Field errors for the rate form, keyed by field ('' when valid). */
+export function getRateErrors(rate) {
+  const value = Number(rate.rate);
+  return {
+    name: String(rate.name ?? '').trim() ? '' : 'Enter an item name.',
+    unit: String(rate.unit ?? '').trim() ? '' : 'Enter a unit, e.g. sqft.',
+    type: MEASUREMENT_TYPES.some((entry) => entry.id === rate.type) ? '' : 'Choose how it is measured.',
+    rate: String(rate.rate ?? '').trim() !== '' && Number.isFinite(value) && value >= 0 ? '' : 'Enter a rate of zero or more.'
+  };
+}
+
+export function isRateValid(rate) {
+  return Object.values(getRateErrors(rate)).every((error) => !error);
+}
+
 /**
  * Finds the current rate for a bill item. Items keep a snapshot of their rate,
  * which is used when the rate has since been deleted.
