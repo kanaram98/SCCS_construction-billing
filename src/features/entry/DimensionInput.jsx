@@ -1,6 +1,7 @@
 import { TextField } from '../../components/ui';
 import { describeDimensionIssue, getDimensionIssue } from '../../domain/validation.js';
 import { formatDimension } from '../../domain/measurements.js';
+import { dimensionWarning } from '../../domain/warnings.js';
 
 /**
  * Feet.inches input with validation and a formatted preview (e.g. 15'4").
@@ -17,6 +18,7 @@ export default function DimensionInput({ label, value, onChange, required = true
       inputMode="decimal"
       required={required}
       error={error}
+      warning={dimensionWarning(value)}
       helperText={formatDimension(value) || 'e.g. 15.4 = 15′4″'}
       onChange={onChange}
     />

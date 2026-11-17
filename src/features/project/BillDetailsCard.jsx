@@ -4,6 +4,7 @@ import { Card, TextField } from '../../components/ui';
 import { getRequiredDetailErrors, isBillNumberTaken } from '../../domain/validation.js';
 import { text } from '../../domain/formatters.js';
 import ClientProfileFields from './ClientProfileFields.jsx';
+import { futureDateWarning } from '../../domain/warnings.js';
 
 export default function BillDetailsCard() {
   const { data, bill, actions } = useBilling();
@@ -23,7 +24,7 @@ export default function BillDetailsCard() {
           <TextField label="Bill number" required value={bill.number} error={numberError} onChange={(number) => update({ number })} />
         </Grid>
         <Grid size={6}>
-          <TextField label="Date" type="date" value={bill.date} onChange={(date) => update({ date })} />
+          <TextField label="Date" type="date" value={bill.date} warning={futureDateWarning(bill.date)} onChange={(date) => update({ date })} />
         </Grid>
         <ClientProfileFields />
         <Grid size={6}>

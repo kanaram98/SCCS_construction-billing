@@ -10,6 +10,7 @@ import { SelectField, TextField, useNotify } from '../../components/ui';
 import { useUndoable } from '../../hooks/useUndoable.js';
 import { getClientProfileState } from '../../domain/clients.js';
 import { getRequiredDetailErrors } from '../../domain/validation.js';
+import { gstinWarning, phoneWarning } from '../../domain/warnings.js';
 
 /** Client fields for the bill plus saved-profile management. Renders grid items. */
 export default function ClientProfileFields() {
@@ -49,13 +50,13 @@ export default function ClientProfileFields() {
         <TextField label="Client name" required value={bill.client} error={nameError} onChange={(client) => update({ client })} />
       </Grid>
       <Grid size={{ xs: 12, sm: 6 }}>
-        <TextField label="Client phone" type="tel" value={bill.clientPhone} onChange={(clientPhone) => update({ clientPhone })} />
+        <TextField label="Client phone" type="tel" value={bill.clientPhone} warning={phoneWarning(bill.clientPhone)} onChange={(clientPhone) => update({ clientPhone })} />
       </Grid>
       <Grid size={{ xs: 12, sm: 6 }}>
         <TextField label="Client address" value={bill.clientAddress} onChange={(clientAddress) => update({ clientAddress })} />
       </Grid>
       <Grid size={{ xs: 12, sm: 6 }}>
-        <TextField label="Client GSTIN" value={bill.clientGstin} onChange={(clientGstin) => update({ clientGstin })} />
+        <TextField label="Client GSTIN" value={bill.clientGstin} warning={gstinWarning(bill.clientGstin)} onChange={(clientGstin) => update({ clientGstin: clientGstin.toUpperCase() })} />
       </Grid>
       <Grid size={12}>
         <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1 }}>

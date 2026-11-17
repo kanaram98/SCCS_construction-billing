@@ -3,6 +3,7 @@ import { useBilling } from '../../state/BillingContext.jsx';
 import { Card, ImageUploadField, TextField, useNotify } from '../../components/ui';
 import { getRequiredDetailErrors } from '../../domain/validation.js';
 import { optimizeImage } from '../../services/image.js';
+import { gstinWarning, phoneWarning } from '../../domain/warnings.js';
 
 const IMAGE_LABELS = { logo: 'Firm logo', signature: 'Signature' };
 
@@ -33,10 +34,10 @@ export default function FirmCard() {
           <TextField label="Address" value={firm.address} onChange={(address) => update({ address })} />
         </Grid>
         <Grid size={6}>
-          <TextField label="Phone" type="tel" value={firm.phone} onChange={(phone) => update({ phone })} />
+          <TextField label="Phone" type="tel" value={firm.phone} warning={phoneWarning(firm.phone)} onChange={(phone) => update({ phone })} />
         </Grid>
         <Grid size={6}>
-          <TextField label="GSTIN" value={firm.gstin} onChange={(gstin) => update({ gstin })} />
+          <TextField label="GSTIN" value={firm.gstin} warning={gstinWarning(firm.gstin)} onChange={(gstin) => update({ gstin: gstin.toUpperCase() })} />
         </Grid>
         {Object.entries(IMAGE_LABELS).map(([field, label]) => (
           <Grid size={{ xs: 12, sm: 6 }} key={field}>

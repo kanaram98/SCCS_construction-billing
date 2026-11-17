@@ -6,12 +6,14 @@ import Switch from '@mui/material/Switch';
 /**
  * Text input bound to a string value. `onChange` receives the new value.
  * `error` (string) marks the field invalid and is shown as helper text.
+ * `warning` (string) is shown in amber without marking the field invalid.
  * Number inputs open the decimal keypad on phones.
  */
 export function TextField({
   value,
   onChange,
   error = '',
+  warning = '',
   invalid = Boolean(error),
   helperText,
   type = 'text',
@@ -28,10 +30,11 @@ export function TextField({
       type={type}
       value={value ?? ''}
       error={invalid}
-      helperText={error || helperText}
+      helperText={error || warning || helperText}
       onChange={(event) => onChange(event.target.value)}
       slotProps={{
         ...slotProps,
+        formHelperText: !error && warning ? { sx: { color: 'warning.dark' }, ...slotProps?.formHelperText } : slotProps?.formHelperText,
         inputLabel: { shrink: type === 'date' ? true : undefined, ...slotProps?.inputLabel },
         htmlInput: {
           min,
