@@ -13,6 +13,8 @@ import MainNav from './components/layout/MainNav.jsx';
 import AppNotices from './components/layout/AppNotices.jsx';
 import DashboardPage from './features/dashboard/DashboardPage.jsx';
 import LanguageGate from './i18n/LanguageGate.jsx';
+import WelcomeDialog from './features/onboarding/WelcomeDialog.jsx';
+import AppSettingsDialog from './components/layout/AppSettingsDialog.jsx';
 import { tr as t } from './i18n/translate.js';
 
 /**
@@ -50,8 +52,8 @@ const PAGES = {
   [VIEWS.print]: PrintPage
 };
 
-function AppShell({ view, setView }) {
-  const { bill, saveStatus, storageError } = useBilling();
+function AppShell({ view, setView, onOpenSettings }) {
+  const { data, bill, saveStatus, storageError } = useBilling();
   const installer = useInstallPrompt();
   const Page = PAGES[view];
   usePrefetchPages();
@@ -68,8 +70,10 @@ function AppShell({ view, setView }) {
         saveStatus={saveStatus}
         canInstall={installer.canInstall}
         onInstall={installer.install}
+        onOpenSettings={onOpenSettings}
       />
       <MainNav activeView={view} onNavigate={navigate} />
+      {!data.meta?.onboarded && <WelcomeDialog onNavigate={navigate} />}
       <Box
         component="main"
         className="content"
@@ -93,12 +97,14 @@ function AppShell({ view, setView }) {
   );
 }
 
-/** Keeps the current screen across language changes (LanguageGate remounts the shell). */
+/** Keeps the current screen and open settings across language changes (LanguageGate remounts its children). */
 function LocalizedApp() {
   const [view, setView] = useState(VIEWS.bills);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   return (
     <LanguageGate>
-      <AppShell view={view} setView={setView} />
+      <AppShell view={view} setView={setView} onOpenSettings={() => setSettingsOpen(true)} />
+      <AppSettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </LanguageGate>
   );
 }

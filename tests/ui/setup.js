@@ -3,7 +3,10 @@
  * mobile layout (bottom navigation, full-screen dialogs) is what gets tested.
  */
 import { afterEach, beforeEach } from 'vitest';
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
+
+// Screens are lazy-loaded; allow time for the chunk to load on a busy machine.
+configure({ asyncUtilTimeout: 5000 });
 
 const VIEWPORT_WIDTH = 390;
 

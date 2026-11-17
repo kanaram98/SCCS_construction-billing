@@ -24,6 +24,8 @@ import { VIEWS } from '../../config/app.js';
 import { useEntryDisclosure } from './useEntryDisclosure.js';
 import SectionPanel from './SectionPanel.jsx';
 import TemplatesDialog from './TemplatesDialog.jsx';
+import GettingStarted from './GettingStarted.jsx';
+import Alert from '@mui/material/Alert';
 import { tr as t, trn } from '../../i18n/translate.js';
 
 export default function EntryPage({ onNavigate }) {
@@ -83,6 +85,11 @@ export default function EntryPage({ onNavigate }) {
         )}
         <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={addSection}>{sectionLabel}</Button>
       </Stack>
+
+      {bill.isSample && (
+        <Alert severity="info" sx={{ mb: 1.5 }}>{t('This is a sample bill to explore. Delete it from Bills when you are done.')}</Alert>
+      )}
+      {counts.items === 0 && <GettingStarted counts={counts} levelName={sectionLabel.toLowerCase()} sublevelName={areaLabel.toLowerCase()} />}
 
       {counts.items > 0 && (
         <TextField

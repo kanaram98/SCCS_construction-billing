@@ -127,10 +127,31 @@ describe('PDF screen', () => {
 describe('Language', () => {
   it('switches the app to Hindi and remembers it', async () => {
     const { user } = renderApp(SAMPLE_STATE);
-    await user.click(screen.getByRole('button', { name: 'Language' }));
-    await user.click(await screen.findByRole('menuitem', { name: 'हिंदी' }));
+    await user.click(screen.getByRole('button', { name: 'App settings' }));
+    await user.click(await screen.findByRole('button', { name: 'हिंदी' }));
+    // The settings dialog stays open after switching; close it to reach the page.
+    await user.click(await screen.findByRole('button', { name: 'हो गया' }));
     expect(await screen.findByRole('button', { name: 'नया बिल' })).toBeTruthy();
     expect(within(screen.getByRole('navigation', { name: 'मुख्य मेनू' })).getByRole('button', { name: 'दरें' })).toBeTruthy();
     expect(savedState().preferences.language).toBe('hi');
+  });
+});
+
+describe('First use', () => {
+  it('welcomes a new user and can open a sample bill', async () => {
+    const { user } = renderApp();
+    const welcome = await screen.findByRole('dialog', { name: 'Welcome to Construction Billing' });
+    await user.click(within(welcome).getByRole('button', { name: 'See a sample bill' }));
+    expect(await screen.findByText(/This is a sample bill to explore/)).toBeTruthy();
+    expect(screen.getAllByText('₹34,440').length).toBeGreaterThan(0);
+    expect(savedState().meta.onboarded).toBe(true);
+    expect(screen.queryByRole('dialog', { name: 'Welcome to Construction Billing' })).toBeNull();
+  });
+
+  it('shows the getting-started checklist on an empty bill', async () => {
+    const { user } = renderApp();
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Start my first bill' }));
+    expect(await screen.findByText('Getting started')).toBeTruthy();
+    expect(screen.getByText('Tap the “+ section” button above.')).toBeTruthy();
   });
 });

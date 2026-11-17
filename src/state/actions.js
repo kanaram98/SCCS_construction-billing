@@ -20,6 +20,7 @@ import { newId } from '../domain/ids.js';
 import { clientDetailsPatch, clientFromBill, getClientSaveError, getClientProfileState } from '../domain/clients.js';
 import { createTemplate } from '../domain/templates.js';
 import { createPayment } from '../domain/payments.js';
+import { createSampleBill } from '../domain/sample-bill.js';
 import { DEFAULT_SIGNATURE_LAYOUT, normalizeSignatureLayout } from '../domain/signature-layout.js';
 import { moveDocument, normalizePrintSettings, toggleDocument } from '../domain/print-settings.js';
 import { tr } from '../i18n/translate.js';
@@ -42,6 +43,10 @@ function createBillActions({ data, setData }) {
     },
     create() {
       insertAndOpen(createBill(getNextBillNumber(data.bills), { gstEnabled: Boolean(data.firm.gstRegistered) }));
+    },
+    /** Adds an example bill and opens it. */
+    addSample() {
+      insertAndOpen(createSampleBill(getNextBillNumber(data.bills), data.rates, { gstEnabled: Boolean(data.firm.gstRegistered) }));
     },
     duplicate(source) {
       insertAndOpen(duplicateBill(source, getNextBillNumber(data.bills)));
@@ -295,10 +300,11 @@ function createPaymentActions({ setData }) {
 }
 
 function createPreferenceActions({ setData }) {
+  const setPreference = (patch) => setData((current) => ({ ...current, preferences: { ...current.preferences, ...patch } }));
   return {
-    setLanguage(language) {
-      setData((current) => ({ ...current, preferences: { ...current.preferences, language } }));
-    }
+    setLanguage: (language) => setPreference({ language }),
+    /** 'normal' or 'large' */
+    setTextSize: (textSize) => setPreference({ textSize })
   };
 }
 
@@ -311,6 +317,10 @@ function createDataActions({ setData }) {
     /** Puts back a previously captured state, e.g. to undo a delete. */
     restoreSnapshot(snapshot) {
       setData(snapshot);
+    },
+    /** Marks the welcome screen as seen (or not, to show it again). */
+    setOnboarded(onboarded = true) {
+      setData((current) => ({ ...current, meta: { ...current.meta, onboarded } }));
     },
     markBackedUp(date = new Date()) {
       setData((current) => ({ ...current, meta: { ...current.meta, lastBackupAt: date.toISOString() } }));

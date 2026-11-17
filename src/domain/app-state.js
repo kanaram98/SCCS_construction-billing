@@ -41,8 +41,8 @@ export function createInitialState() {
     firm: createDefaultFirm(),
     templates: [],
     printSettings: createDefaultPrintSettings(),
-    meta: { lastBackupAt: '' },
-    preferences: { language: 'en' }
+    meta: { lastBackupAt: '', onboarded: false },
+    preferences: { language: 'en', textSize: 'normal' }
   };
 }
 
@@ -74,6 +74,12 @@ export function hydrateState(saved, { isLegacy = false } = {}) {
   // The original app stored bank details as one free-text `bank` field.
   if (!firm.bankName && typeof firm.bank === 'string' && firm.bank.trim()) firm.bankName = firm.bank.trim();
 
+  // People who already have bills have seen the app: skip the welcome screen.
+  const savedMeta = saved.meta && typeof saved.meta === 'object' ? saved.meta : {};
+  const onboarded = typeof savedMeta.onboarded === 'boolean'
+    ? savedMeta.onboarded
+    : saved.bills.length > 1 || saved.bills.some((bill) => (bill.sections || []).length > 0 || String(bill.projectName || '').trim());
+
   const activeExists = saved.bills.some((bill) => bill.id === saved.activeBillId);
   return {
     ...defaults,
@@ -83,7 +89,7 @@ export function hydrateState(saved, { isLegacy = false } = {}) {
     firm,
     templates: isLegacy ? [] : arrayOr(saved.templates),
     printSettings: normalizePrintSettings(saved.printSettings, saved.pdfDocuments, firm.signatureLayout),
-    meta: { ...defaults.meta, ...(saved.meta && typeof saved.meta === 'object' ? saved.meta : {}) },
+    meta: { ...defaults.meta, ...savedMeta, onboarded },
     preferences: { ...defaults.preferences, ...(saved.preferences && typeof saved.preferences === 'object' ? saved.preferences : {}) },
     activeBillId: activeExists ? saved.activeBillId : saved.bills[0].id
   };

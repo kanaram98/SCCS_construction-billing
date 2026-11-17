@@ -75,3 +75,25 @@ test('sorts bills by date, number, amount and balance', async () => {
   assert.equal(run('balance'), 'bca');
   assert.equal(run('unknown'), 'bac');
 });
+
+test('welcome screen is shown only to new users', async () => {
+  const { createInitialState } = await import('../../src/domain/app-state.js');
+  assert.equal(createInitialState().meta.onboarded, false);
+  assert.equal(hydrateState({ bills: [{ id: 'a', sections: [] }] }).meta.onboarded, false);
+  assert.equal(hydrateState({ bills: [{ id: 'a', sections: [{ id: 's', areas: [] }] }] }).meta.onboarded, true);
+  assert.equal(hydrateState({ bills: [{ id: 'a', sections: [] }], meta: { onboarded: true } }).meta.onboarded, true);
+  assert.equal(hydrateState({ bills: [{ id: 'a', sections: [] }] }).preferences.textSize, 'normal');
+});
+
+test('sample bill uses the default work items and adds up', async () => {
+  const { createSampleBill } = await import('../../src/domain/sample-bill.js');
+  const { DEFAULT_RATES } = await import('../../src/domain/rates.js');
+  const { getBillTotals, countBillContents } = await import('../../src/domain/calculations.js');
+  const sample = createSampleBill('3', DEFAULT_RATES);
+  assert.equal(sample.number, '3');
+  assert.equal(sample.isSample, true);
+  assert.deepEqual(countBillContents(sample), { sections: 2, areas: 3, items: 5 });
+  // 14'6"×12' = 174 sqft, 10×8 = 80, 12'×11'6" = 138 → 392 sqft × 85 = 33,320;
+  // skirting 14'6"×2 = 29 rft × 30 = 870; gas hole 250 → 34,440
+  assert.equal(getBillTotals(sample, DEFAULT_RATES).total, 34440);
+});

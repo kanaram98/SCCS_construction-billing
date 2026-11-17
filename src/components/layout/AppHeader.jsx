@@ -11,11 +11,11 @@ import InstallMobileIcon from '@mui/icons-material/InstallMobile';
 import { APP_NAME } from '../../config/app.js';
 import { SAVE_STATUS } from '../../state/useBillingStore.js';
 import { DRAWER_WIDTH } from '../../theme.js';
-import ColorModeToggle from './ColorModeToggle.jsx';
-import LanguageSwitch from './LanguageSwitch.jsx';
+import IconButton from '@mui/material/IconButton';
+import SettingsIcon from '@mui/icons-material/SettingsOutlined';
 import { tr as t } from '../../i18n/translate.js';
 
-export default function AppHeader({ subtitle, saveStatus, canInstall, onInstall }) {
+export default function AppHeader({ subtitle, saveStatus, canInstall, onInstall, onOpenSettings }) {
   const saveFailed = saveStatus === SAVE_STATUS.failed;
   return (
     <AppBar
@@ -36,12 +36,15 @@ export default function AppHeader({ subtitle, saveStatus, canInstall, onInstall 
         {canInstall && (
           <Button size="small" variant="contained" startIcon={<InstallMobileIcon />} onClick={onInstall}>{t('Install')}</Button>
         )}
-        <LanguageSwitch />
-        <ColorModeToggle />
         <Tooltip title={t(saveStatus)}>
           <Box role="status" aria-label={t(saveStatus)} sx={{ display: 'flex', color: saveFailed ? 'error.main' : 'success.main' }}>
             {saveFailed ? <CloudOffIcon /> : <CloudDoneIcon />}
           </Box>
+        </Tooltip>
+        <Tooltip title={t('App settings')}>
+          <IconButton aria-label={t('App settings')} onClick={onOpenSettings} edge="end">
+            <SettingsIcon />
+          </IconButton>
         </Tooltip>
       </Toolbar>
     </AppBar>
