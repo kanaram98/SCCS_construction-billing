@@ -12,7 +12,6 @@ import {
   createItem,
   createSection,
   duplicateBill,
-  getNextBillNumber,
   nextLevelName
 } from '../domain/factories.js';
 import { createRate } from '../domain/rates.js';
@@ -21,6 +20,7 @@ import { clientDetailsPatch, clientFromBill, getClientSaveError, getClientProfil
 import { createTemplate } from '../domain/templates.js';
 import { createPayment } from '../domain/payments.js';
 import { createSampleBill } from '../domain/sample-bill.js';
+import { convertEstimateToBill, createNextRunningBill, nextNumberFor } from '../domain/bill-kinds.js';
 import { DEFAULT_SIGNATURE_LAYOUT, normalizeSignatureLayout } from '../domain/signature-layout.js';
 import { moveDocument, normalizePrintSettings, toggleDocument } from '../domain/print-settings.js';
 import { tr } from '../i18n/translate.js';
@@ -41,15 +41,42 @@ function createBillActions({ data, setData }) {
     open(billId) {
       setData((current) => ({ ...current, activeBillId: billId }));
     },
-    create() {
-      insertAndOpen(createBill(getNextBillNumber(data.bills), { gstEnabled: Boolean(data.firm.gstRegistered) }));
+    /** @param {'bill'|'estimate'} kind */
+    create(kind = 'bill') {
+      const bill = createBill(nextNumberFor(data.bills, kind), { gstEnabled: Boolean(data.firm.gstRegistered) });
+      insertAndOpen(kind === 'estimate' ? { ...bill, kind } : bill);
+    },
+    /** Creates a bill from an estimate and marks the estimate as converted. Returns the new bill. */
+    convertEstimate(estimateId) {
+      const estimate = data.bills.find((entry) => entry.id === estimateId);
+      if (!estimate) return null;
+      const bill = convertEstimateToBill(estimate, data.bills);
+      setData((current) => ({
+        ...current,
+        bills: [bill, ...current.bills.map((entry) => entry.id === estimateId ? { ...entry, convertedBillId: bill.id } : entry)],
+        activeBillId: bill.id
+      }));
+      return bill;
+    },
+    /** Starts the next running (RA) bill after `sourceId`. Returns the new bill. */
+    nextRunningBill(sourceId) {
+      const source = data.bills.find((entry) => entry.id === sourceId);
+      if (!source) return null;
+      const { bill, sourcePatch } = createNextRunningBill(data.bills, source);
+      setData((current) => ({
+        ...current,
+        bills: [bill, ...current.bills.map((entry) => entry.id === sourceId ? { ...entry, ...sourcePatch } : entry)],
+        activeBillId: bill.id
+      }));
+      return bill;
     },
     /** Adds an example bill and opens it. */
     addSample() {
-      insertAndOpen(createSampleBill(getNextBillNumber(data.bills), data.rates, { gstEnabled: Boolean(data.firm.gstRegistered) }));
+      insertAndOpen(createSampleBill(nextNumberFor(data.bills, 'bill'), data.rates, { gstEnabled: Boolean(data.firm.gstRegistered) }));
     },
     duplicate(source) {
-      insertAndOpen(duplicateBill(source, getNextBillNumber(data.bills)));
+      // A duplicate starts a fresh bill: not part of the source's running-bill series.
+      insertAndOpen({ ...duplicateBill(source, nextNumberFor(data.bills, source.kind === 'estimate' ? 'estimate' : 'bill')), raSeriesId: undefined, raNumber: undefined, convertedBillId: undefined, sourceEstimateId: undefined });
     },
     remove(billId) {
       setData((current) => {

@@ -120,8 +120,10 @@ export function getBillValidation(bill, rates) {
   return [...errors, ...Object.values(amountErrors).filter(Boolean)];
 }
 
+/** Bills and estimates are numbered separately, so only the same kind can clash. */
 export function isBillNumberTaken(bills, bill) {
-  return bills.some((entry) => entry.id !== bill.id && text(entry.number) === text(bill.number));
+  const kind = (entry) => (entry.kind === 'estimate' ? 'estimate' : 'bill');
+  return bills.some((entry) => entry.id !== bill.id && kind(entry) === kind(bill) && text(entry.number) === text(bill.number));
 }
 
 /** Required project details for export, keyed by field. */

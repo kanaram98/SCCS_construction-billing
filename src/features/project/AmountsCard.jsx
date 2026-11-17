@@ -3,6 +3,7 @@ import { useBilling } from '../../state/BillingContext.jsx';
 import { Card, SelectField, SwitchField, TextField } from '../../components/ui';
 import { getAmountErrors } from '../../domain/validation.js';
 import { GST_TYPES, getBillTotals, getTaxLines, hasGst } from '../../domain/calculations.js';
+import { isEstimate } from '../../domain/bill-kinds.js';
 import { formatCurrency } from '../../domain/formatters.js';
 import { tr as t } from '../../i18n/translate.js';
 
@@ -18,9 +19,9 @@ export default function AmountsCard() {
         <Grid size={{ xs: 6, sm: 6 }}>
           <TextField label={t('Discount (₹)')} type="number" min="0" step="1" value={bill.discount} error={errors.discount} onChange={(discount) => update({ discount })} />
         </Grid>
-        <Grid size={{ xs: 6, sm: 6 }}>
+        {!isEstimate(bill) && <Grid size={{ xs: 6, sm: 6 }}>
           <TextField label={t('Advance received (₹)')} type="number" min="0" step="1" value={bill.advance} error={errors.advance} onChange={(advance) => update({ advance })} />
-        </Grid>
+        </Grid>}
         <Grid size={12}>
           <SwitchField label={t('Add GST to this bill')} checked={hasGst(bill)} onChange={(gstEnabled) => update({ gstEnabled })} />
         </Grid>

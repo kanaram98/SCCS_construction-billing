@@ -1,12 +1,15 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Button from '@mui/material/Button';
 import Grid from '@mui/material/Grid';
-import Typography from '@mui/material/Typography';
+import Paper from '@mui/material/Paper';
+import Tab from '@mui/material/Tab';
+import Tabs from '@mui/material/Tabs';
 import AddIcon from '@mui/icons-material/Add';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import { useBilling } from '../../state/BillingContext.jsx';
 import { summarizeBill } from '../../domain/calculations.js';
 import { formatCurrency } from '../../domain/formatters.js';
+import { billKind, billLabel, billsOfKind } from '../../domain/bill-kinds.js';
 import { EmptyState, PageHeading, StatCard, useConfirm, useNotify } from '../../components/ui';
 import { useUndoable } from '../../hooks/useUndoable.js';
 import { useWhatsAppReminder } from '../../hooks/useWhatsAppReminder.js';
@@ -23,24 +26,31 @@ export default function DashboardPage({ onNavigate }) {
   const notify = useNotify();
   const undoable = useUndoable();
   const reminder = useWhatsAppReminder();
-  const { bills, rates } = data;
+  const { rates } = data;
+  /** 'bill' or 'estimate': which list is shown, and what "New" creates. */
+  const [kind, setKind] = useState(() => billKind(activeBill));
+  const isEstimates = kind === 'estimate';
+  const bills = useMemo(() => billsOfKind(data.bills, kind), [data.bills, kind]);
+  const estimateCount = useMemo(() => billsOfKind(data.bills, 'estimate').length, [data.bills]);
 
   const summaries = useMemo(
-    () => new Map(bills.map((bill) => [bill.id, summarizeBill(bill, rates)])),
-    [bills, rates]
+    () => new Map(data.bills.map((bill) => [bill.id, summarizeBill(bill, rates)])),
+    [data.bills, rates]
   );
   const { filters, sort, setSort, filteredBills, clientNames, setFilter, clearFilters } = useBillFilters(bills, summaries);
 
+  // Money stats count real bills only, never estimates.
   const stats = useMemo(() => {
-    const all = [...summaries.values()];
+    const real = billsOfKind(data.bills, 'bill').map((bill) => summaries.get(bill.id));
     return {
-      billed: all.reduce((sum, { totals }) => sum + totals.total, 0),
-      outstanding: all.reduce((sum, { totals }) => sum + Math.max(0, totals.balance), 0)
+      count: real.length,
+      billed: real.reduce((sum, { totals }) => sum + totals.total, 0),
+      outstanding: real.reduce((sum, { totals }) => sum + Math.max(0, totals.balance), 0)
     };
-  }, [summaries]);
+  }, [data.bills, summaries]);
 
-  function createBill() {
-    actions.bills.create();
+  function create() {
+    actions.bills.create(kind);
     onNavigate(VIEWS.entry);
   }
 
@@ -51,39 +61,69 @@ export default function DashboardPage({ onNavigate }) {
 
   function duplicateBill(bill) {
     actions.bills.duplicate(bill);
-    notify(t('Bill {number} duplicated.', { number: bill.number }));
+    notify(t('{name} duplicated.', { name: billLabel(bill, t) }));
+    onNavigate(VIEWS.entry);
+  }
+
+  function convertEstimate(estimate) {
+    const bill = actions.bills.convertEstimate(estimate.id);
+    if (!bill) return;
+    notify(t('{estimate} converted to {bill}.', { estimate: billLabel(estimate, t), bill: billLabel(bill, t) }));
+    onNavigate(VIEWS.entry);
+  }
+
+  function nextRunningBill(bill) {
+    const next = actions.bills.nextRunningBill(bill.id);
+    if (!next) return;
+    notify(t('{bill} started for {project}.', { bill: billLabel(next, t), project: next.projectName || t('Untitled project') }));
     onNavigate(VIEWS.entry);
   }
 
   async function deleteBill(bill) {
+    const label = billLabel(bill, t);
     const confirmed = await confirm({
-      title: t('Delete bill {number}?', { number: bill.number }),
+      title: t('Delete {name}?', { name: label }),
       message: t('This cannot be undone.'),
       confirmLabel: t('Delete'),
       danger: true
     });
     if (!confirmed) return;
-    undoable(t('Bill {number} deleted.', { number: bill.number }), () => actions.bills.remove(bill.id));
+    undoable(t('{name} deleted.', { name: label }), () => actions.bills.remove(bill.id));
   }
+
+  const convertedLabel = (estimate) => {
+    const bill = data.bills.find((entry) => entry.id === estimate.convertedBillId);
+    return bill ? t('Converted to {bill}', { bill: billLabel(bill, t) }) : '';
+  };
 
   return (
     <section>
       <PageHeading
         title={t('Bills')}
         description={t('Your construction bills on this device.')}
-        action={<Button variant="contained" startIcon={<AddIcon />} onClick={createBill}>{t('New bill')}</Button>}
+        action={(
+          <Button variant="contained" startIcon={<AddIcon />} onClick={create}>
+            {isEstimates ? t('New estimate') : t('New bill')}
+          </Button>
+        )}
       />
 
       <BackupReminder />
 
-      <Grid container spacing={1.25} sx={{ mb: 2.5 }}>
-        <Grid size={{ xs: 6, sm: 3 }}><StatCard label={t('Saved bills')} value={bills.length} /></Grid>
+      <Grid container spacing={1.25} sx={{ mb: 2 }}>
+        <Grid size={{ xs: 6, sm: 3 }}><StatCard label={t('Saved bills')} value={stats.count} /></Grid>
         <Grid size={{ xs: 6, sm: 3 }}><StatCard label={t('Total billed')} value={formatCurrency(stats.billed)} /></Grid>
         <Grid size={{ xs: 6, sm: 3 }}><StatCard label={t('Outstanding')} value={formatCurrency(stats.outstanding)} /></Grid>
         <Grid size={{ xs: 6, sm: 3 }}><StatCard label={t('Current bill')} value={formatCurrency(summaries.get(activeBill.id).totals.total)} /></Grid>
       </Grid>
 
-      <Typography variant="h6" component="h2" sx={{ mb: 1 }}>{t('Your bills')}</Typography>
+      <Paper variant="outlined" sx={{ mb: 1.5 }}>
+        <Tabs value={kind} onChange={(_event, value) => setKind(value)} variant="fullWidth" aria-label={t('Bills and estimates')}>
+          <Tab value="bill" label={`${t('Bills')} (${stats.count})`} />
+          <Tab value="estimate" label={`${t('Estimates')} (${estimateCount})`} />
+        </Tabs>
+      </Paper>
+
       <BillFilters
         filters={filters}
         sort={sort}
@@ -101,10 +141,13 @@ export default function DashboardPage({ onNavigate }) {
           bill={bill}
           summary={summaries.get(bill.id)}
           selected={bill.id === activeBill.id}
+          note={convertedLabel(bill)}
           onOpen={() => openBill(bill.id)}
           onDuplicate={() => duplicateBill(bill)}
           onDelete={() => deleteBill(bill)}
           onRemind={() => reminder.remind(bill)}
+          onConvert={() => convertEstimate(bill)}
+          onNextRunningBill={() => nextRunningBill(bill)}
         />
       ))}
 
@@ -115,12 +158,19 @@ export default function DashboardPage({ onNavigate }) {
             description={t('Adjust or clear the search and filters to see more bills.')}
             action={<Button variant="outlined" onClick={clearFilters}>{t('Clear filters')}</Button>}
           />
+        ) : isEstimates ? (
+          <EmptyState
+            icon={<ReceiptLongIcon />}
+            title={t('No estimates yet')}
+            description={t('Make an estimate (quotation) for a client, then convert it into a bill when the work is confirmed.')}
+            action={<Button variant="contained" startIcon={<AddIcon />} onClick={create}>{t('New estimate')}</Button>}
+          />
         ) : (
           <EmptyState
             icon={<ReceiptLongIcon />}
             title={t('Start a bill')}
             description={t('Create your first bill to begin entering measurements.')}
-            action={<Button variant="contained" startIcon={<AddIcon />} onClick={createBill}>{t('Create first bill')}</Button>}
+            action={<Button variant="contained" startIcon={<AddIcon />} onClick={create}>{t('Create first bill')}</Button>}
           />
         )
       )}

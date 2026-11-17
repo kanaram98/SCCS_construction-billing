@@ -1,4 +1,4 @@
-import { getPrintDocument } from '../../../domain/print-settings.js';
+import { billLabel, documentTitle } from '../../../domain/bill-kinds.js';
 import { hasGst } from '../../../domain/calculations.js';
 
 /** Firm branding and bill details printed at the top of each document. `t` uses the bill's language. */
@@ -14,7 +14,7 @@ export default function PaperHeader({ bill, firm, documentType, t }) {
         </div>
         {firm.logo && <img className="paper-logo" src={firm.logo} alt="" />}
       </div>
-      <h3>{t(getPrintDocument(documentType)?.label || '')} · {t('Bill {number}', { number: bill.number })}</h3>
+      <h3>{t(documentTitle(documentType, bill) || '')} · {billLabel(bill, t)}</h3>
       <div>
         {[
           t('Project: {project}', { project: bill.projectName || '—' }),

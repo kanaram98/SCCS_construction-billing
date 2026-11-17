@@ -10,6 +10,7 @@ import { EmptyState } from '../../components/ui';
 import { getExportErrors } from '../../domain/validation.js';
 import { getSelectedDocuments, isSignatureVisible } from '../../domain/print-settings.js';
 import { usePdfExport } from './usePdfExport.js';
+import { getRunningAccount } from '../../domain/bill-kinds.js';
 import PrintPageStyle from './PrintPageStyle.jsx';
 import PreviewTab from './PreviewTab.jsx';
 import DocumentSelection from './DocumentSelection.jsx';
@@ -35,7 +36,8 @@ export default function PrintPage() {
   const previewDocument = selectedDocuments.includes(printSettings.previewDocument)
     ? printSettings.previewDocument
     : selectedDocuments[0] || 'bill';
-  const exporter = usePdfExport({ bill, rates, firm, printSettings, exportErrors, selectedDocuments });
+  const runningAccount = useMemo(() => getRunningAccount(data.bills, bill, rates), [data.bills, bill, rates]);
+  const exporter = usePdfExport({ bill, rates, firm, printSettings, exportErrors, selectedDocuments, runningAccount });
 
   return (
     <section className="print-page">
@@ -62,6 +64,7 @@ export default function PrintPage() {
               exporter={exporter}
               onPreviewChange={(value) => print.update({ previewDocument: value })}
               onSignatureLayoutChange={print.setSignatureLayout}
+              runningAccount={runningAccount}
             />
           ) : (
             <EmptyState
@@ -112,6 +115,7 @@ export default function PrintPage() {
             printSettings={printSettings}
             documentType={documentType}
             signatureVisible={isSignatureVisible(printSettings, index, selectedDocuments.length)}
+            runningAccount={runningAccount}
           />
         ))}
       </div>

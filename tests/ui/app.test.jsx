@@ -20,7 +20,7 @@ describe('Bills screen', () => {
     await user.click(screen.getByRole('button', { name: 'Actions for bill 2' }));
     await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
     const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).getByText('Delete bill 2?')).toBeTruthy();
+    expect(within(dialog).getByText('Delete Bill 2?')).toBeTruthy();
     await user.click(within(dialog).getByRole('button', { name: 'Delete' }));
     await waitFor(() => expect(screen.queryByText('Bill 2 · Office fitout')).toBeNull());
 

@@ -37,17 +37,18 @@ export default function DocumentPreview({
   signatureVisible = false,
   editableSignature = false,
   className = '',
-  onSignatureLayoutChange
+  onSignatureLayoutChange,
+  runningAccount = null
 }) {
   const language = resolveBillLanguage(printSettings, getLanguage());
   const t = useMemo(() => makeTranslator(language), [language]);
   const { columns, chunks } = useMemo(
-    () => buildDocument(documentType, bill, rates, printSettings, { money: formatCurrency, language }),
-    [documentType, bill, rates, printSettings, language]
+    () => buildDocument(documentType, bill, rates, printSettings, { money: formatCurrency, language, runningAccount }),
+    [documentType, bill, rates, printSettings, language, runningAccount]
   );
   const paymentBlock = useMemo(
-    () => buildPaymentBlock(documentType, bill, rates, firm, printSettings, t),
-    [documentType, bill, rates, firm, printSettings, t]
+    () => buildPaymentBlock(documentType, bill, rates, firm, printSettings, t, { runningAccount }),
+    [documentType, bill, rates, firm, printSettings, t, runningAccount]
   );
   const repeatHeader = printSettings.headerMode === 'all';
   const header = <PaperHeader bill={bill} firm={firm} documentType={documentType} t={t} />;

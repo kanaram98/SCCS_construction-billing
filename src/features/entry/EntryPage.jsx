@@ -25,6 +25,7 @@ import { useEntryDisclosure } from './useEntryDisclosure.js';
 import SectionPanel from './SectionPanel.jsx';
 import TemplatesDialog from './TemplatesDialog.jsx';
 import GettingStarted from './GettingStarted.jsx';
+import { billLabel } from '../../domain/bill-kinds.js';
 import Alert from '@mui/material/Alert';
 import { tr as t, trn } from '../../i18n/translate.js';
 
@@ -64,7 +65,7 @@ export default function EntryPage({ onNavigate }) {
   return (
     <section>
       <PageHeading
-        eyebrow={`${t('Bill {number}', { number: bill.number || '—' })}${bill.projectName ? ` · ${bill.projectName}` : ''}`}
+        eyebrow={`${billLabel(bill, t)}${bill.projectName ? ` · ${bill.projectName}` : ''}`}
         title={t('Measurements')}
         action={<Chip color="primary" variant="outlined" label={formatCurrency(totals.total)} sx={{ fontWeight: 700 }} />}
       />

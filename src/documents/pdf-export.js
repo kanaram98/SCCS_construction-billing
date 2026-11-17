@@ -5,13 +5,16 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { buildDocument } from './document-model.js';
 import { hasGst } from '../domain/calculations.js';
+import { billLabel, documentTitle } from '../domain/bill-kinds.js';
+import { makeTranslator } from '../i18n/translate.js';
+
+const english = makeTranslator('en');
 import { deliverPdf } from './pdf-file.js';
 import { buildPaymentBlock } from './payment-block.js';
 import { formatCurrencyAscii } from '../domain/formatters.js';
 import { SIGNATURE_AREA, normalizeSignatureLayout } from '../domain/signature-layout.js';
 import {
   getFooterLines,
-  getPrintDocument,
   getSelectedDocuments,
   isSignatureVisible,
   normalizePrintSettings
@@ -72,7 +75,7 @@ function drawHeader(doc, bill, firm, title, settings) {
   y = Math.max(y + 1, margin + 20);
   doc.setFont(FONT, 'bold');
   doc.setFontSize(fontSize);
-  y = drawWrapped(doc, `${title}   Bill no. ${bill.number}   Date: ${bill.date}`, margin, y, maxWidth, 4.2);
+  y = drawWrapped(doc, `${title}   ${billLabel(bill, english)}   Date: ${bill.date}`, margin, y, maxWidth, 4.2);
   doc.setFont(FONT, 'normal');
   const project = [
     `Project: ${bill.projectName}`,
@@ -131,12 +134,12 @@ function drawPaymentBlock(doc, block, x, y, width, settings) {
 }
 
 /** Payment details, footer lines, signature image, signature line and date line after the table. */
-function drawClosing(doc, { bill, rates, firm, settings, documentType, includeSignature, drawPageHeader }) {
+function drawClosing(doc, { bill, rates, firm, settings, documentType, includeSignature, drawPageHeader, runningAccount }) {
   const { margin } = settings;
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const footerLines = getFooterLines(bill.footer);
-  const paymentBlock = buildPaymentBlock(documentType, bill, rates, firm, settings);
+  const paymentBlock = buildPaymentBlock(documentType, bill, rates, firm, settings, undefined, { runningAccount });
   let y = doc.lastAutoTable.finalY + 8;
 
   if (y + paymentBlockHeight(paymentBlock) + footerLines.length * 5 + SIGNATURE_AREA.height + 16 > pageHeight - margin) {
@@ -176,9 +179,9 @@ function drawPageNumbers(doc, settings) {
   }
 }
 
-function renderDocument(doc, documentType, { bill, rates, firm, settings, includeSignature }) {
+function renderDocument(doc, documentType, { bill, rates, firm, settings, includeSignature, runningAccount }) {
   const { margin } = settings;
-  const title = getPrintDocument(documentType).pdfTitle;
+  const title = documentTitle(documentType, bill, { pdf: true });
   const firstPage = doc.internal.getCurrentPageInfo().pageNumber;
   const drawnHeaders = new Set();
   const drawPageHeader = () => {
@@ -190,7 +193,7 @@ function renderDocument(doc, documentType, { bill, rates, firm, settings, includ
   };
 
   const headerBottom = drawPageHeader();
-  const { columns, chunks } = buildDocument(documentType, bill, rates, settings, { money: formatCurrencyAscii });
+  const { columns, chunks } = buildDocument(documentType, bill, rates, settings, { money: formatCurrencyAscii, runningAccount });
   chunks.forEach((rows, chunkIndex) => {
     if (chunkIndex) {
       doc.addPage();
@@ -220,10 +223,10 @@ function renderDocument(doc, documentType, { bill, rates, firm, settings, includ
     });
   });
 
-  drawClosing(doc, { bill, rates, firm, settings, documentType, includeSignature, drawPageHeader });
+  drawClosing(doc, { bill, rates, firm, settings, documentType, includeSignature, drawPageHeader, runningAccount });
 }
 
-export async function exportBillPdf(bill, rates, firm, printSettings, { shareText } = {}) {
+export async function exportBillPdf(bill, rates, firm, printSettings, { shareText, runningAccount = null } = {}) {
   const settings = normalizePrintSettings(printSettings);
   const documents = getSelectedDocuments(settings);
   if (!documents.length) throw new Error('Select at least one document to export.');
@@ -236,6 +239,7 @@ export async function exportBillPdf(bill, rates, firm, printSettings, { shareTex
       rates,
       firm,
       settings,
+      runningAccount,
       includeSignature: isSignatureVisible(settings, index, documents.length)
     });
   });

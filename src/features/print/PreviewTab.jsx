@@ -12,7 +12,7 @@ import FitToWidth from './preview/FitToWidth.jsx';
 import { tr as t, trn } from '../../i18n/translate.js';
 
 /** Export actions on top, the scaled page preview straight below. */
-export default function PreviewTab({ bill, firm, rates, printSettings, selectedDocuments, previewDocument, exportErrors, exporter, onPreviewChange, onSignatureLayoutChange }) {
+export default function PreviewTab({ bill, firm, rates, printSettings, selectedDocuments, previewDocument, exportErrors, exporter, onPreviewChange, onSignatureLayoutChange, runningAccount }) {
   return (
     <>
       <Stack direction="row" spacing={1} sx={{ mb: 1.5, alignItems: 'center' }}>
@@ -55,6 +55,7 @@ export default function PreviewTab({ bill, firm, rates, printSettings, selectedD
             signatureVisible={isSignatureVisible(printSettings, selectedDocuments.indexOf(previewDocument), selectedDocuments.length)}
             editableSignature
             onSignatureLayoutChange={onSignatureLayoutChange}
+            runningAccount={runningAccount}
           />
         </FitToWidth>
       </Paper>

@@ -12,7 +12,7 @@ const renderedDocuments = () => [...document.querySelectorAll('.print-batch .pri
  * PDF download, WhatsApp sharing and browser print, guarded by export validation.
  * The PDF libraries are imported lazily so they only load when the user exports.
  */
-export function usePdfExport({ bill, rates, firm, printSettings, exportErrors, selectedDocuments }) {
+export function usePdfExport({ bill, rates, firm, printSettings, exportErrors, selectedDocuments, runningAccount = null }) {
   const notify = useNotify();
   const billLanguage = resolveBillLanguage(printSettings, getLanguage());
 
@@ -31,7 +31,7 @@ export function usePdfExport({ bill, rates, firm, printSettings, exportErrors, s
       await exportImagePdf(bill, renderedDocuments(), printSettings, options);
     } else {
       const { exportBillPdf } = await import('../../documents/pdf-export.js');
-      await exportBillPdf(bill, rates, firm, printSettings, options);
+      await exportBillPdf(bill, rates, firm, printSettings, { ...options, runningAccount });
     }
   }
 

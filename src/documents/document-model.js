@@ -120,9 +120,23 @@ function billTotalRows(bill, context) {
     ...getTaxLines(bill, totals).map((line) => amountRow('normal', line.label, money(line.amount))),
     amountRow('grandTotal', t('Total'), money(totals.total)),
     wordsRow(totals.total, context),
-    ...(totals.advance ? [amountRow('normal', t('Advance received'), `- ${money(totals.advance)}`)] : []),
-    ...(totals.received ? [amountRow('normal', t('Payments received'), `- ${money(totals.received)}`)] : []),
-    ...(totals.paid ? [amountRow('grandTotal', t('Balance due'), money(totals.balance))] : [])
+    ...(context.runningAccount ? runningAccountRows(context) : [
+      ...(totals.advance ? [amountRow('normal', t('Advance received'), `- ${money(totals.advance)}`)] : []),
+      ...(totals.received ? [amountRow('normal', t('Payments received'), `- ${money(totals.received)}`)] : []),
+      ...(totals.paid ? [amountRow('grandTotal', t('Balance due'), money(totals.balance))] : [])
+    ])
+  ];
+}
+
+/** Running (RA) bill account: earlier bills, work and payments to date. */
+function runningAccountRows({ runningAccount: account, money, t }) {
+  return [
+    ...(account.previousCount ? [amountRow('normal', account.raNumber === 2
+      ? t('Previous bill (RA 1)')
+      : t('Previous bills (RA 1–{last})', { last: account.raNumber - 1 }), money(account.previousTotal))] : []),
+    amountRow('sectionTotal', t('Total work to date'), money(account.totalToDate)),
+    ...(account.receivedToDate ? [amountRow('normal', t('Received to date'), `- ${money(account.receivedToDate)}`)] : []),
+    amountRow('grandTotal', t('Balance due to date'), money(account.balanceToDate))
   ];
 }
 
@@ -165,9 +179,9 @@ function itemTotalRows(bill, context) {
  * @param {{ money: (value: number) => string, language?: 'en'|'hi' }} options currency formatter and bill language
  * @returns {{ columns: string[], chunks: { kind: string, cells: string[] }[][] }}
  */
-export function buildDocument(documentType, bill, rates, settings, { money, language = 'en' }) {
+export function buildDocument(documentType, bill, rates, settings, { money, language = 'en', runningAccount = null }) {
   const t = makeTranslator(language);
-  const context = { rates, settings, money, language, t };
+  const context = { rates, settings, money, language, t, runningAccount };
   const columns = DOCUMENT_COLUMNS[documentType].map((column) => t(column));
   if (documentType === 'summary') return { columns, chunks: [summaryRows(bill, context)] };
   if (documentType === 'items') return { columns, chunks: [itemTotalRows(bill, context)] };

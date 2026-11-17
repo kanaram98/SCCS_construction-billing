@@ -3,6 +3,7 @@
  * Messages use the translator for the bill's language.
  */
 import { formatCurrency, text } from './formatters.js';
+import { billLabel } from './bill-kinds.js';
 
 /** Indian mobile number as WhatsApp expects it (country code, digits only), or '' if unusable. */
 export function whatsappNumber(phone) {
@@ -24,11 +25,11 @@ const lines = (...parts) => parts.filter(Boolean).join('\n');
 /** Short summary sent with a bill. */
 export function billShareMessage({ bill, firm, totals, t }) {
   return lines(
-    `${t('Bill {number}', { number: bill.number })}${bill.projectName ? ` · ${bill.projectName}` : ''}`,
+    `${billLabel(bill, t)}${bill.projectName ? ` · ${bill.projectName}` : ''}`,
     t('Total: {amount}', { amount: formatCurrency(totals.total) }),
     totals.paid > 0 && t('Paid: {amount}', { amount: formatCurrency(totals.paid) }),
     totals.paid > 0 && t('Balance due: {amount}', { amount: formatCurrency(Math.max(0, totals.balance)) }),
-    totals.balance > 0 && text(firm.upiId) && t('Pay by UPI: {upi}', { upi: text(firm.upiId) }),
+    bill.kind !== 'estimate' && totals.balance > 0 && text(firm.upiId) && t('Pay by UPI: {upi}', { upi: text(firm.upiId) }),
     text(firm.name) && `— ${text(firm.name)}${text(firm.phone) ? `, ${text(firm.phone)}` : ''}`
   );
 }
