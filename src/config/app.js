@@ -18,17 +18,19 @@ export const IMAGE_UPLOAD = Object.freeze({
 });
 
 export const VIEWS = Object.freeze({
+  home: 'home',
   bills: 'bills',
   entry: 'entry',
-  rates: 'rates',
   project: 'project',
-  print: 'print'
+  print: 'print',
+  settings: 'settings'
 });
 
+/** Main tabs (bottom bar on phones). Settings opens from the header ⚙ and the desktop sidebar. */
 export const NAVIGATION = Object.freeze([
+  { id: VIEWS.home, label: 'Home' },
   { id: VIEWS.bills, label: 'Bills' },
   { id: VIEWS.entry, label: 'Entry' },
-  { id: VIEWS.rates, label: 'Rates' },
   { id: VIEWS.project, label: 'Project' },
   { id: VIEWS.print, label: 'PDF / Print', shortLabel: 'PDF' }
 ]);

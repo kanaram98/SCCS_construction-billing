@@ -11,10 +11,9 @@ import { BOTTOM_NAV_HEIGHT, DRAWER_WIDTH } from './theme.js';
 import AppHeader from './components/layout/AppHeader.jsx';
 import MainNav from './components/layout/MainNav.jsx';
 import AppNotices from './components/layout/AppNotices.jsx';
-import DashboardPage from './features/dashboard/DashboardPage.jsx';
+import HomePage from './features/home/HomePage.jsx';
 import LanguageGate from './i18n/LanguageGate.jsx';
 import WelcomeDialog from './features/onboarding/WelcomeDialog.jsx';
-import AppSettingsDialog from './components/layout/AppSettingsDialog.jsx';
 import { tr as t } from './i18n/translate.js';
 
 /**
@@ -23,12 +22,14 @@ import { tr as t } from './i18n/translate.js';
  */
 const loaders = {
   entry: () => import('./features/entry/EntryPage.jsx'),
-  rates: () => import('./features/rates/RatesPage.jsx'),
+  bills: () => import('./features/bills/BillsPage.jsx'),
+  settings: () => import('./features/settings/SettingsPage.jsx'),
   project: () => import('./features/project/ProjectPage.jsx'),
   print: () => import('./features/print/PrintPage.jsx')
 };
 const EntryPage = lazy(loaders.entry);
-const RatesPage = lazy(loaders.rates);
+const BillsPage = lazy(loaders.bills);
+const SettingsPage = lazy(loaders.settings);
 const ProjectPage = lazy(loaders.project);
 const PrintPage = lazy(loaders.print);
 
@@ -45,14 +46,15 @@ function usePrefetchPages() {
 }
 
 const PAGES = {
-  [VIEWS.bills]: DashboardPage,
+  [VIEWS.home]: HomePage,
+  [VIEWS.bills]: BillsPage,
   [VIEWS.entry]: EntryPage,
-  [VIEWS.rates]: RatesPage,
+  [VIEWS.settings]: SettingsPage,
   [VIEWS.project]: ProjectPage,
   [VIEWS.print]: PrintPage
 };
 
-function AppShell({ view, setView, onOpenSettings }) {
+function AppShell({ view, setView }) {
   const { data, bill, saveStatus, storageError } = useBilling();
   const installer = useInstallPrompt();
   const Page = PAGES[view];
@@ -70,7 +72,7 @@ function AppShell({ view, setView, onOpenSettings }) {
         saveStatus={saveStatus}
         canInstall={installer.canInstall}
         onInstall={installer.install}
-        onOpenSettings={onOpenSettings}
+        onOpenSettings={() => navigate(VIEWS.settings)}
       />
       <MainNav activeView={view} onNavigate={navigate} />
       {!data.meta?.onboarded && <WelcomeDialog onNavigate={navigate} />}
@@ -99,12 +101,10 @@ function AppShell({ view, setView, onOpenSettings }) {
 
 /** Keeps the current screen and open settings across language changes (LanguageGate remounts its children). */
 function LocalizedApp() {
-  const [view, setView] = useState(VIEWS.bills);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [view, setView] = useState(VIEWS.home);
   return (
     <LanguageGate>
-      <AppShell view={view} setView={setView} onOpenSettings={() => setSettingsOpen(true)} />
-      <AppSettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <AppShell view={view} setView={setView} />
     </LanguageGate>
   );
 }

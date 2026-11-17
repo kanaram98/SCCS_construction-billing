@@ -3,41 +3,32 @@ import { useState } from 'react';
 export const sectionAnchorId = (sectionId) => `section-${sectionId}`;
 
 /**
- * Which sections and areas are expanded. Unvisited ones default to open
- * only when they are first in their list.
+ * Which floor (section) is shown and which rooms (areas) are expanded.
+ * One floor is shown at a time; its first room starts open.
  */
 export function useEntryDisclosure(sections) {
-  const [openSections, setOpenSections] = useState({});
+  const [selectedSectionId, setSelectedSectionId] = useState('');
   const [openAreas, setOpenAreas] = useState({});
 
-  const isSectionOpen = (sectionId, index) => openSections[sectionId] ?? index === 0;
+  const activeSection = sections.find((section) => section.id === selectedSectionId) || sections[0] || null;
   const isAreaOpen = (areaId, index) => openAreas[areaId] ?? index === 0;
-  const anySectionOpen = sections.some((section, index) => isSectionOpen(section.id, index));
 
-  /** Expands a section (and any listed areas) and scrolls it into view. */
+  /** Shows a floor and expands the listed rooms. */
   function reveal(sectionId, areaIds = []) {
-    setOpenSections((current) => ({ ...current, [sectionId]: true }));
+    setSelectedSectionId(sectionId);
     if (areaIds.length) {
       setOpenAreas((current) => ({ ...current, ...Object.fromEntries(areaIds.map((id) => [id, true])) }));
+      window.setTimeout(() => {
+        document.getElementById(`area-${areaIds[areaIds.length - 1]}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 150);
     }
-    window.setTimeout(() => {
-      document.getElementById(sectionAnchorId(sectionId))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 150);
-  }
-
-  function toggleAllSections() {
-    const expand = !anySectionOpen;
-    setOpenSections(Object.fromEntries(sections.map((section) => [section.id, expand])));
-    if (!expand) setOpenAreas({});
   }
 
   return {
-    anySectionOpen,
-    isSectionOpen,
+    activeSection,
+    selectSection: setSelectedSectionId,
     isAreaOpen,
     reveal,
-    toggleAllSections,
-    setSectionOpen: (sectionId, open) => setOpenSections((current) => ({ ...current, [sectionId]: open })),
     setAreaOpen: (areaId, open) => setOpenAreas((current) => ({ ...current, [areaId]: open }))
   };
 }

@@ -3,7 +3,6 @@ import Accordion from '@mui/material/Accordion';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import Button from '@mui/material/Button';
-import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import AddIcon from '@mui/icons-material/Add';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -12,7 +11,10 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import DeleteIcon from '@mui/icons-material/DeleteOutlined';
 import { useBilling } from '../../state/BillingContext.jsx';
-import { ActionMenu, TextField, useConfirm } from '../../components/ui';
+import Box from '@mui/material/Box';
+import EditIcon from '@mui/icons-material/EditOutlined';
+import { ActionMenu, useConfirm } from '../../components/ui';
+import RenameDialog from '../../components/ui/RenameDialog.jsx';
 import { getAreaTotal } from '../../domain/calculations.js';
 import { pluralize } from '../../domain/formatters.js';
 import { useUndoable } from '../../hooks/useUndoable.js';
@@ -33,6 +35,7 @@ export default function AreaPanel({ section, area, index, sections, open, visibl
   const confirm = useConfirm();
   const undoable = useUndoable();
   const [editorOpen, setEditorOpen] = useState(false);
+  const [renaming, setRenaming] = useState(false);
   /** null, `{ type: 'area' }` or `{ type: 'item', itemId }` while choosing a copy target. */
   const [copyRequest, setCopyRequest] = useState(null);
 
@@ -80,28 +83,28 @@ export default function AreaPanel({ section, area, index, sections, open, visibl
   }
 
   return (
-    <Accordion expanded={open} onChange={onToggle} sx={{ bgcolor: 'background.default' }}>
-      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+    <Accordion id={`area-${area.id}`} expanded={open} onChange={onToggle} sx={{ scrollMarginTop: 72 }}>
+      <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 1.5 }}>
         <GroupSummary
           variant="area"
           name={area.name}
           meta={trn(area.items.length, '{count} entry', '{count} entries')}
           total={getAreaTotal(area, data.rates)}
         />
-      </AccordionSummary>
-      <AccordionDetails sx={{ pt: 0 }}>
-        <Stack direction="row" spacing={0.5} sx={{ mb: 1.5, alignItems: 'center' }}>
-          <TextField label={t('Area name')} value={area.name} onChange={(name) => entry.updateArea(section.id, area.id, { name })} />
+        <Box onClick={(event) => event.stopPropagation()} onFocus={(event) => event.stopPropagation()} sx={{ display: 'flex', alignItems: 'center' }}>
           <ActionMenu
             label={t('Actions for {name}', { name: area.name })}
             items={[
+              { label: t('Rename'), icon: <EditIcon fontSize="small" />, onClick: () => setRenaming(true) },
               { label: t('Move up'), icon: <ArrowUpwardIcon fontSize="small" />, onClick: () => entry.moveArea(section.id, area.id, -1), disabled: index === 0 },
               { label: t('Move down'), icon: <ArrowDownwardIcon fontSize="small" />, onClick: () => entry.moveArea(section.id, area.id, 1), disabled: index === section.areas.length - 1 },
               { label: t('Copy area to section…'), icon: <ContentCopyIcon fontSize="small" />, onClick: () => setCopyRequest({ type: 'area' }), disabled: sections.length < 2 },
               { label: t('Delete area'), icon: <DeleteIcon fontSize="small" />, onClick: deleteArea, danger: true }
             ]}
           />
-        </Stack>
+        </Box>
+      </AccordionSummary>
+      <AccordionDetails sx={{ pt: 0, px: 1.5 }}>
 
         {shownItems.length > 0 ? (
           <EntryList
@@ -123,6 +126,14 @@ export default function AreaPanel({ section, area, index, sections, open, visibl
         </Button>
       </AccordionDetails>
 
+      <RenameDialog
+        open={renaming}
+        title={t('Rename {name}', { name: area.name })}
+        label={t('Area name')}
+        value={area.name}
+        onSave={(name) => entry.updateArea(section.id, area.id, { name })}
+        onClose={() => setRenaming(false)}
+      />
       <EntryDialog open={editorOpen} areaName={area.name} form={form} onClose={() => setEditorOpen(false)} />
       <SectionPickerDialog
         open={Boolean(copyRequest)}

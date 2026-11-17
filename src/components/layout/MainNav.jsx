@@ -9,7 +9,8 @@ import Paper from '@mui/material/Paper';
 import Toolbar from '@mui/material/Toolbar';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import StraightenIcon from '@mui/icons-material/Straighten';
-import SellIcon from '@mui/icons-material/SellOutlined';
+import HomeIcon from '@mui/icons-material/HomeOutlined';
+import SettingsIcon from '@mui/icons-material/SettingsOutlined';
 import BusinessIcon from '@mui/icons-material/BusinessOutlined';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdfOutlined';
 import { NAVIGATION, VIEWS } from '../../config/app.js';
@@ -20,7 +21,8 @@ import { tr as t } from '../../i18n/translate.js';
 const ICONS = {
   [VIEWS.bills]: <ReceiptLongIcon />,
   [VIEWS.entry]: <StraightenIcon />,
-  [VIEWS.rates]: <SellIcon />,
+  [VIEWS.home]: <HomeIcon />,
+  [VIEWS.settings]: <SettingsIcon />,
   [VIEWS.project]: <BusinessIcon />,
   [VIEWS.print]: <PictureAsPdfIcon />
 };
@@ -55,7 +57,7 @@ export default function MainNav({ activeView, onNavigate }) {
     >
       <Toolbar />
       <List component="nav" aria-label={t('Main navigation')} sx={{ px: 1 }}>
-        {NAVIGATION.map(({ id, label }) => (
+        {[...NAVIGATION, { id: VIEWS.settings, label: 'Settings' }].map(({ id, label }) => (
           <ListItemButton
             key={id}
             selected={activeView === id}

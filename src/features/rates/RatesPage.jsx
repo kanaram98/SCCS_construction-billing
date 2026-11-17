@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Button from '@mui/material/Button';
+import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import AddIcon from '@mui/icons-material/Add';
 import { useBilling } from '../../state/BillingContext.jsx';
@@ -9,7 +10,8 @@ import RatesTable from './RatesTable.jsx';
 import RateFormDialog from './RateFormDialog.jsx';
 import { tr as t } from '../../i18n/translate.js';
 
-export default function RatesPage() {
+/** Work-item rates. `embedded` renders it as a card inside Settings. */
+export default function RatesPage({ embedded = false }) {
   const { data, actions } = useBilling();
   const undoable = useUndoable();
   const notify = useNotify();
@@ -34,13 +36,20 @@ export default function RatesPage() {
 
   return (
     <section>
-      <PageHeading
-        title={t('Rates')}
-        description={t('Work items available in measurement entry.')}
-        action={<Button variant="contained" startIcon={<AddIcon />} onClick={() => setEditing('new')}>{t('Add item')}</Button>}
-      />
+      {embedded ? (
+        <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+          <Typography variant="h6" component="h2">{t('Work item rates')}</Typography>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setEditing('new')}>{t('Add item')}</Button>
+        </Stack>
+      ) : (
+        <PageHeading
+          title={t('Rates')}
+          description={t('Work items available in measurement entry.')}
+          action={<Button variant="contained" startIcon={<AddIcon />} onClick={() => setEditing('new')}>{t('Add item')}</Button>}
+        />
+      )}
       <RatesTable rates={data.rates} onEdit={setEditing} onRemove={removeRate} />
-      <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 1 }}>
+      <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 1, mb: 2 }}>
         {t('Tap a row to edit. Changing a rate updates the amounts of entries that use it.')}
       </Typography>
       <RateFormDialog

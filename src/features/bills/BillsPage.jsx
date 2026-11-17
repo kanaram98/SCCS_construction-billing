@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import Button from '@mui/material/Button';
-import Grid from '@mui/material/Grid';
 import Paper from '@mui/material/Paper';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
@@ -8,19 +7,18 @@ import AddIcon from '@mui/icons-material/Add';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import { useBilling } from '../../state/BillingContext.jsx';
 import { summarizeBill } from '../../domain/calculations.js';
-import { formatCurrency } from '../../domain/formatters.js';
 import { billKind, billLabel, billsOfKind } from '../../domain/bill-kinds.js';
-import { EmptyState, PageHeading, StatCard, useConfirm, useNotify } from '../../components/ui';
+import { EmptyState, PageHeading, useConfirm, useNotify } from '../../components/ui';
 import { useUndoable } from '../../hooks/useUndoable.js';
 import { useWhatsAppReminder } from '../../hooks/useWhatsAppReminder.js';
 import { VIEWS } from '../../config/app.js';
 import { useBillFilters } from './useBillFilters.js';
 import BillFilters from './BillFilters.jsx';
 import BillCard from './BillCard.jsx';
-import BackupReminder from '../backup/BackupReminder.jsx';
 import { tr as t } from '../../i18n/translate.js';
 
-export default function DashboardPage({ onNavigate }) {
+/** List of all bills and estimates: search, filter, sort and per-bill actions. */
+export default function BillsPage({ onNavigate }) {
   const { data, bill: activeBill, actions } = useBilling();
   const confirm = useConfirm();
   const notify = useNotify();
@@ -39,15 +37,7 @@ export default function DashboardPage({ onNavigate }) {
   );
   const { filters, sort, setSort, filteredBills, clientNames, setFilter, clearFilters } = useBillFilters(bills, summaries);
 
-  // Money stats count real bills only, never estimates.
-  const stats = useMemo(() => {
-    const real = billsOfKind(data.bills, 'bill').map((bill) => summaries.get(bill.id));
-    return {
-      count: real.length,
-      billed: real.reduce((sum, { totals }) => sum + totals.total, 0),
-      outstanding: real.reduce((sum, { totals }) => sum + Math.max(0, totals.balance), 0)
-    };
-  }, [data.bills, summaries]);
+  const billCount = useMemo(() => billsOfKind(data.bills, 'bill').length, [data.bills]);
 
   function create() {
     actions.bills.create(kind);
@@ -100,7 +90,7 @@ export default function DashboardPage({ onNavigate }) {
     <section>
       <PageHeading
         title={t('Bills')}
-        description={t('Your construction bills on this device.')}
+        description={t('All bills and estimates on this device.')}
         action={(
           <Button variant="contained" startIcon={<AddIcon />} onClick={create}>
             {isEstimates ? t('New estimate') : t('New bill')}
@@ -108,18 +98,9 @@ export default function DashboardPage({ onNavigate }) {
         )}
       />
 
-      <BackupReminder />
-
-      <Grid container spacing={1.25} sx={{ mb: 2 }}>
-        <Grid size={{ xs: 6, sm: 3 }}><StatCard label={t('Saved bills')} value={stats.count} /></Grid>
-        <Grid size={{ xs: 6, sm: 3 }}><StatCard label={t('Total billed')} value={formatCurrency(stats.billed)} /></Grid>
-        <Grid size={{ xs: 6, sm: 3 }}><StatCard label={t('Outstanding')} value={formatCurrency(stats.outstanding)} /></Grid>
-        <Grid size={{ xs: 6, sm: 3 }}><StatCard label={t('Current bill')} value={formatCurrency(summaries.get(activeBill.id).totals.total)} /></Grid>
-      </Grid>
-
       <Paper variant="outlined" sx={{ mb: 1.5 }}>
         <Tabs value={kind} onChange={(_event, value) => setKind(value)} variant="fullWidth" aria-label={t('Bills and estimates')}>
-          <Tab value="bill" label={`${t('Bills')} (${stats.count})`} />
+          <Tab value="bill" label={`${t('Bills')} (${billCount})`} />
           <Tab value="estimate" label={`${t('Estimates')} (${estimateCount})`} />
         </Tabs>
       </Paper>

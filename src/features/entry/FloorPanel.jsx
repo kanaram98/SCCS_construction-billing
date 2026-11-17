@@ -1,0 +1,100 @@
+import { useState } from 'react';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
+import AddIcon from '@mui/icons-material/Add';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import DeleteIcon from '@mui/icons-material/DeleteOutlined';
+import EditIcon from '@mui/icons-material/EditOutlined';
+import { useBilling } from '../../state/BillingContext.jsx';
+import { useUndoable } from '../../hooks/useUndoable.js';
+import { ActionMenu, useConfirm } from '../../components/ui';
+import RenameDialog from '../../components/ui/RenameDialog.jsx';
+import { countSectionItems, getSectionTotal } from '../../domain/calculations.js';
+import { formatCurrency } from '../../domain/formatters.js';
+import { tr as t, trn } from '../../i18n/translate.js';
+import AreaPanel from './AreaPanel.jsx';
+
+/** One floor (section): summary, its rooms, and "Add room". */
+export default function FloorPanel({ section, sections, disclosure, levelName, sublevelName, onAddArea, onCopied, onDeleted }) {
+  const { data, actions } = useBilling();
+  const { entry } = actions;
+  const confirm = useConfirm();
+  const undoable = useUndoable();
+  const [renaming, setRenaming] = useState(false);
+  const index = sections.indexOf(section);
+  const itemCount = countSectionItems(section);
+
+  async function deleteSection() {
+    if (section.areas.length) {
+      const confirmed = await confirm({
+        title: t('Delete {name}?', { name: section.name }),
+        message: t('This removes {areas} and {entries}.', { areas: trn(section.areas.length, '{count} area', '{count} areas'), entries: trn(itemCount, '{count} entry', '{count} entries') }),
+        confirmLabel: t('Delete'),
+        danger: true
+      });
+      if (!confirmed) return;
+    }
+    undoable(t('{name} deleted.', { name: section.name }), () => entry.removeSection(section.id));
+    onDeleted?.();
+  }
+
+  return (
+    <Box>
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography variant="subtitle1" noWrap>{section.name}</Typography>
+          <Typography variant="caption" color="text.secondary">
+            {trn(section.areas.length, '{count} area', '{count} areas')} · {trn(itemCount, '{count} entry', '{count} entries')}
+          </Typography>
+        </Box>
+        <Typography variant="subtitle1" color="primary" sx={{ whiteSpace: 'nowrap' }}>{formatCurrency(getSectionTotal(section, data.rates))}</Typography>
+        <ActionMenu
+          label={t('Actions for {name}', { name: section.name })}
+          items={[
+            { label: t('Rename'), icon: <EditIcon fontSize="small" />, onClick: () => setRenaming(true) },
+            { label: t('Move left'), icon: <ArrowBackIcon fontSize="small" />, onClick: () => entry.moveSection(section.id, -1), disabled: index === 0 },
+            { label: t('Move right'), icon: <ArrowForwardIcon fontSize="small" />, onClick: () => entry.moveSection(section.id, 1), disabled: index === sections.length - 1 },
+            { label: t('Delete section'), icon: <DeleteIcon fontSize="small" />, onClick: deleteSection, danger: true }
+          ]}
+        />
+      </Stack>
+
+      <Stack spacing={1}>
+        {section.areas.map((area, areaIndex) => {
+          const open = disclosure.isAreaOpen(area.id, areaIndex);
+          return (
+            <AreaPanel
+              key={area.id}
+              section={section}
+              area={area}
+              index={areaIndex}
+              sections={sections}
+              open={open}
+              onToggle={() => disclosure.setAreaOpen(area.id, !open)}
+              onCopied={onCopied}
+            />
+          );
+        })}
+      </Stack>
+      {section.areas.length === 0 && (
+        <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>{t('No areas yet. Add one to start measuring.')}</Typography>
+      )}
+
+      <Button fullWidth variant="outlined" startIcon={<AddIcon />} onClick={() => onAddArea(section.id)} sx={{ mt: 1.5 }}>
+        {t('Add {level}', { level: sublevelName })}
+      </Button>
+
+      <RenameDialog
+        open={renaming}
+        title={t('Rename {name}', { name: section.name })}
+        label={t('{level} name', { level: levelName })}
+        value={section.name}
+        onSave={(name) => entry.updateSection(section.id, { name })}
+        onClose={() => setRenaming(false)}
+      />
+    </Box>
+  );
+}

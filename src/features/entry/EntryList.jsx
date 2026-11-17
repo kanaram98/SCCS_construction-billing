@@ -17,29 +17,23 @@ import { tr as t } from '../../i18n/translate.js';
 /** Entries in one area as tappable cards (tap to edit). */
 export default function EntryList({ items, rates, canCopy, canMove = true, onEdit, onDelete, onCopy, onMove }) {
   return (
-    <Stack spacing={1}>
+    <Paper variant="outlined" sx={{ overflow: 'hidden' }}>
       {items.map((item, index) => {
         const rate = resolveRate(item, rates);
         return (
-          <Paper key={item.id} variant="outlined" sx={{ display: 'flex', alignItems: 'stretch' }}>
-            <CardActionArea onClick={() => onEdit(item)} sx={{ p: 1.25, flex: 1, minWidth: 0, borderRadius: 3 }}>
+          <Box key={item.id} sx={{ display: 'flex', alignItems: 'center', borderTop: index ? 1 : 0, borderColor: 'divider' }}>
+            <CardActionArea onClick={() => onEdit(item)} sx={{ px: 1.25, py: 1, flex: 1, minWidth: 0 }}>
               <Stack direction="row" spacing={1} sx={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
-                <Typography variant="subtitle2" noWrap>{rate.name}</Typography>
-                <Typography variant="subtitle2" color="primary" sx={{ whiteSpace: 'nowrap' }}>
+                <Typography variant="body2" noWrap sx={{ fontWeight: 600 }}>{rate.name}{item.note ? <Typography component="span" variant="caption" color="text.secondary">{` · ${item.note}`}</Typography> : null}</Typography>
+                <Typography variant="body2" color="primary" sx={{ whiteSpace: 'nowrap', fontWeight: 700 }}>
                   {formatCurrency(getLineAmount(item, rate))}
                 </Typography>
               </Stack>
-              {item.note && <Typography variant="caption" color="text.secondary" noWrap component="div">{item.note}</Typography>}
-              <Box
-                sx={{ mt: 0.75, display: 'inline-block', px: 1, py: 0.25, borderRadius: 1.5, bgcolor: 'action.hover', fontSize: 13, fontWeight: 600 }}
-              >
-                {describeMeasurement(item, rate)}
-              </Box>
-              <Typography variant="caption" color="text.secondary" component="div" sx={{ mt: 0.5 }}>
-                {getItemQuantity(item, rate)} {rate.unit} × {formatCurrency(rate.rate)}
+              <Typography variant="caption" color="text.secondary" component="div" noWrap>
+                {describeMeasurement(item, rate)} · {getItemQuantity(item, rate)} {rate.unit} × {formatCurrency(rate.rate)}
               </Typography>
             </CardActionArea>
-            <Box sx={{ pt: 0.25 }}>
+            <Box sx={{ pr: 0.25 }}>
               <ActionMenu
                 size="small"
                 label={t('Actions for {name}', { name: rate.name })}
@@ -52,9 +46,9 @@ export default function EntryList({ items, rates, canCopy, canMove = true, onEdi
                 ]}
               />
             </Box>
-          </Paper>
+          </Box>
         );
       })}
-    </Stack>
+    </Paper>
   );
 }
