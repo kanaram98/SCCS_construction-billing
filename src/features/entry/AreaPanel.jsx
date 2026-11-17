@@ -8,6 +8,8 @@ import Typography from '@mui/material/Typography';
 import AddIcon from '@mui/icons-material/Add';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import DeleteIcon from '@mui/icons-material/DeleteOutlined';
 import { useBilling } from '../../state/BillingContext.jsx';
 import { ActionMenu, TextField, useConfirm } from '../../components/ui';
@@ -21,7 +23,7 @@ import EntryDialog from './EntryDialog.jsx';
 import SectionPickerDialog from './SectionPickerDialog.jsx';
 
 /** One area: its entries, the add/edit dialog, and copy/delete actions. */
-export default function AreaPanel({ section, area, sections, open, onToggle, onCopied }) {
+export default function AreaPanel({ section, area, index, sections, open, onToggle, onCopied }) {
   const { data, actions } = useBilling();
   const { entry } = actions;
   const confirm = useConfirm();
@@ -89,6 +91,8 @@ export default function AreaPanel({ section, area, sections, open, onToggle, onC
           <ActionMenu
             label={`Actions for ${area.name}`}
             items={[
+              { label: 'Move up', icon: <ArrowUpwardIcon fontSize="small" />, onClick: () => entry.moveArea(section.id, area.id, -1), disabled: index === 0 },
+              { label: 'Move down', icon: <ArrowDownwardIcon fontSize="small" />, onClick: () => entry.moveArea(section.id, area.id, 1), disabled: index === section.areas.length - 1 },
               { label: 'Copy area to section…', icon: <ContentCopyIcon fontSize="small" />, onClick: () => setCopyRequest({ type: 'area' }), disabled: sections.length < 2 },
               { label: 'Delete area', icon: <DeleteIcon fontSize="small" />, onClick: deleteArea, danger: true }
             ]}
@@ -103,6 +107,7 @@ export default function AreaPanel({ section, area, sections, open, onToggle, onC
             onEdit={editEntry}
             onDelete={deleteEntry}
             onCopy={(itemId) => setCopyRequest({ type: 'item', itemId })}
+            onMove={(itemId, direction) => entry.moveItem(section.id, area.id, itemId, direction)}
           />
         ) : (
           <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>No entries yet.</Typography>

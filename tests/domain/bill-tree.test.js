@@ -77,3 +77,15 @@ test('duplicating a bill assigns a new number and new ids throughout', () => {
   assert.notEqual(copy.sections[0].areas[0].items[0].id, 'i1');
   assert.equal(bill.sections[0].id, 's1');
 });
+
+test('moves sections, areas and items up and down, ignoring moves past the ends', async () => {
+  const { moveSection, moveArea, moveItem, moveById } = await import('../../src/domain/bill-tree.js');
+  const bill = sampleBill();
+  assert.deepEqual(moveSection(bill, 's3', -1).sections.map((s) => s.id), ['s1', 's3', 's2']);
+  assert.equal(moveSection(bill, 's1', -1).sections, bill.sections);
+  const withAreas = { ...bill, sections: [{ ...bill.sections[0], areas: [{ id: 'x', items: [] }, { id: 'y', items: [] }] }] };
+  assert.deepEqual(moveArea(withAreas, 's1', 'x', 1).sections[0].areas.map((a) => a.id), ['y', 'x']);
+  const withItems = { ...bill, sections: [{ id: 's1', areas: [{ id: 'a1', items: [{ id: 'p' }, { id: 'q' }, { id: 'r' }] }] }] };
+  assert.deepEqual(moveItem(withItems, 's1', 'a1', 'r', -1).sections[0].areas[0].items.map((i) => i.id), ['p', 'r', 'q']);
+  assert.deepEqual(moveById([{ id: 1 }], 99, 1), [{ id: 1 }]);
+});

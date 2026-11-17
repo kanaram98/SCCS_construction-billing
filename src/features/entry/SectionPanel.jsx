@@ -6,6 +6,8 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import AddIcon from '@mui/icons-material/Add';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import DeleteIcon from '@mui/icons-material/DeleteOutlined';
 import { useBilling } from '../../state/BillingContext.jsx';
 import { ActionMenu, TextField, useConfirm } from '../../components/ui';
@@ -16,7 +18,7 @@ import { sectionAnchorId } from './useEntryDisclosure.js';
 import GroupSummary from './GroupSummary.jsx';
 import AreaPanel from './AreaPanel.jsx';
 
-export default function SectionPanel({ section, sections, open, disclosure, levelName, onAddArea, onCopied }) {
+export default function SectionPanel({ section, sections, index, open, disclosure, levelName, onAddArea, onCopied }) {
   const { data, actions } = useBilling();
   const { entry } = actions;
   const confirm = useConfirm();
@@ -55,7 +57,11 @@ export default function SectionPanel({ section, sections, open, disclosure, leve
           <TextField label="Section name" value={section.name} onChange={(name) => entry.updateSection(section.id, { name })} />
           <ActionMenu
             label={`Actions for ${section.name}`}
-            items={[{ label: 'Delete section', icon: <DeleteIcon fontSize="small" />, onClick: deleteSection, danger: true }]}
+            items={[
+              { label: 'Move up', icon: <ArrowUpwardIcon fontSize="small" />, onClick: () => entry.moveSection(section.id, -1), disabled: index === 0 },
+              { label: 'Move down', icon: <ArrowDownwardIcon fontSize="small" />, onClick: () => entry.moveSection(section.id, 1), disabled: index === sections.length - 1 },
+              { label: 'Delete section', icon: <DeleteIcon fontSize="small" />, onClick: deleteSection, danger: true }
+            ]}
           />
         </Stack>
 
@@ -67,6 +73,7 @@ export default function SectionPanel({ section, sections, open, disclosure, leve
                 key={area.id}
                 section={section}
                 area={area}
+                index={areaIndex}
                 sections={sections}
                 open={areaOpen}
                 onToggle={() => disclosure.setAreaOpen(area.id, !areaOpen)}

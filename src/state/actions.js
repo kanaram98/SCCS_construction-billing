@@ -104,6 +104,16 @@ function createEntryActions({ data, bill, setData }) {
     updateItem(sectionId, areaId, itemId, patch) {
       updateBill((current) => tree.updateItem(current, sectionId, areaId, itemId, patch));
     },
+    /** `direction`: -1 moves up, +1 moves down. */
+    moveSection(sectionId, direction) {
+      updateBill((current) => tree.moveSection(current, sectionId, direction));
+    },
+    moveArea(sectionId, areaId, direction) {
+      updateBill((current) => tree.moveArea(current, sectionId, areaId, direction));
+    },
+    moveItem(sectionId, areaId, itemId, direction) {
+      updateBill((current) => tree.moveItem(current, sectionId, areaId, itemId, direction));
+    },
     removeSection(sectionId) {
       updateBill((current) => tree.removeSection(current, sectionId));
     },

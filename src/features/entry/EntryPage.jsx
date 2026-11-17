@@ -103,6 +103,7 @@ export default function EntryPage({ onNavigate }) {
             key={section.id}
             section={section}
             sections={sections}
+            index={index}
             open={disclosure.isSectionOpen(section.id, index)}
             disclosure={disclosure}
             levelName={bill.secondLevelName}

@@ -5,6 +5,8 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import EditIcon from '@mui/icons-material/EditOutlined';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import DeleteIcon from '@mui/icons-material/DeleteOutlined';
 import { ActionMenu } from '../../components/ui';
 import { formatCurrency } from '../../domain/formatters.js';
@@ -12,10 +14,10 @@ import { getItemQuantity, getLineAmount } from '../../domain/calculations.js';
 import { describeMeasurement, resolveRate } from '../../domain/rates.js';
 
 /** Entries in one area as tappable cards (tap to edit). */
-export default function EntryList({ items, rates, canCopy, onEdit, onDelete, onCopy }) {
+export default function EntryList({ items, rates, canCopy, onEdit, onDelete, onCopy, onMove }) {
   return (
     <Stack spacing={1}>
-      {items.map((item) => {
+      {items.map((item, index) => {
         const rate = resolveRate(item, rates);
         return (
           <Paper key={item.id} variant="outlined" sx={{ display: 'flex', alignItems: 'stretch' }}>
@@ -42,6 +44,8 @@ export default function EntryList({ items, rates, canCopy, onEdit, onDelete, onC
                 label={`Actions for ${rate.name}`}
                 items={[
                   { label: 'Edit', icon: <EditIcon fontSize="small" />, onClick: () => onEdit(item) },
+                  { label: 'Move up', icon: <ArrowUpwardIcon fontSize="small" />, onClick: () => onMove(item.id, -1), disabled: index === 0 },
+                  { label: 'Move down', icon: <ArrowDownwardIcon fontSize="small" />, onClick: () => onMove(item.id, 1), disabled: index === items.length - 1 },
                   { label: 'Copy to section…', icon: <ContentCopyIcon fontSize="small" />, onClick: () => onCopy(item.id), disabled: !canCopy },
                   { label: 'Delete', icon: <DeleteIcon fontSize="small" />, onClick: () => onDelete(item), danger: true }
                 ]}

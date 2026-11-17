@@ -47,6 +47,28 @@ export function appendItems(bill, sectionId, areaId, items) {
   return updateArea(bill, sectionId, areaId, (area) => ({ ...area, items: [...area.items, ...items] }));
 }
 
+/** Moves the element with `id` one place up (-1) or down (+1); unchanged at the ends. */
+export function moveById(list, id, direction) {
+  const index = list.findIndex((entry) => entry.id === id);
+  const target = index + direction;
+  if (index < 0 || target < 0 || target >= list.length) return list;
+  const next = [...list];
+  [next[index], next[target]] = [next[target], next[index]];
+  return next;
+}
+
+export function moveSection(bill, sectionId, direction) {
+  return { ...bill, sections: moveById(bill.sections, sectionId, direction) };
+}
+
+export function moveArea(bill, sectionId, areaId, direction) {
+  return updateSection(bill, sectionId, (section) => ({ ...section, areas: moveById(section.areas, areaId, direction) }));
+}
+
+export function moveItem(bill, sectionId, areaId, itemId, direction) {
+  return updateArea(bill, sectionId, areaId, (area) => ({ ...area, items: moveById(area.items, itemId, direction) }));
+}
+
 export function removeSection(bill, sectionId) {
   return { ...bill, sections: bill.sections.filter((section) => section.id !== sectionId) };
 }
