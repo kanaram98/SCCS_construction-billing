@@ -39,7 +39,7 @@ test('bill document splits pages per area and ends with totals', () => {
   assert.equal(chunks[0][2].cells[0], 'Floor tiles\nMatt');
 
   const last = chunks.at(-1).map((row) => row.cells[0]);
-  assert.deepEqual(last.slice(-5), ['Subtotal', 'GST (10%)', 'Total', 'Advance received', 'Balance due']);
+  assert.deepEqual(last.slice(-6), ['Subtotal', 'GST (10%)', 'Total', 'Amount in words: Rupees One Thousand Nine Hundred Twenty-Five Only', 'Advance received', 'Balance due']);
   assert.equal(chunks.at(-1).find((row) => row.cells[0] === 'Total').cells[4], 'R1925');
 });
 
@@ -57,7 +57,10 @@ test('measurement sheet only shows the dimensions a work item uses', () => {
 
 test('summary and item totals', () => {
   const summary = buildDocument('summary', bill, rates, settings({ summaryDetail: 'section', rowNumbers: true }), { money });
-  assert.deepEqual(summary.chunks[0].map((row) => row.cells), [['1. Ground', 'R1500'], ['2. First', 'R250'], ['Grand total', 'R1925']]);
+  assert.deepEqual(summary.chunks[0].map((row) => row.cells), [
+    ['1. Ground', 'R1500'], ['2. First', 'R250'], ['Grand total', 'R1925'],
+    ['Amount in words: Rupees One Thousand Nine Hundred Twenty-Five Only']
+  ]);
 
   const items = buildDocument('items', bill, rates, settings(), { money });
   assert.deepEqual(items.chunks[0][1].cells, ['Gas hole', '3', 'nos', 'R250', 'R750']);

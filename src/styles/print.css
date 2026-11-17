@@ -23,6 +23,7 @@
 .paper .area-band td { background: #e6e9ed; font-weight: 700; }
 .paper .section-total-row td, .paper .area-total-row td { background: #eef0f2; font-weight: 700; }
 .paper .grand-row { background: #293d57; color: white; font-size: 17px; font-weight: 700; }
+.paper .words-row td { font-style: italic; }
 .paper .print-repeat-header { display: none; }
 .paper-footer { margin-top: 16px; font-size: 11px; }
 

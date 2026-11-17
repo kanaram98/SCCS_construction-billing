@@ -5,7 +5,7 @@
  * every chunk after the first starts on a new page. The HTML print preview and
  * the PDF exporter both render from this model so they always agree.
  *
- * Row kinds: normal | section | area | total | sectionTotal | grandTotal
+ * Row kinds: normal | section | area | total | sectionTotal | grandTotal | words
  */
 import {
   aggregateItemTotals,
@@ -17,6 +17,10 @@ import {
 } from '../domain/calculations.js';
 import { resolveRate, usesCount, usesDimension } from '../domain/rates.js';
 import { formatDimension } from '../domain/measurements.js';
+import { amountInWords } from '../domain/amount-in-words.js';
+
+/** Full-width italic row with the amount in words. */
+const wordsRow = (amount) => ({ kind: 'words', cells: [`Amount in words: ${amountInWords(amount)}`] });
 
 export const DOCUMENT_COLUMNS = Object.freeze({
   bill: ['Item', 'Qty', 'Unit', 'Rate', 'Amount'],
@@ -110,6 +114,7 @@ function billTotalRows(bill, context) {
     ...(totals.discount ? [amountRow('normal', 'Discount', `- ${money(totals.discount)}`)] : []),
     ...(totals.tax ? [amountRow('normal', `GST (${bill.taxRate}%)`, money(totals.tax))] : []),
     amountRow('grandTotal', 'Total', money(totals.total)),
+    wordsRow(totals.total),
     ...(totals.advance
       ? [
           amountRow('normal', 'Advance received', `- ${money(totals.advance)}`),
@@ -133,7 +138,8 @@ function summaryRows(bill, context) {
       row('sectionTotal', [`${section.name} total`, sectionTotal])
     ];
   });
-  rows.push(row('grandTotal', ['Grand total', money(getBillTotals(bill, rates).total)]));
+  const { total } = getBillTotals(bill, rates);
+  rows.push(row('grandTotal', ['Grand total', money(total)]), wordsRow(total));
   return rows;
 }
 

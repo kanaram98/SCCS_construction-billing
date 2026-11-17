@@ -19,7 +19,8 @@ const ROW_CLASSES = {
   area: 'area-band',
   total: 'area-total-row',
   sectionTotal: 'section-total-row',
-  grandTotal: 'grand-row'
+  grandTotal: 'grand-row',
+  words: 'words-row'
 };
 
 /**

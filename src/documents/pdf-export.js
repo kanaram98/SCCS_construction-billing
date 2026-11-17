@@ -27,6 +27,7 @@ const ROW_STYLES = Object.freeze({
   section: { fillColor: COLORS.bandFill, textColor: 255, fontStyle: 'bold' },
   area: { fillColor: COLORS.subtleFill, fontStyle: 'bold' },
   sectionTotal: { fillColor: COLORS.subtleFill, fontStyle: 'bold' },
+  words: { fontStyle: 'italic' },
   total: { fontStyle: 'bold' },
   grandTotal: { fillColor: COLORS.bandFill, textColor: 255, fontStyle: 'bold' }
 });
@@ -196,7 +197,8 @@ function renderDocument(doc, documentType, { bill, rates, firm, settings, includ
     }
     autoTable(doc, {
       head: [columns],
-      body: rows.map((row) => row.cells),
+      // Single-cell rows (headings, amount in words) span the full width.
+      body: rows.map((row) => (row.cells.length === 1 ? [{ content: row.cells[0], colSpan: columns.length }] : row.cells)),
       startY: chunkIndex === 0 || settings.headerMode === 'all' ? headerBottom : margin,
       margin: {
         left: margin,
