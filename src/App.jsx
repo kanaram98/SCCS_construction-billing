@@ -24,12 +24,14 @@ const loaders = {
   entry: () => import('./features/entry/EntryPage.jsx'),
   bills: () => import('./features/bills/BillsPage.jsx'),
   settings: () => import('./features/settings/SettingsPage.jsx'),
+  rates: () => import('./features/rates/RatesPage.jsx'),
   project: () => import('./features/project/ProjectPage.jsx'),
   print: () => import('./features/print/PrintPage.jsx')
 };
 const EntryPage = lazy(loaders.entry);
 const BillsPage = lazy(loaders.bills);
 const SettingsPage = lazy(loaders.settings);
+const RatesPage = lazy(loaders.rates);
 const ProjectPage = lazy(loaders.project);
 const PrintPage = lazy(loaders.print);
 
@@ -50,6 +52,7 @@ const PAGES = {
   [VIEWS.bills]: BillsPage,
   [VIEWS.entry]: EntryPage,
   [VIEWS.settings]: SettingsPage,
+  [VIEWS.rates]: RatesPage,
   [VIEWS.project]: ProjectPage,
   [VIEWS.print]: PrintPage
 };

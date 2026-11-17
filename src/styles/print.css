@@ -27,6 +27,12 @@
 .paper .print-repeat-header { display: none; }
 .paper-footer { margin-top: 16px; font-size: 11px; }
 
+/* Rate quotation */
+.quotation-section { margin-top: 14px; font-size: var(--print-font-size, 10pt); }
+.quotation-section ol { margin: 4px 0 0; padding-left: 20px; }
+.quotation-section p { margin: 4px 0 0; color: #111; }
+.quotation-document td:last-child, .quotation-document th:last-child { text-align: right; }
+
 /* Payment details */
 .paper-payment { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-top: 14px; padding: 8px 10px; border: 1px solid #888; font-size: var(--print-font-size, 9pt); break-inside: avoid; }
 .paper-payment-title { margin-bottom: 3px; font-weight: 700; }

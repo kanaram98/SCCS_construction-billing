@@ -106,9 +106,9 @@ describe('Entry screen', () => {
 });
 
 describe('Settings', () => {
-  it('validates and adds a work item rate', async () => {
+  it('validates and adds a work item rate on the Rates tab', async () => {
     const { user } = renderApp(SAMPLE_STATE);
-    await openSettings(user);
+    await user.click(nav('Rates'));
     await user.click(await screen.findByRole('button', { name: 'Add item' }));
     const dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByRole('button', { name: 'Add item' }));
@@ -117,8 +117,22 @@ describe('Settings', () => {
     await user.type(within(dialog).getByLabelText(/^Unit/), 'sqft');
     await user.type(within(dialog).getByLabelText(/Rate/), '12');
     await user.click(within(dialog).getByRole('button', { name: 'Add item' }));
-    expect(await screen.findByText('Wall putty')).toBeTruthy();
+    expect((await screen.findAllByText('Wall putty')).length).toBeGreaterThan(0);
     expect(savedState().rates.at(-1)).toMatchObject({ name: 'Wall putty', unit: 'sqft', rate: 12 });
+  });
+
+  it('shows the rate quotation with editable terms', async () => {
+    const { user } = renderApp(SAMPLE_STATE);
+    await user.click(nav('Rates'));
+    const quotation = await waitFor(() => document.querySelector('.quotation-document'));
+    expect(within(quotation).getByText('Rate quotation')).toBeTruthy();
+    expect(within(quotation).getByText('Floor tiles')).toBeTruthy();
+    expect(within(quotation).getByText('GST extra as applicable.')).toBeTruthy();
+    const terms = screen.getByLabelText('Terms & conditions (one per line)');
+    await user.clear(terms);
+    await user.type(terms, 'Material by client');
+    expect(within(document.querySelector('.quotation-document')).getByText('Material by client')).toBeTruthy();
+    expect(savedState().quotation.terms).toBe('Material by client');
   });
 
   it('switches the app to Hindi and remembers it', async () => {

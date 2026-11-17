@@ -1,7 +1,6 @@
 import { PageHeading } from '../../components/ui';
 import { tr as t } from '../../i18n/translate.js';
 import AppPreferencesCard from './AppPreferencesCard.jsx';
-import RatesPage from '../rates/RatesPage.jsx';
 import PaymentDetailsCard from '../project/PaymentDetailsCard.jsx';
 import BackupCard from '../backup/BackupCard.jsx';
 
@@ -9,8 +8,7 @@ import BackupCard from '../backup/BackupCard.jsx';
 export default function SettingsPage() {
   return (
     <section>
-      <PageHeading title={t('Settings')} description={t('Rates, payment details, backup and app preferences.')} />
-      <RatesPage embedded />
+      <PageHeading title={t('Settings')} description={t('Payment details, backup and app preferences.')} />
       <PaymentDetailsCard />
       <BackupCard />
       <AppPreferencesCard />

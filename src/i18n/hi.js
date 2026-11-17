@@ -534,6 +534,22 @@ export default {
   'Move left': 'बाएँ करें',
   'Move right': 'दाएँ करें',
 
+  // ── Rate quotation ───────────────────────────────────────────────
+  'Your rate list. Share it as a quotation any time.': 'आपकी दरों की सूची। इसे कभी भी कोटेशन के रूप में भेजें।',
+  'Quotation details': 'कोटेशन की जानकारी',
+  'Title': 'शीर्षक',
+  'Rate quotation': 'दर कोटेशन',
+  'Quotation for (optional)': 'किसके लिए (वैकल्पिक)',
+  'Valid (days)': 'मान्य (दिन)',
+  'Terms & conditions (one per line)': 'नियम और शर्तें (हर लाइन में एक)',
+  'Terms & conditions': 'नियम और शर्तें',
+  'Disclaimer': 'अस्वीकरण',
+  'Restore default terms': 'डिफ़ॉल्ट शर्तें वापस लाएँ',
+  'Payment details, backup and app preferences.': 'भुगतान जानकारी, बैकअप और ऐप सेटिंग्स।',
+  'To: {client}': 'प्रति: {client}',
+  'Valid until: {date}': '{date} तक मान्य',
+  'No.': 'क्र.',
+
   // ── Printed bill (document text) ─────────────────────────────────
   'Item': 'काम',
   'Qty': 'मात्रा',

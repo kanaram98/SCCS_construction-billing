@@ -10,6 +10,7 @@ import Toolbar from '@mui/material/Toolbar';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import StraightenIcon from '@mui/icons-material/Straighten';
 import HomeIcon from '@mui/icons-material/HomeOutlined';
+import SellIcon from '@mui/icons-material/SellOutlined';
 import SettingsIcon from '@mui/icons-material/SettingsOutlined';
 import BusinessIcon from '@mui/icons-material/BusinessOutlined';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdfOutlined';
@@ -22,6 +23,7 @@ const ICONS = {
   [VIEWS.bills]: <ReceiptLongIcon />,
   [VIEWS.entry]: <StraightenIcon />,
   [VIEWS.home]: <HomeIcon />,
+  [VIEWS.rates]: <SellIcon />,
   [VIEWS.settings]: <SettingsIcon />,
   [VIEWS.project]: <BusinessIcon />,
   [VIEWS.print]: <PictureAsPdfIcon />

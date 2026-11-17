@@ -335,6 +335,14 @@ function createPreferenceActions({ setData }) {
   };
 }
 
+function createQuotationActions({ setData }) {
+  return {
+    update(patch) {
+      setData((current) => ({ ...current, quotation: { ...current.quotation, ...patch } }));
+    }
+  };
+}
+
 function createDataActions({ setData }) {
   return {
     /** Replaces everything with restored backup data. */
@@ -358,6 +366,7 @@ function createDataActions({ setData }) {
 export function createActions(context) {
   return {
     data: createDataActions(context),
+    quotation: createQuotationActions(context),
     preferences: createPreferenceActions(context),
     payments: createPaymentActions(context),
     bills: createBillActions(context),
