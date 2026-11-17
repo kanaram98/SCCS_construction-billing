@@ -10,6 +10,7 @@ import { SelectField, TextField, useNotify } from '../../components/ui';
 import { useUndoable } from '../../hooks/useUndoable.js';
 import { getClientProfileState } from '../../domain/clients.js';
 import { getRequiredDetailErrors } from '../../domain/validation.js';
+import { hasGst } from '../../domain/calculations.js';
 import { gstinWarning, phoneWarning } from '../../domain/warnings.js';
 import { tr as t } from '../../i18n/translate.js';
 
@@ -56,9 +57,9 @@ export default function ClientProfileFields() {
       <Grid size={{ xs: 12, sm: 6 }}>
         <TextField label={t('Client address')} value={bill.clientAddress} onChange={(clientAddress) => update({ clientAddress })} />
       </Grid>
-      <Grid size={{ xs: 12, sm: 6 }}>
+      {hasGst(bill) && <Grid size={{ xs: 12, sm: 6 }}>
         <TextField label={t('Client GSTIN')} value={bill.clientGstin} warning={gstinWarning(bill.clientGstin)} onChange={(clientGstin) => update({ clientGstin: clientGstin.toUpperCase() })} />
-      </Grid>
+      </Grid>}
       <Grid size={12}>
         <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1 }}>
           <Button size="small" variant="outlined" startIcon={<PersonAddIcon />} disabled={!profile.canSaveNew} onClick={() => saveProfile(false)}>{t('Save as new')}</Button>

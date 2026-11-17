@@ -137,3 +137,25 @@ test('splits GST into CGST/SGST or IGST without changing the total tax', async (
   assert.deepEqual(getTaxLines({ taxRate: '5' }, { tax: 50 }).map((line) => line.label), ['CGST (2.5%)', 'SGST (2.5%)']);
   assert.deepEqual(getTaxLines({ taxRate: '' }, { tax: 0 }), []);
 });
+
+test('bills without GST ignore the tax rate', async () => {
+  const { getBillTotals, hasGst } = await import('../../src/domain/calculations.js');
+  const { getAmountErrors } = await import('../../src/domain/validation.js');
+  const { createBill } = await import('../../src/domain/factories.js');
+  const rates = [{ id: 'r', type: 'count', rate: 1000 }];
+  const bill = { taxRate: '18', sections: [{ areas: [{ items: [{ rateId: 'r', count: 1 }] }] }] };
+  assert.equal(hasGst(bill), true); // older bills keep GST
+  assert.equal(getBillTotals(bill, rates).total, 1180);
+  assert.equal(getBillTotals({ ...bill, gstEnabled: false }, rates).total, 1000);
+  assert.equal(getAmountErrors({ ...bill, gstEnabled: false, taxRate: '500' }, rates).taxRate, '');
+  assert.equal(createBill('1').gstEnabled, false);
+  assert.equal(createBill('1', { gstEnabled: true }).gstEnabled, true);
+});
+
+test('firms that already used GST are treated as GST registered', async () => {
+  const { hydrateState } = await import('../../src/domain/app-state.js');
+  assert.equal(hydrateState({ bills: [{ id: 'a', taxRate: '18', sections: [] }] }).firm.gstRegistered, true);
+  assert.equal(hydrateState({ bills: [{ id: 'a', sections: [] }], firm: { gstin: '27ABCDE1234F1Z5' } }).firm.gstRegistered, true);
+  assert.equal(hydrateState({ bills: [{ id: 'a', sections: [] }] }).firm.gstRegistered, false);
+  assert.equal(hydrateState({ bills: [{ id: 'a', taxRate: '18', sections: [] }], firm: { gstRegistered: false } }).firm.gstRegistered, false);
+});

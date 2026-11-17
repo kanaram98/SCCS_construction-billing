@@ -4,6 +4,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { buildDocument } from './document-model.js';
+import { hasGst } from '../domain/calculations.js';
 import { deliverPdf } from './pdf-file.js';
 import { buildPaymentBlock } from './payment-block.js';
 import { formatCurrencyAscii } from '../domain/formatters.js';
@@ -64,7 +65,7 @@ function drawHeader(doc, bill, firm, title, settings) {
   y += 6;
   doc.setFont(FONT, 'normal');
   doc.setFontSize(fontSize - 1);
-  [firm.address, [firm.phone, firm.gstin && `GSTIN: ${firm.gstin}`].filter(Boolean).join('   ')]
+  [firm.address, [firm.phone, firm.gstRegistered && firm.gstin && `GSTIN: ${firm.gstin}`].filter(Boolean).join('   ')]
     .filter(Boolean)
     .forEach((line) => { y = drawWrapped(doc, line, margin, y, textWidth, 3.8); });
 
@@ -78,7 +79,7 @@ function drawHeader(doc, bill, firm, title, settings) {
     `Client: ${bill.client}`,
     bill.clientPhone && `Phone: ${bill.clientPhone}`,
     bill.clientAddress,
-    bill.clientGstin && `Client GSTIN: ${bill.clientGstin}`
+    hasGst(bill) && bill.clientGstin && `Client GSTIN: ${bill.clientGstin}`
   ].filter(Boolean).join('   ');
   y = drawWrapped(doc, project, margin, y, maxWidth, 4.2) + 2;
   doc.setDrawColor(80);

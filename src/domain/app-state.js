@@ -17,6 +17,8 @@ export function createDefaultFirm() {
     address: '',
     phone: '',
     gstin: '',
+    /** Registered firms get GST on new bills and show their GSTIN. */
+    gstRegistered: false,
     bankName: '',
     accountName: '',
     accountNumber: '',
@@ -64,6 +66,11 @@ export function hydrateState(saved, { isLegacy = false } = {}) {
     };
   }
   firm.signatureLayout = normalizeSignatureLayout(firm.signatureLayout);
+  // Data from before the GST switch: treat the firm as registered if it already used GST.
+  if (typeof saved.firm?.gstRegistered !== 'boolean') {
+    firm.gstRegistered = Boolean(String(firm.gstin || '').trim()) ||
+      saved.bills.some((bill) => Number(bill.taxRate) > 0);
+  }
   // The original app stored bank details as one free-text `bank` field.
   if (!firm.bankName && typeof firm.bank === 'string' && firm.bank.trim()) firm.bankName = firm.bank.trim();
 

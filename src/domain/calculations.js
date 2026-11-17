@@ -40,10 +40,15 @@ export function getSectionTotal(section, rates) {
   return (section.areas || []).reduce((sum, area) => sum + getAreaTotal(area, rates), 0);
 }
 
+/** Whether GST applies to this bill. Bills saved before the switch existed keep their GST. */
+export function hasGst(bill) {
+  return bill.gstEnabled !== false;
+}
+
 export function getBillTotals(bill, rates) {
   const subtotal = (bill.sections || []).reduce((sum, section) => sum + getSectionTotal(section, rates), 0);
   const discount = nonNegativeNumber(bill.discount);
-  const taxRate = Math.min(100, nonNegativeNumber(bill.taxRate));
+  const taxRate = hasGst(bill) ? Math.min(100, nonNegativeNumber(bill.taxRate)) : 0;
   const tax = Math.round(Math.max(0, subtotal - discount) * taxRate / 100);
   const total = Math.max(0, subtotal - discount + tax);
   const advance = nonNegativeNumber(bill.advance);

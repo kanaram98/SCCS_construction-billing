@@ -1,8 +1,9 @@
 import { getPrintDocument } from '../../../domain/print-settings.js';
+import { hasGst } from '../../../domain/calculations.js';
 
 /** Firm branding and bill details printed at the top of each document. `t` uses the bill's language. */
 export default function PaperHeader({ bill, firm, documentType, t }) {
-  const contact = [firm.phone, firm.gstin && t('GSTIN: {gstin}', { gstin: firm.gstin })].filter(Boolean).join(' · ');
+  const contact = [firm.phone, firm.gstRegistered && firm.gstin && t('GSTIN: {gstin}', { gstin: firm.gstin })].filter(Boolean).join(' · ');
   return (
     <div className="paper-header-content">
       <div className="paper-branding">
@@ -23,7 +24,7 @@ export default function PaperHeader({ bill, firm, documentType, t }) {
       </div>
       {bill.clientPhone && <div>{t('Client phone: {phone}', { phone: bill.clientPhone })}</div>}
       {bill.clientAddress && <div>{bill.clientAddress}</div>}
-      {bill.clientGstin && <div>{t('Client GSTIN: {gstin}', { gstin: bill.clientGstin })}</div>}
+      {hasGst(bill) && bill.clientGstin && <div>{t('Client GSTIN: {gstin}', { gstin: bill.clientGstin })}</div>}
     </div>
   );
 }

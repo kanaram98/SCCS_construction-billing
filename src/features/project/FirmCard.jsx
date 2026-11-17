@@ -1,6 +1,6 @@
 import Grid from '@mui/material/Grid';
 import { useBilling } from '../../state/BillingContext.jsx';
-import { Card, ImageUploadField, TextField, useNotify } from '../../components/ui';
+import { Card, ImageUploadField, SwitchField, TextField, useNotify } from '../../components/ui';
 import { getRequiredDetailErrors } from '../../domain/validation.js';
 import { optimizeImage } from '../../services/image.js';
 import { gstinWarning, phoneWarning } from '../../domain/warnings.js';
@@ -37,9 +37,12 @@ export default function FirmCard() {
         <Grid size={6}>
           <TextField label={t('Phone')} type="tel" value={firm.phone} warning={phoneWarning(firm.phone)} onChange={(phone) => update({ phone })} />
         </Grid>
-        <Grid size={6}>
-          <TextField label={t('GSTIN')} value={firm.gstin} warning={gstinWarning(firm.gstin)} onChange={(gstin) => update({ gstin: gstin.toUpperCase() })} />
+        <Grid size={12}>
+          <SwitchField label={t('GST registered (new bills include GST)')} checked={Boolean(firm.gstRegistered)} onChange={(gstRegistered) => update({ gstRegistered })} />
         </Grid>
+        {firm.gstRegistered && <Grid size={12}>
+          <TextField label={t('GSTIN')} value={firm.gstin} warning={gstinWarning(firm.gstin)} onChange={(gstin) => update({ gstin: gstin.toUpperCase() })} />
+        </Grid>}
         {Object.entries(IMAGE_LABELS).map(([field, label]) => (
           <Grid size={{ xs: 12, sm: 6 }} key={field}>
             <ImageUploadField

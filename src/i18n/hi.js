@@ -303,6 +303,8 @@ export default {
   'Discount (₹)': 'छूट (₹)',
   'GST %': 'GST %',
   'GST type': 'GST का प्रकार',
+  'Add GST to this bill': 'इस बिल में GST जोड़ें',
+  'GST registered (new bills include GST)': 'GST रजिस्टर्ड (नए बिलों में GST होगा)',
   'CGST + SGST (same state)': 'CGST + SGST (उसी राज्य में)',
   'IGST (other state)': 'IGST (दूसरे राज्य में)',
   'Enter a GST % to add tax.': 'टैक्स के लिए GST % लिखें।',

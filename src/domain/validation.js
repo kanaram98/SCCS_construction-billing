@@ -1,6 +1,6 @@
 import { feetInchesError, parseFeetInches } from './measurements.js';
 import { getDimensionFields, resolveRate } from './rates.js';
-import { getBillTotals } from './calculations.js';
+import { getBillTotals, hasGst } from './calculations.js';
 import { text } from './formatters.js';
 import { tr } from '../i18n/translate.js';
 
@@ -90,7 +90,7 @@ export function getAmountErrors(bill, rates, totals = getBillTotals(bill, rates)
   } else if (discount > totals.subtotal) {
     errors.discount = tr('Discount cannot exceed the subtotal.');
   }
-  if (text(bill.taxRate) && (!Number.isFinite(taxRate) || taxRate < 0 || taxRate > 100)) {
+  if (hasGst(bill) && text(bill.taxRate) && (!Number.isFinite(taxRate) || taxRate < 0 || taxRate > 100)) {
     errors.taxRate = tr('GST must be between 0 and 100%.');
   }
   if (text(bill.advance) && (!Number.isFinite(advance) || advance < 0)) {

@@ -41,7 +41,7 @@ function createBillActions({ data, setData }) {
       setData((current) => ({ ...current, activeBillId: billId }));
     },
     create() {
-      insertAndOpen(createBill(getNextBillNumber(data.bills)));
+      insertAndOpen(createBill(getNextBillNumber(data.bills), { gstEnabled: Boolean(data.firm.gstRegistered) }));
     },
     duplicate(source) {
       insertAndOpen(duplicateBill(source, getNextBillNumber(data.bills)));

@@ -2,7 +2,8 @@ import { newId } from './ids.js';
 import { todayIso } from './formatters.js';
 import { tr } from '../i18n/translate.js';
 
-export function createBill(number = '1') {
+/** @param {{ gstEnabled?: boolean }} [options] new bills follow the firm's GST registration */
+export function createBill(number = '1', { gstEnabled = false } = {}) {
   return {
     id: newId(),
     number,
@@ -17,6 +18,7 @@ export function createBill(number = '1') {
     secondLevelName: 'Area',
     discount: '',
     taxRate: '',
+    gstEnabled,
     gstType: 'intra',
     advance: '',
     payments: [],
