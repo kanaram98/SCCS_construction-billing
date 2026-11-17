@@ -188,7 +188,7 @@ service cloud.firestore {
       let d = data();
       return d.id == id && str(d.at, 40) && str(d.by, 100) && isAuthor(wid, 'by')
         && d.entity in entities
-        && d.action in ['create', 'update', 'delete', 'restore', 'purge', 'close', 'unlock']
+        && d.action in ['create', 'update', 'delete', 'restore', 'purge', 'close', 'unlock', 'conflict']
         && optStr(d, 'revertOf', 100)
         && d.keys().size() <= 20
         && serverTime();

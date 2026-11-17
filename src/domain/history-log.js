@@ -99,8 +99,11 @@ export function recordName(entity, label, t) {
 
 /** @returns {{ title: string, lines: string[] }} */
 export function describeHistoryEntry(entry, t) {
-  const title = t(HISTORY_TITLES[`${entry.entity}.${entry.action}`] || 'Change');
+  const title = entry.action === 'conflict'
+    ? t('Changed on another device')
+    : t(HISTORY_TITLES[`${entry.entity}.${entry.action}`] || 'Change');
   const lines = [recordName(entry.entity, entry.label || {}, t)];
+  if (entry.action === 'conflict') lines.push(t('The newer version was kept. Undo brings back the version from this device.'));
   if (entry.action === 'update' && entry.fields?.length) {
     const names = [...new Set(entry.fields.map((field) => t(FIELD_LABELS[field] || 'Other details')))];
     lines.push(t('Changed: {fields}', { fields: names.join(', ') }));

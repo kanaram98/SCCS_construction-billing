@@ -760,5 +760,7 @@ export default {
   'Template restored': 'टेम्पलेट वापस लाया',
   'Template saved': 'टेम्पलेट सेव हुआ',
   'Too old to undo': 'वापस लेने के लिए बहुत पुराना',
-  'Valid days': 'मान्य दिन'
+  'Valid days': 'मान्य दिन',
+  'Changed on another device': 'दूसरे फ़ोन पर बदला गया',
+  'The newer version was kept. Undo brings back the version from this device.': 'नया वाला रखा गया। इस फ़ोन वाला वापस लाने के लिए "वापस लें" दबाएँ।'
 };

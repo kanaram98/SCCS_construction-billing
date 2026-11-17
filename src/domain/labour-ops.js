@@ -187,12 +187,12 @@ export function revertEntry(labour, entryId, now = new Date()) {
   if (entry.entity === 'payment') {
     if (entry.action === 'create' || entry.action === 'restore') return deletePayment(labour, entry.refId, now, extra);
     if (entry.action === 'delete') return restorePayment(labour, entry.refId, now, extra);
-    if (entry.action === 'update') return updatePayment(labour, entry.refId, entry.before, now, extra);
+    if (entry.action === 'update' || entry.action === 'conflict') return updatePayment(labour, entry.refId, entry.before, now, extra);
   }
   if (entry.entity === 'worker') {
     if (entry.action === 'create' || entry.action === 'restore') return deleteWorker(labour, entry.refId, now, extra);
     if (entry.action === 'delete') return restoreWorker(labour, entry.refId, now, extra);
-    if (entry.action === 'update') return updateWorker(labour, entry.refId, entry.before, now, extra);
+    if (entry.action === 'update' || entry.action === 'conflict') return updateWorker(labour, entry.refId, entry.before, now, extra);
   }
   return labour;
 }

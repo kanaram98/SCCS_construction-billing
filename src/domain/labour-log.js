@@ -17,6 +17,8 @@ export const LOG_TITLES = {
   'payment.delete': 'Payment deleted',
   'payment.restore': 'Payment restored',
   'payment.purge': 'Payment deleted forever',
+  'payment.conflict': 'Changed on another device',
+  'worker.conflict': 'Changed on another device',
   'month.close': 'Month closed',
   'month.unlock': 'Month unlocked'
 };
@@ -67,6 +69,7 @@ export function describeEntry(entry, { names, t, language = 'en' }) {
     const lines = entry.action === 'update'
       ? paymentChanges(entry.before, entry.after, t)
       : [paymentLine(entry.after || entry.before, t)];
+    if (entry.action === 'conflict') lines.push(t('The newer version was kept. Undo brings back the version from this device.'));
     return { title, lines: [name(entry.workerId), ...lines], workerIds: [entry.workerId] };
   }
   const lines = entry.action === 'update' ? workerChanges(entry.before, entry.after, t) : [];

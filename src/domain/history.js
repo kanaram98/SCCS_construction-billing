@@ -13,7 +13,8 @@
  *
  * Log entry: { id, at, entity, action, refId?, label, fields?, before?, revertOf? }
  * entity: 'bills' | 'rates' | 'clients' | 'templates' | 'firm' | 'quotation'
- * action: 'create' | 'update' | 'delete' | 'restore' | 'purge'
+ * action: 'create' | 'update' | 'delete' | 'restore' | 'purge' | 'conflict'
+ *   (conflict: another device saved a newer version; `before` holds this device's version)
  */
 import { newId } from './ids.js';
 
@@ -202,7 +203,7 @@ export function undoBlocker(raw, entry) {
   if (SINGLETONS.includes(entry.entity)) return entry.before ? '' : 'trimmed';
   const record = findRecord(raw, entry.entity, entry.refId);
   if (!record) return 'missing';
-  if (entry.action === 'update') {
+  if (entry.action === 'update' || entry.action === 'conflict') {
     if (!entry.before) return 'trimmed';
     if (record.deletedAt) return 'deleted';
   }

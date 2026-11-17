@@ -264,7 +264,7 @@ const historyBase = {
   at: isoTime,
   /** Account that made the change. */
   by: id,
-  action: z.enum(['create', 'update', 'delete', 'restore', 'purge', 'close', 'unlock']),
+  action: z.enum(['create', 'update', 'delete', 'restore', 'purge', 'close', 'unlock', 'conflict']),
   revertOf: id.optional()
 };
 
