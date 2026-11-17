@@ -10,9 +10,10 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DeleteIcon from '@mui/icons-material/DeleteOutlined';
 import { useBilling } from '../../state/BillingContext.jsx';
-import { ActionMenu, TextField, useConfirm, useNotify } from '../../components/ui';
+import { ActionMenu, TextField, useConfirm } from '../../components/ui';
 import { getAreaTotal } from '../../domain/calculations.js';
 import { pluralize } from '../../domain/formatters.js';
+import { useUndoable } from '../../hooks/useUndoable.js';
 import { useEntryForm } from './useEntryForm.js';
 import GroupSummary from './GroupSummary.jsx';
 import EntryList from './EntryList.jsx';
@@ -24,7 +25,7 @@ export default function AreaPanel({ section, area, sections, open, onToggle, onC
   const { data, actions } = useBilling();
   const { entry } = actions;
   const confirm = useConfirm();
-  const notify = useNotify();
+  const undoable = useUndoable();
   const [editorOpen, setEditorOpen] = useState(false);
   /** null, `{ type: 'area' }` or `{ type: 'item', itemId }` while choosing a copy target. */
   const [copyRequest, setCopyRequest] = useState(null);
@@ -47,9 +48,8 @@ export default function AreaPanel({ section, area, sections, open, onToggle, onC
   }
 
   function deleteEntry(item) {
-    entry.removeItem(section.id, area.id, item.id);
+    undoable(`${item.name || 'Entry'} deleted.`, () => entry.removeItem(section.id, area.id, item.id));
     form.handleItemRemoved(item.id);
-    notify(`${item.name || 'Entry'} deleted.`, 'info');
   }
 
   async function deleteArea() {
@@ -62,7 +62,7 @@ export default function AreaPanel({ section, area, sections, open, onToggle, onC
       });
       if (!confirmed) return;
     }
-    entry.removeArea(section.id, area.id);
+    undoable(`${area.name} deleted.`, () => entry.removeArea(section.id, area.id));
   }
 
   function copyTo(targetSectionId) {

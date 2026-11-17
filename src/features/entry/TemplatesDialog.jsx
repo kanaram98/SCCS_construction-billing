@@ -11,7 +11,8 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/DeleteOutlined';
 import SaveIcon from '@mui/icons-material/SaveOutlined';
 import { useBilling } from '../../state/BillingContext.jsx';
-import { EmptyState, ResponsiveDialog, SelectField, TextField, useConfirm, useNotify } from '../../components/ui';
+import { EmptyState, ResponsiveDialog, SelectField, TextField, useNotify } from '../../components/ui';
+import { useUndoable } from '../../hooks/useUndoable.js';
 import { createTemplateContent } from '../../domain/bill-tree.js';
 import { getTemplateSources, parseTemplateSource } from '../../domain/templates.js';
 
@@ -19,7 +20,7 @@ import { getTemplateSources, parseTemplateSource } from '../../domain/templates.
 export default function TemplatesDialog({ open, onClose, onApplied }) {
   const { data, bill, actions } = useBilling();
   const notify = useNotify();
-  const confirm = useConfirm();
+  const undoable = useUndoable();
   const { templates } = data;
   const sections = bill.sections;
   const [source, setSource] = useState('');
@@ -56,10 +57,8 @@ export default function TemplatesDialog({ open, onClose, onApplied }) {
     onApplied(result);
   }
 
-  async function removeTemplate(template) {
-    if (await confirm({ title: `Remove template “${template.name}”?`, confirmLabel: 'Remove', danger: true })) {
-      actions.templates.remove(template.id);
-    }
+  function removeTemplate(template) {
+    undoable(`Template “${template.name}” removed.`, () => actions.templates.remove(template.id));
   }
 
   return (

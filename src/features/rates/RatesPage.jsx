@@ -3,13 +3,14 @@ import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import AddIcon from '@mui/icons-material/Add';
 import { useBilling } from '../../state/BillingContext.jsx';
-import { PageHeading, useConfirm, useNotify } from '../../components/ui';
+import { PageHeading, useNotify } from '../../components/ui';
+import { useUndoable } from '../../hooks/useUndoable.js';
 import RatesTable from './RatesTable.jsx';
 import RateFormDialog from './RateFormDialog.jsx';
 
 export default function RatesPage() {
   const { data, actions } = useBilling();
-  const confirm = useConfirm();
+  const undoable = useUndoable();
   const notify = useNotify();
   /** null = closed, 'new' = adding, otherwise the rate being edited. */
   const [editing, setEditing] = useState(null);
@@ -25,16 +26,9 @@ export default function RatesPage() {
     setEditing(null);
   }
 
-  async function removeRate(rate) {
-    const confirmed = await confirm({
-      title: `Delete ${rate.name || 'this work item'}?`,
-      message: 'Existing entries keep their saved rate.',
-      confirmLabel: 'Delete',
-      danger: true
-    });
-    if (!confirmed) return;
-    actions.rates.remove(rate.id);
-    notify(`${rate.name} deleted.`, 'info');
+  /** Entries that use a deleted rate keep their saved copy of it. */
+  function removeRate(rate) {
+    undoable(`${rate.name || 'Work item'} deleted.`, () => actions.rates.remove(rate.id));
   }
 
   return (

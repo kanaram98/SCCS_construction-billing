@@ -6,7 +6,8 @@ import PersonAddIcon from '@mui/icons-material/PersonAddAlt1Outlined';
 import SaveIcon from '@mui/icons-material/SaveOutlined';
 import PersonRemoveIcon from '@mui/icons-material/PersonRemoveOutlined';
 import { useBilling } from '../../state/BillingContext.jsx';
-import { SelectField, TextField, useConfirm, useNotify } from '../../components/ui';
+import { SelectField, TextField, useNotify } from '../../components/ui';
+import { useUndoable } from '../../hooks/useUndoable.js';
 import { getClientProfileState } from '../../domain/clients.js';
 import { getRequiredDetailErrors } from '../../domain/validation.js';
 
@@ -14,7 +15,7 @@ import { getRequiredDetailErrors } from '../../domain/validation.js';
 export default function ClientProfileFields() {
   const { data, bill, actions } = useBilling();
   const notify = useNotify();
-  const confirm = useConfirm();
+  const undoable = useUndoable();
   const profile = getClientProfileState(bill, data.clients);
   const nameError = getRequiredDetailErrors(bill, data.firm).client ||
     (profile.duplicateClient ? 'This name is already saved. Select the existing profile or use another name.' : '');
@@ -25,18 +26,11 @@ export default function ClientProfileFields() {
     notify(result.message, result.ok ? 'success' : 'error');
   }
 
-  async function removeProfile() {
+  /** Bills keep their copied client details when the profile is removed. */
+  function removeProfile() {
     const { selectedClient } = profile;
     if (!selectedClient) return;
-    const confirmed = await confirm({
-      title: `Remove saved client “${selectedClient.name}”?`,
-      message: 'Existing bills will keep their client details.',
-      confirmLabel: 'Remove',
-      danger: true
-    });
-    if (!confirmed) return;
-    actions.clients.removeProfile(selectedClient.id);
-    notify('Saved client removed. Existing bill details were kept.', 'info');
+    undoable(`Saved client “${selectedClient.name}” removed.`, () => actions.clients.removeProfile(selectedClient.id));
   }
 
   return (

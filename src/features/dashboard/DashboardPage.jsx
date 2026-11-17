@@ -8,6 +8,7 @@ import { useBilling } from '../../state/BillingContext.jsx';
 import { summarizeBill } from '../../domain/calculations.js';
 import { formatCurrency } from '../../domain/formatters.js';
 import { EmptyState, PageHeading, StatCard, useConfirm, useNotify } from '../../components/ui';
+import { useUndoable } from '../../hooks/useUndoable.js';
 import { VIEWS } from '../../config/app.js';
 import { useBillFilters } from './useBillFilters.js';
 import BillFilters from './BillFilters.jsx';
@@ -18,6 +19,7 @@ export default function DashboardPage({ onNavigate }) {
   const { data, bill: activeBill, actions } = useBilling();
   const confirm = useConfirm();
   const notify = useNotify();
+  const undoable = useUndoable();
   const { bills, rates } = data;
 
   const summaries = useMemo(
@@ -58,8 +60,7 @@ export default function DashboardPage({ onNavigate }) {
       danger: true
     });
     if (!confirmed) return;
-    actions.bills.remove(bill.id);
-    notify(`Bill ${bill.number} deleted.`, 'info');
+    undoable(`Bill ${bill.number} deleted.`, () => actions.bills.remove(bill.id));
   }
 
   return (

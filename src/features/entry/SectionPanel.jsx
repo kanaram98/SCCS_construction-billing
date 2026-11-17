@@ -11,6 +11,7 @@ import { useBilling } from '../../state/BillingContext.jsx';
 import { ActionMenu, TextField, useConfirm } from '../../components/ui';
 import { countSectionItems, getSectionTotal } from '../../domain/calculations.js';
 import { pluralize } from '../../domain/formatters.js';
+import { useUndoable } from '../../hooks/useUndoable.js';
 import { sectionAnchorId } from './useEntryDisclosure.js';
 import GroupSummary from './GroupSummary.jsx';
 import AreaPanel from './AreaPanel.jsx';
@@ -19,6 +20,7 @@ export default function SectionPanel({ section, sections, open, disclosure, leve
   const { data, actions } = useBilling();
   const { entry } = actions;
   const confirm = useConfirm();
+  const undoable = useUndoable();
   const itemCount = countSectionItems(section);
 
   async function deleteSection() {
@@ -31,7 +33,7 @@ export default function SectionPanel({ section, sections, open, disclosure, leve
       });
       if (!confirmed) return;
     }
-    entry.removeSection(section.id);
+    undoable(`${section.name} deleted.`, () => entry.removeSection(section.id));
   }
 
   return (
