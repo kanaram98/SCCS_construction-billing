@@ -83,7 +83,8 @@ export default function AreaPanel({ section, area, index, sections, open, visibl
 
   return (
     <Accordion id={`area-${area.id}`} expanded={open} onChange={onToggle} sx={{ scrollMarginTop: 72 }}>
-      <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 1.5 }}>
+      {/* A div (role=button), not a <button>: the actions menu inside is a button itself. */}
+      <AccordionSummary component="div" expandIcon={<ExpandMoreIcon />} sx={{ px: 1.5 }}>
         <GroupSummary
           variant="area"
           name={area.name}

@@ -4,7 +4,8 @@ import LinearProgress from '@mui/material/LinearProgress';
 import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
 import { BillingProvider, useBilling } from './state/BillingContext.jsx';
-import { CloudProvider } from './features/account/CloudProvider.jsx';
+import { CloudProvider, useCloud } from './features/account/CloudProvider.jsx';
+import SignedOutBanner from './features/account/SignedOutBanner.jsx';
 import { FeedbackProvider } from './components/ui';
 import { useInstallPrompt } from './hooks/useInstallPrompt.js';
 import { VIEWS } from './config/app.js';
@@ -62,9 +63,15 @@ const PAGES = {
   [VIEWS.labour]: LabourPage
 };
 
-function AppShell({ view, setView }) {
+/** Screens available while signed out: Labour (phone signed in before) or only Settings to sign in. */
+const LIMITED_VIEWS = { labour: [VIEWS.labour, VIEWS.settings], signin: [VIEWS.settings] };
+
+function AppShell({ view: chosenView, setView }) {
   const { data, bill, saveStatus, storageError } = useBilling();
   const installer = useInstallPrompt();
+  const cloud = useCloud();
+  const allowed = LIMITED_VIEWS[cloud.access] || null;
+  const view = allowed && !allowed.includes(chosenView) ? allowed[0] : chosenView;
   const Page = PAGES[view];
   usePrefetchPages();
 
@@ -76,14 +83,14 @@ function AppShell({ view, setView }) {
   return (
     <Box className="app-shell" sx={{ minHeight: '100vh' }}>
       <AppHeader
-        subtitle={bill.projectName}
+        subtitle={cloud.access === 'full' ? bill.projectName : ''}
         saveStatus={saveStatus}
         canInstall={installer.canInstall}
         onInstall={installer.install}
         onOpenSettings={() => navigate(VIEWS.settings)}
       />
-      <MainNav activeView={view} onNavigate={navigate} />
-      {!data.meta?.onboarded && <WelcomeDialog onNavigate={navigate} />}
+      <MainNav activeView={view} onNavigate={navigate} views={allowed} />
+      {!data.meta?.onboarded && cloud.access === 'full' && <WelcomeDialog onNavigate={navigate} />}
       <Box
         component="main"
         className="content"
@@ -94,6 +101,7 @@ function AppShell({ view, setView }) {
         }}
       >
         <Container maxWidth="md" sx={{ px: { xs: 1.5, sm: 3 } }}>
+          <SignedOutBanner onOpenSettings={() => navigate(VIEWS.settings)} />
           <AppNotices storageError={storageError} isInstalled={installer.isInstalled} installMessage={installer.message} />
           <ScreenErrorBoundary resetKey={view} onGoHome={() => navigate(VIEWS.home)}>
             <Suspense fallback={<LinearProgress sx={{ my: 2 }} aria-label={t('Loading')} />}>
@@ -101,7 +109,7 @@ function AppShell({ view, setView }) {
             </Suspense>
           </ScreenErrorBoundary>
           <Typography className="no-print" variant="caption" color="text.secondary" component="footer" sx={{ display: 'block', textAlign: 'center', mt: 3 }}>
-            {t('Bills are stored on this device. Export a PDF to share or archive a copy.')}
+            {cloud.user ? t('Synced with the cloud. Export a PDF to share or archive a copy.') : t('Bills are stored on this device. Export a PDF to share or archive a copy.')}
           </Typography>
         </Container>
       </Box>

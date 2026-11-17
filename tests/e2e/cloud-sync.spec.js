@@ -35,6 +35,11 @@ async function signIn(page, person) {
   await page.getByRole('button', { name: 'Sign in with Google' }).click();
   const popup = await popupPromise;
   await popup.waitForLoadState('networkidle');
+  const existing = popup.getByText(person.email);
+  if (await existing.count()) {
+    await existing.first().click();
+    return;
+  }
   const email = popup.locator('#email-input');
   // The page's buttons work once its script has started; retry the click until the form opens.
   await expect(async () => {
@@ -53,10 +58,14 @@ test('admin creates the workspace, invites the father, and changes sync both way
   const adminContext = await browser.newContext();
   const admin = await adminContext.newPage();
   await admin.goto('/');
-  await admin.getByRole('button', { name: 'See a sample bill' }).click();
+  // A phone that never signed in shows only sign-in: no tabs, no bills.
+  await expect(admin.getByText('Sign in with Google to open the app.')).toBeVisible();
+  await expect(admin.getByRole('button', { name: 'Bills' })).toHaveCount(0);
   await openSettings(admin);
   await signIn(admin, ADMIN);
   await expect(admin.getByText('Workspace created. You are the admin.')).toBeVisible();
+  await admin.getByRole('button', { name: 'See a sample bill' }).click();
+  await openSettings(admin);
   await expect(admin.getByText(SYNCED)).toBeVisible({ timeout: 20000 });
   await expect(admin.getByText('Admin', { exact: true }).first()).toBeVisible();
   await admin.getByLabel('Google account (Gmail)').fill(FATHER.email);
@@ -68,7 +77,6 @@ test('admin creates the workspace, invites the father, and changes sync both way
   const fatherContext = await browser.newContext();
   const father = await fatherContext.newPage();
   await father.goto('/');
-  await father.getByRole('button', { name: 'Start my first bill' }).click();
   await openSettings(father);
   await signIn(father, FATHER);
   await expect(father.getByText('You joined the workspace.')).toBeVisible();
@@ -100,6 +108,31 @@ test('admin creates the workspace, invites the father, and changes sync both way
   const history = admin.getByRole('dialog');
   await expect(history.getByText(/· Papa/).first()).toBeVisible();
   await admin.screenshot({ path: 'test-results/screens/3-admin-history.png' });
+
+  // ── Signed out, your father can only use Labour; his entries upload when he signs in again ──
+  await openSettings(father);
+  await father.getByRole('button', { name: 'Sign out' }).click();
+  await expect(father.getByText(/Signed out: only Labour is available/)).toBeVisible();
+  await expect(father.getByRole('button', { name: 'Bills' })).toHaveCount(0);
+  await expect(father.getByRole('button', { name: 'Project' })).toHaveCount(0);
+  await father.getByRole('button', { name: 'Labour' }).click();
+  await father.getByRole('tab', { name: 'Workers' }).click();
+  await father.getByRole('button', { name: 'Add worker' }).click();
+  const dialog = father.getByRole('dialog');
+  await dialog.getByLabel(/Name/).fill('Ramu');
+  await dialog.getByLabel(/Daily wage/).fill('650');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(father.getByText('Ramu').first()).toBeVisible();
+  await father.screenshot({ path: 'test-results/screens/4-father-signed-out-labour.png' });
+
+  await openSettings(father);
+  await signIn(father, FATHER);
+  await expect(father.getByText(SYNCED)).toBeVisible({ timeout: 20000 });
+  await expect(father.getByRole('button', { name: 'Bills' })).toBeVisible();
+  await admin.getByRole('button', { name: 'Close' }).click();
+  await admin.getByRole('button', { name: 'Labour' }).click();
+  await admin.getByRole('tab', { name: 'Workers' }).click();
+  await expect(admin.getByText('Ramu').first()).toBeVisible({ timeout: 20000 });
 
   await adminContext.close();
   await fatherContext.close();

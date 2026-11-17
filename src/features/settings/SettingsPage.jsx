@@ -7,9 +7,21 @@ import HistoryCard from './HistoryCard.jsx';
 import AccountCard from '../account/AccountCard.jsx';
 import MembersCard from '../account/MembersCard.jsx';
 import AdminOnly from '../account/AdminOnly.jsx';
+import { useCloud } from '../account/CloudProvider.jsx';
 
 /** Things set up once: work-item rates, bank/UPI details, backup and app preferences. */
 export default function SettingsPage() {
+  const cloud = useCloud();
+  if (cloud.access !== 'full') {
+    // Signed out: sign in, and app preferences (language) only.
+    return (
+      <section>
+        <PageHeading title={t('Settings')} />
+        <AccountCard />
+        <AppPreferencesCard />
+      </section>
+    );
+  }
   return (
     <section>
       <PageHeading title={t('Settings')} description={t('Payment details, history, backup and app preferences.')} />

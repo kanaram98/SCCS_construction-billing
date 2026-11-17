@@ -327,7 +327,9 @@ function mergeAttendanceMonth(raw, month, cloudMarks, state) {
 export function adoptCloud(docs, localRaw, now = new Date()) {
   const withoutSyncedAt = ({ syncedAt: _synced, ...rest }) => rest;
   const present = docs.filter((doc) => doc.exists !== false).map((doc) => ({ ...doc, data: withoutSyncedAt(doc.data) }));
-  const raw = fromDocuments(present, { local: localRaw }, now);
+  // The workspace already has data, so this phone skips the first-bill welcome screen.
+  const local = { ...localRaw, meta: { ...localRaw?.meta, onboarded: true } };
+  const raw = fromDocuments(present, { local }, now);
   if (!raw) return null;
   const syncState = createSyncState();
   for (const doc of present) {

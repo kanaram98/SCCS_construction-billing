@@ -789,7 +789,6 @@ export default {
   'Sign in with Google to keep your bills safe in the cloud and use them on another phone.': 'बिल क्लाउड में सुरक्षित रखने और दूसरे फ़ोन पर इस्तेमाल करने के लिए Google से साइन इन करें।',
   'Sign out': 'साइन आउट',
   'Sign-in failed: {reason}': 'साइन इन नहीं हुआ: {reason}',
-  'Signing out keeps the data on this device.': 'साइन आउट करने पर डेटा इस फ़ोन में रहता है।',
   'Sync problem. Changes are kept on this device; try again later.': 'सिंक में समस्या। बदलाव इस फ़ोन में सुरक्षित हैं; बाद में फिर कोशिश करें।',
   'Synced. Your data is safe in the cloud.': 'सिंक हो गया। आपका डेटा क्लाउड में सुरक्षित है।',
   'Syncing…': 'सिंक हो रहा है…',
@@ -799,5 +798,25 @@ export default {
   'Workspace created. You are the admin.': 'वर्कस्पेस बन गया। आप एडमिन हैं।',
   'You joined the workspace.': 'आप वर्कस्पेस से जुड़ गए।',
   '{count} item was also changed on another device. The newer version was kept; see History.': '{count} चीज़ दूसरे फ़ोन पर भी बदली गई थी। नया वाला रखा गया; इतिहास देखें।',
-  '{count} items were also changed on another device. The newer versions were kept; see History.': '{count} चीज़ें दूसरे फ़ोन पर भी बदली गई थीं। नए वाले रखे गए; इतिहास देखें।'
+  '{count} items were also changed on another device. The newer versions were kept; see History.': '{count} चीज़ें दूसरे फ़ोन पर भी बदली गई थीं। नए वाले रखे गए; इतिहास देखें।',
+
+  // ── Signed out: Labour only ──
+  'Continue anyway': 'फिर भी आगे बढ़ें',
+  'Continue as {email}?': '{email} के रूप में आगे बढ़ें?',
+  'Sign in': 'साइन इन',
+  'Sign in with Google to open the app.': 'ऐप खोलने के लिए Google से साइन इन करें।',
+  'Sign out anyway': 'फिर भी साइन आउट करें',
+  'Signed out, only Labour can be used on this phone; entries upload at the next sign-in.': 'साइन आउट होने पर इस फ़ोन में सिर्फ़ लेबर चलेगा; एंट्री अगली बार साइन इन करने पर अपलोड होंगी।',
+  'Signed out. Only Labour is available on this phone. Sign in as {email} to open bills and upload labour entries.': 'साइन आउट है। इस फ़ोन में सिर्फ़ लेबर उपलब्ध है। बिल खोलने और लेबर एंट्री अपलोड करने के लिए {email} से साइन इन करें।',
+  'Signed out: only Labour is available. Attendance and payments you enter here upload when {name} signs in again.': 'साइन आउट है: सिर्फ़ लेबर उपलब्ध है। यहाँ भरी हाज़िरी और भुगतान {name} के दोबारा साइन इन करने पर अपलोड होंगे।',
+  'Some changes are not in the cloud yet': 'कुछ बदलाव अभी क्लाउड में नहीं पहुँचे',
+  'The {count} change by {name} that is not in the cloud will be lost from this phone. The phone will show the cloud data.': '{name} का {count} बदलाव जो क्लाउड में नहीं है, इस फ़ोन से हट जाएगा। फ़ोन में क्लाउड का डेटा दिखेगा।',
+  'The {count} changes by {name} that are not in the cloud will be lost from this phone. The phone will show the cloud data.': '{name} के {count} बदलाव जो क्लाउड में नहीं हैं, इस फ़ोन से हट जाएँगे। फ़ोन में क्लाउड का डेटा दिखेगा।',
+  'This phone has {count} change by {name} ({email}) that is not in the cloud yet. Sign out and let {name} sign in to upload it first.': 'इस फ़ोन में {name} ({email}) का {count} बदलाव है जो अभी क्लाउड में नहीं है। पहले साइन आउट करें और {name} को साइन इन करके उसे अपलोड करने दें।',
+  'This phone has {count} changes by {name} ({email}) that are not in the cloud yet. Sign out and let {name} sign in to upload them first.': 'इस फ़ोन में {name} ({email}) के {count} बदलाव हैं जो अभी क्लाउड में नहीं हैं। पहले साइन आउट करें और {name} को साइन इन करके उन्हें अपलोड करने दें।',
+  'Waiting: another account has changes on this phone.': 'रुका हुआ: इस फ़ोन में दूसरे खाते के बदलाव हैं।',
+  '{count} change has not reached the cloud yet (no internet?). If you sign out it stays on this phone and uploads when you sign in again with this account.': '{count} बदलाव अभी क्लाउड में नहीं पहुँचा (इंटरनेट नहीं?)। साइन आउट करने पर यह इस फ़ोन में रहेगा और इसी खाते से दोबारा साइन इन करने पर अपलोड होगा।',
+  '{count} changes have not reached the cloud yet (no internet?). If you sign out they stay on this phone and upload when you sign in again with this account.': '{count} बदलाव अभी क्लाउड में नहीं पहुँचे (इंटरनेट नहीं?)। साइन आउट करने पर ये इस फ़ोन में रहेंगे और इसी खाते से दोबारा साइन इन करने पर अपलोड होंगे।',
+  'Synced with the cloud. Export a PDF to share or archive a copy.': 'क्लाउड से सिंक है। शेयर करने या रिकॉर्ड रखने के लिए PDF बनाएँ।',
+  'Your data is synced to the cloud. A backup file is an extra copy you keep yourself (WhatsApp, Drive or email).': 'आपका डेटा क्लाउड से सिंक है। बैकअप फ़ाइल एक अतिरिक्त कॉपी है जिसे आप खुद रखते हैं (WhatsApp, Drive या ईमेल)।'
 };

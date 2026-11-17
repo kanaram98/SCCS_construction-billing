@@ -32,10 +32,13 @@ const ICONS = {
 };
 
 /** Bottom tab bar on phones/tablets, permanent sidebar on desktop. */
-export default function MainNav({ activeView, onNavigate }) {
+/** `views`: limit the tabs (e.g. Labour only while signed out); null shows all. */
+export default function MainNav({ activeView, onNavigate, views = null }) {
+  const tabs = NAVIGATION.filter(({ id }) => !views || views.includes(id));
   const isMobile = useIsMobile();
 
   if (isMobile) {
+    if (!tabs.length) return null;
     return (
       <Paper
         elevation={8}
@@ -45,7 +48,7 @@ export default function MainNav({ activeView, onNavigate }) {
         sx={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: (theme) => theme.zIndex.appBar + 1, pb: 'env(safe-area-inset-bottom)' }}
       >
         <BottomNavigation showLabels value={activeView} onChange={(_event, view) => onNavigate(view)} sx={{ height: BOTTOM_NAV_HEIGHT }}>
-          {NAVIGATION.map(({ id, shortLabel, label }) => (
+          {tabs.map(({ id, shortLabel, label }) => (
             <BottomNavigationAction key={id} value={id} label={t(shortLabel || label)} icon={ICONS[id]} sx={{ minWidth: 0, px: 0.25, '& .MuiBottomNavigationAction-label': { fontSize: '0.7rem', '&.Mui-selected': { fontSize: '0.72rem' } } }} />
           ))}
         </BottomNavigation>
@@ -61,7 +64,7 @@ export default function MainNav({ activeView, onNavigate }) {
     >
       <Toolbar />
       <List component="nav" aria-label={t('Main navigation')} sx={{ px: 1 }}>
-        {[...NAVIGATION, { id: VIEWS.settings, label: 'Settings' }].map(({ id, label }) => (
+        {[...tabs, { id: VIEWS.settings, label: 'Settings' }].map(({ id, label }) => (
           <ListItemButton
             key={id}
             selected={activeView === id}

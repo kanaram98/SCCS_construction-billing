@@ -8,16 +8,20 @@ import { Card } from '../../components/ui';
 import { describeLastBackup } from '../../domain/backup.js';
 import { useBackup } from './useBackup.js';
 import { tr as t } from '../../i18n/translate.js';
+import { useCloud } from '../account/CloudProvider.jsx';
 
 /** Back up all data to a file, or restore from one. */
 export default function BackupCard() {
   const { data } = useBilling();
   const { exportBackup, restoreBackup } = useBackup();
+  const cloud = useCloud();
 
   return (
     <Card
       title={t('Backup & restore')}
-      description={t('Bills are stored only on this device. Save a backup file to WhatsApp, Drive or email so you can restore it if the phone is reset or changed.')}
+      description={cloud.user
+        ? t('Your data is synced to the cloud. A backup file is an extra copy you keep yourself (WhatsApp, Drive or email).')
+        : t('Bills are stored only on this device. Save a backup file to WhatsApp, Drive or email so you can restore it if the phone is reset or changed.')}
     >
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
         <Button variant="contained" startIcon={<BackupIcon />} onClick={exportBackup}>{t('Back up now')}</Button>
