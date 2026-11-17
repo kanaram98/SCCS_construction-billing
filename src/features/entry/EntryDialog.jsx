@@ -2,9 +2,9 @@ import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Grid from '@mui/material/Grid';
 import Typography from '@mui/material/Typography';
-import { MessageList, ResponsiveDialog, SelectField, useNotify } from '../../components/ui';
-import { formatCurrency } from '../../domain/formatters.js';
+import { MessageList, ResponsiveDialog, useNotify } from '../../components/ui';
 import EntryFields from './EntryFields.jsx';
+import WorkItemPicker from './WorkItemPicker.jsx';
 
 /**
  * Add/edit entry dialog (full screen on phones). When adding, "Add & next"
@@ -40,14 +40,7 @@ export default function EntryDialog({ open, areaName, form, onClose }) {
     >
       <Grid container spacing={2} sx={{ pt: 1 }}>
         <Grid size={12}>
-          <SelectField
-            label="Work item"
-            value={entry.rateId}
-            placeholder="Select work item"
-            options={availableRates.map((rate) => ({ value: rate.id, label: `${rate.name} · ${rate.unit}` }))}
-            onChange={(rateId) => form.update({ rateId })}
-            helperText={selectedRate ? `Rate: ${formatCurrency(selectedRate.rate)} / ${selectedRate.unit}` : undefined}
-          />
+          <WorkItemPicker rates={availableRates} value={entry.rateId} onChange={(rateId) => form.update({ rateId })} />
         </Grid>
         {selectedRate && <EntryFields rate={selectedRate} entry={entry} showErrors={form.showFieldErrors} onChange={form.update} />}
       </Grid>
