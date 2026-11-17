@@ -10,6 +10,7 @@ import { QUOTATION_COLUMNS, quotationRows, splitLines, validUntil } from '../dom
 import { makeTranslator } from '../i18n/translate.js';
 import { deliverFile } from '../services/files.js';
 import { createImagePdf } from './pdf-image-export.js';
+import { drawLetterhead } from './letterhead-pdf.js';
 
 const MARGIN = 14;
 
@@ -21,35 +22,20 @@ function textPdf(quotation, rates, firm) {
   const t = makeTranslator('en');
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const width = doc.internal.pageSize.getWidth();
-  let y = MARGIN + 4;
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(15);
-  doc.text(firm.name || 'Firm name', MARGIN, y);
-  y += 6;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  [firm.address, [firm.phone, firm.gstRegistered && firm.gstin && `GSTIN: ${firm.gstin}`].filter(Boolean).join('   ')]
-    .filter(Boolean)
-    .forEach((line) => { doc.text(String(line), MARGIN, y); y += 4.5; });
-
-  y += 3;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
-  doc.text(quotation.title || 'Rate quotation', MARGIN, y);
-  y += 5.5;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
   const until = validUntil(quotation);
-  doc.text([quotation.clientName && `To: ${quotation.clientName}`, `Date: ${todayIso()}`, until && `Valid until: ${until}`].filter(Boolean).join('   '), MARGIN, y);
-  y += 3;
-  doc.setDrawColor(80);
-  doc.line(MARGIN, y, width - MARGIN, y);
+  const y = drawLetterhead(doc, {
+    firm,
+    title: quotation.title || 'Rate quotation',
+    meta: [`Date: ${todayIso()}`, until && `Valid until: ${until}`],
+    billTo: quotation.clientName ? { label: 'To', lines: [quotation.clientName] } : null,
+    margin: MARGIN,
+    fontSize: 10
+  });
 
   autoTable(doc, {
     head: [QUOTATION_COLUMNS],
     body: quotationRows(rates, { t, money: formatCurrencyAscii }),
-    startY: y + 4,
+    startY: y,
     margin: { left: MARGIN, right: MARGIN },
     theme: 'grid',
     styles: { font: 'helvetica', fontSize: 10, cellPadding: 2 },
@@ -57,36 +43,41 @@ function textPdf(quotation, rates, firm) {
     columnStyles: { 0: { cellWidth: 12 }, 4: { halign: 'right' } }
   });
 
-  y = doc.lastAutoTable.finalY + 8;
+  let y2 = doc.lastAutoTable.finalY + 8;
   const ensureSpace = (needed) => {
-    if (y + needed > doc.internal.pageSize.getHeight() - MARGIN) {
+    if (y2 + needed > doc.internal.pageSize.getHeight() - MARGIN) {
       doc.addPage();
-      y = MARGIN + 4;
+      y2 = MARGIN + 4;
     }
   };
   const block = (heading, lines) => {
     if (!lines.length) return;
     ensureSpace(10);
     doc.setFont('helvetica', 'bold');
-    doc.text(heading, MARGIN, y);
-    y += 5;
+    doc.text(heading, MARGIN, y2);
+    y2 += 5;
     doc.setFont('helvetica', 'normal');
     lines.forEach((line) => {
       const wrapped = doc.splitTextToSize(line, width - MARGIN * 2);
       ensureSpace(wrapped.length * 4.5);
-      doc.text(wrapped, MARGIN, y);
-      y += wrapped.length * 4.5;
+      doc.text(wrapped, MARGIN, y2);
+      y2 += wrapped.length * 4.5;
     });
-    y += 3;
+    y2 += 3;
   };
   block('Terms & conditions', splitLines(quotation.terms).map((term, index) => `${index + 1}. ${term}`));
   block('Disclaimer', quotation.disclaimer?.trim() ? [quotation.disclaimer.trim()] : []);
 
   ensureSpace(25);
-  y += 12;
-  doc.line(width - MARGIN - 60, y, width - MARGIN, y);
-  doc.text('Signature', width - MARGIN - 60, y + 5);
-  doc.text('Date: ______________', MARGIN, y + 5);
+  y2 += 14;
+  if (firm.signature) {
+    const props = doc.getImageProperties(firm.signature);
+    const scale = Math.min(45 / props.width, 13 / props.height);
+    doc.addImage(firm.signature, 'PNG', width - MARGIN - 52, y2 - 1 - props.height * scale, props.width * scale, props.height * scale, 'firm-signature', 'FAST');
+  }
+  doc.line(width - MARGIN - 60, y2, width - MARGIN, y2);
+  doc.text('Signature', width - MARGIN - 60, y2 + 5);
+  doc.text('Date: ______________', MARGIN, y2 + 5);
   return doc;
 }
 

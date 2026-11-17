@@ -12,6 +12,25 @@ import { createDefaultQuotation, normalizeQuotation } from './quotation.js';
  * }} AppState
  */
 
+let defaultBranding = { name: '', logo: '', signature: '' };
+
+/** Sets the logo/signature/name that new or empty firms start with (called at app start-up). */
+export function setDefaultBranding(branding) {
+  defaultBranding = { ...defaultBranding, ...branding };
+}
+
+/** Fills empty firm fields with the default branding, once (so removing them later sticks). */
+function applyDefaultBranding(firm) {
+  if (firm.brandingApplied) return firm;
+  return {
+    ...firm,
+    name: firm.name || defaultBranding.name || '',
+    logo: firm.logo || defaultBranding.logo || '',
+    signature: firm.signature || defaultBranding.signature || '',
+    brandingApplied: Boolean(defaultBranding.logo || defaultBranding.signature || defaultBranding.name)
+  };
+}
+
 export function createDefaultFirm() {
   return {
     name: '',
@@ -39,7 +58,7 @@ export function createInitialState() {
     activeBillId: bill.id,
     rates: DEFAULT_RATES.map((rate) => ({ ...rate })),
     clients: [],
-    firm: createDefaultFirm(),
+    firm: applyDefaultBranding(createDefaultFirm()),
     templates: [],
     printSettings: createDefaultPrintSettings(),
     meta: { lastBackupAt: '', onboarded: false },
@@ -58,7 +77,7 @@ const arrayOr = (value, fallback = []) => Array.isArray(value) ? value : fallbac
 export function hydrateState(saved, { isLegacy = false } = {}) {
   if (!saved || !Array.isArray(saved.bills) || !saved.bills.length) return null;
   const defaults = createInitialState();
-  const firm = { ...defaults.firm, ...saved.firm };
+  let firm = applyDefaultBranding({ ...createDefaultFirm(), ...saved.firm });
 
   // Before print settings existed, the signature x offset was measured from a narrower footer box.
   if (!isLegacy && !saved.printSettings && saved.firm?.signatureLayout) {

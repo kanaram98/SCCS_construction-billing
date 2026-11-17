@@ -97,3 +97,18 @@ test('sample bill uses the default work items and adds up', async () => {
   // skirting 14'6"×2 = 29 rft × 30 = 870; gas hole 250 → 34,440
   assert.equal(getBillTotals(sample, DEFAULT_RATES).total, 34440);
 });
+
+test('default branding fills an empty firm once, and stays removed', async () => {
+  const { setDefaultBranding, createInitialState } = await import('../../src/domain/app-state.js');
+  setDefaultBranding({ name: 'SCCS', logo: 'data:logo', signature: 'data:sign' });
+  try {
+    const fresh = createInitialState().firm;
+    assert.deepEqual([fresh.name, fresh.logo, fresh.signature, fresh.brandingApplied], ['SCCS', 'data:logo', 'data:sign', true]);
+    const existing = hydrateState({ bills: [{ id: 'a', sections: [] }], firm: { name: 'Own Firm', logo: 'data:own' } }).firm;
+    assert.deepEqual([existing.name, existing.logo, existing.signature], ['Own Firm', 'data:own', 'data:sign']);
+    const removed = hydrateState({ bills: [{ id: 'a', sections: [] }], firm: { name: '', logo: '', brandingApplied: true } }).firm;
+    assert.equal(removed.logo, '');
+  } finally {
+    setDefaultBranding({ name: '', logo: '', signature: '' });
+  }
+});

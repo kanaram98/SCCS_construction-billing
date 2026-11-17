@@ -9,12 +9,8 @@
 
 /* Paper */
 .paper { --paper-padding-mm: 5.3mm; max-width: 794px; margin: 0 auto; padding: 20px; border: 1px solid var(--paper-border); border-radius: 8px; background: white; color: #111; font-family: Inter, "Segoe UI", system-ui, sans-serif; }
-.paper-header { margin-bottom: 12px; padding-bottom: 10px; border-bottom: 2px solid #222; font-size: var(--print-font-size, 9pt); }
+.paper-header { margin-bottom: 12px; font-size: var(--print-font-size, 9pt); }
 .paper-header-content { font-size: var(--print-font-size, 9pt); }
-.paper-header-content h2 { margin: 0; color: #111; font-size: calc(var(--print-font-size, 9pt) + 6pt); }
-.paper-header-content h3 { margin: 5px 0 3px; color: #111; font-size: calc(var(--print-font-size, 9pt) + 2pt); }
-.paper-branding { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.paper-logo { max-width: 110px; max-height: 66px; object-fit: contain; }
 .paper table { width: 100%; border-collapse: collapse; font-size: var(--print-font-size, 9pt); }
 .paper th, .paper td { padding: 6px; border: 1px solid #888; text-align: left; vertical-align: top; }
 .paper td { white-space: pre-line; }
@@ -26,6 +22,22 @@
 .paper .words-row td { font-style: italic; }
 .paper .print-repeat-header { display: none; }
 .paper-footer { margin-top: 16px; font-size: 11px; }
+
+/* Letterhead (bills and quotations) */
+.letterhead { font-size: var(--print-font-size, 9pt); color: #222; }
+.lh-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.lh-logo { display: block; max-width: 48%; max-height: 22mm; object-fit: contain; }
+.lh-name-only { font-size: calc(var(--print-font-size, 9pt) + 8pt); font-weight: 800; color: #3a3a3a; }
+.lh-firm { text-align: right; line-height: 1.45; color: #444; }
+.lh-firm-name { font-weight: 800; font-size: calc(var(--print-font-size, 9pt) + 3pt); color: #2b2b2b; }
+.lh-stripe { height: 5px; margin: 8px 0 8px; border-radius: 3px; background: linear-gradient(90deg, #f7a547 0%, #ec6b35 55%, #9fc140 80%, #5a8f3c 100%); print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+.lh-title { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.lh-title h3 { margin: 0; color: #2b2b2b; font-size: calc(var(--print-font-size, 9pt) + 5pt); font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.lh-meta { text-align: right; line-height: 1.45; }
+.lh-meta > div:first-child { font-weight: 700; }
+.lh-billto { margin-top: 8px; padding: 6px 10px; border-left: 3px solid #ec6b35; background: #fbf6f2; line-height: 1.45; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+.lh-billto-label { font-size: calc(var(--print-font-size, 9pt) - 1pt); font-weight: 700; color: #ec6b35; text-transform: uppercase; letter-spacing: .05em; }
+.lh-billto-name { font-weight: 700; }
 
 /* Rate quotation */
 .quotation-section { margin-top: 14px; font-size: var(--print-font-size, 10pt); }

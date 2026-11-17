@@ -4,6 +4,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { buildDocument } from './document-model.js';
+import { drawLetterhead } from './letterhead-pdf.js';
 import { hasGst } from '../domain/calculations.js';
 import { billLabel, documentTitle } from '../domain/bill-kinds.js';
 import { makeTranslator } from '../i18n/translate.js';
@@ -42,7 +43,7 @@ function drawContainedImage(doc, image, x, y, maxWidth, maxHeight) {
   const width = properties.width * scale;
   const height = properties.height * scale;
   const format = image.startsWith('data:image/png') ? 'PNG' : 'JPEG';
-  doc.addImage(image, format, x + (maxWidth - width) / 2, y + (maxHeight - height) / 2, width, height);
+  doc.addImage(image, format, x + (maxWidth - width) / 2, y + (maxHeight - height) / 2, width, height, `img-${image.length}-${image.slice(-24)}`, 'FAST');
 }
 
 /** Draws wrapped text and returns the y position below it. */
@@ -52,42 +53,25 @@ function drawWrapped(doc, value, x, y, maxWidth, lineHeight) {
   return y + lines.length * lineHeight;
 }
 
-/** Firm and bill header. Returns the y position where content can start. */
+/** Letterhead for a bill document. Returns the y position where content can start. */
 function drawHeader(doc, bill, firm, title, settings) {
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const { margin, fontSize } = settings;
-  const maxWidth = pageWidth - margin * 2;
-  const logoWidth = firm.logo ? Math.min(34, maxWidth * 0.25) : 0;
-  const textWidth = maxWidth - (firm.logo ? logoWidth + 4 : 0);
-  let y = margin + 4;
-  if (firm.logo) drawContainedImage(doc, firm.logo, pageWidth - margin - logoWidth, margin, logoWidth, 18);
-
-  doc.setFont(FONT, 'bold');
-  doc.setFontSize(fontSize + 5);
-  doc.text(firm.name || 'Firm name', margin, y, { maxWidth: textWidth });
-  y += 6;
-  doc.setFont(FONT, 'normal');
-  doc.setFontSize(fontSize - 1);
-  [firm.address, [firm.phone, firm.gstRegistered && firm.gstin && `GSTIN: ${firm.gstin}`].filter(Boolean).join('   ')]
-    .filter(Boolean)
-    .forEach((line) => { y = drawWrapped(doc, line, margin, y, textWidth, 3.8); });
-
-  y = Math.max(y + 1, margin + 20);
-  doc.setFont(FONT, 'bold');
-  doc.setFontSize(fontSize);
-  y = drawWrapped(doc, `${title}   ${billLabel(bill, english)}   Date: ${bill.date}`, margin, y, maxWidth, 4.2);
-  doc.setFont(FONT, 'normal');
-  const project = [
-    `Project: ${bill.projectName}`,
-    `Client: ${bill.client}`,
-    bill.clientPhone && `Phone: ${bill.clientPhone}`,
-    bill.clientAddress,
-    hasGst(bill) && bill.clientGstin && `Client GSTIN: ${bill.clientGstin}`
-  ].filter(Boolean).join('   ');
-  y = drawWrapped(doc, project, margin, y, maxWidth, 4.2) + 2;
-  doc.setDrawColor(80);
-  doc.line(margin, y, pageWidth - margin, y);
-  return y + 5;
+  return drawLetterhead(doc, {
+    firm,
+    title,
+    meta: [billLabel(bill, english), `Date: ${bill.date}`],
+    billTo: {
+      label: 'Bill to',
+      lines: [
+        bill.client,
+        bill.clientAddress,
+        bill.clientPhone && `Phone: ${bill.clientPhone}`,
+        hasGst(bill) && bill.clientGstin && `Client GSTIN: ${bill.clientGstin}`,
+        bill.projectName && `Project: ${bill.projectName}`
+      ]
+    },
+    margin: settings.margin,
+    fontSize: settings.fontSize
+  });
 }
 
 const QR_SIZE = 26;

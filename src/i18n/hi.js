@@ -549,6 +549,8 @@ export default {
   'To: {client}': 'प्रति: {client}',
   'Valid until: {date}': '{date} तक मान्य',
   'No.': 'क्र.',
+  'Bill to': 'बिल प्राप्तकर्ता',
+  'To': 'प्रति',
 
   // ── Printed bill (document text) ─────────────────────────────────
   'Item': 'काम',
