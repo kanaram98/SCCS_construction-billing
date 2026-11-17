@@ -12,3 +12,6 @@ ui-debug.log
 # Playwright
 test-results/
 playwright-report/
+
+# Real Firebase settings (public identifiers, but kept per machine)
+.env.production
