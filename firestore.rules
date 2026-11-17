@@ -2,15 +2,23 @@ rules_version = '2';
 
 // Security rules = the server-side validators for the cloud database.
 //
-// - Only accounts listed in owners/{uid} can use the database (the owners
-//   document is created once by hand; the app can't write it).
-// - Each owner can only reach their own data under users/{uid}.
-// - Every write is validated: allowed fields, types and sizes, the document
-//   id matches its path, `syncedAt` is the server time, and record versions
-//   only go up (a stale write from another device is rejected, so nothing
-//   is silently overwritten).
-// - Records are deleted for real only from the recycle bin (deletedAt set);
-//   history entries can't be changed.
+// People and roles
+// - owners/{email}: who may create a workspace. Added once by hand in the
+//   Firebase console; the app can never write it.
+// - workspaces/{wid}/members/{uid}: who is in the workspace and their role:
+//     admin       everything, including members, permanent deletes,
+//                 unlocking closed months and firm/bank details
+//     contractor  all daily work (bills, rates, quotation, attendance,
+//                 payments, undo, restore, closing a month)
+// - workspaces/{wid}/invites/{email}: an admin invites a Google account; that
+//   person becomes a member the first time they sign in.
+//
+// Every write is validated: allowed fields, types and sizes, the document id
+// matches its path, `syncedAt` is the server time, the writer is recorded
+// (`updatedBy` / `by`), and record versions only go up (a stale write from
+// another device is rejected, so nothing is silently overwritten). Records
+// are deleted for real only from the recycle bin, by an admin; history can't
+// be edited.
 //
 // The same limits are in src/backend/schema.js; tests/rules checks both.
 service cloud.firestore {
@@ -20,9 +28,23 @@ service cloud.firestore {
     function signedIn() {
       return request.auth != null;
     }
-    function isOwner(uid) {
-      return signedIn() && request.auth.uid == uid
-        && exists(/databases/$(database)/documents/owners/$(uid));
+    function verifiedEmail() {
+      return signedIn() && request.auth.token.email_verified == true;
+    }
+    function memberPath(wid) {
+      return /databases/$(database)/documents/workspaces/$(wid)/members/$(request.auth.uid);
+    }
+    function isMember(wid) {
+      return signedIn() && exists(memberPath(wid));
+    }
+    function roleIn(wid, roles) {
+      return isMember(wid) && get(memberPath(wid)).data.role in roles;
+    }
+    function isAdmin(wid) {
+      return roleIn(wid, ['admin']);
+    }
+    function canWork(wid) {
+      return roleIn(wid, ['admin', 'contractor']);
     }
 
     // ── Field checks ────────────────────────────────────────────────────
@@ -47,6 +69,9 @@ service cloud.firestore {
     function paymentMode(value) {
       return value in ['upi', 'cash', 'bank', 'cheque'];
     }
+    function role(value) {
+      return value in ['admin', 'contractor'];
+    }
 
     function data() {
       return request.resource.data;
@@ -57,21 +82,33 @@ service cloud.firestore {
     function serverTime() {
       return data().syncedAt == request.time;
     }
+    function byMe(key) {
+      return data()[key] == request.auth.uid;
+    }
 
-    // Records: sync metadata, id matches the path, versions only go up.
+    // Records: sync metadata, id matches the path, writer recorded, versions only go up.
     function recordKeys() {
-      return ['id', 'createdAt', 'updatedAt', 'deletedAt', 'version', 'syncedAt'];
+      return ['id', 'createdAt', 'updatedAt', 'deletedAt', 'version', 'updatedBy', 'syncedAt'];
     }
     function validMeta(id) {
       return data().id == id
         && str(data().createdAt, 40) && str(data().updatedAt, 40)
         && (data().deletedAt == null || str(data().deletedAt, 40))
         && data().version is int && data().version >= 1
+        && str(data().updatedBy, 100)
         && (!('order' in data()) || (data().order is int && data().order >= 0))
         && serverTime();
     }
     function versionGoesUp() {
       return resource == null || data().version > resource.data.version;
+    }
+    // The author of a change is this account, or (for an older change being
+    // uploaded for the first time) another member of the workspace.
+    function isAuthor(wid, key) {
+      return byMe(key) || exists(/databases/$(database)/documents/workspaces/$(wid)/members/$(data()[key]));
+    }
+    function writerRecorded(wid) {
+      return byMe('updatedBy') || (resource == null && isAuthor(wid, 'updatedBy'));
     }
     function inRecycleBin() {
       return resource.data.deletedAt != null;
@@ -147,9 +184,9 @@ service cloud.firestore {
         && serverTime();
     }
 
-    function validHistoryEntry(id, entities) {
+    function validHistoryEntry(wid, id, entities) {
       let d = data();
-      return d.id == id && str(d.at, 40)
+      return d.id == id && str(d.at, 40) && str(d.by, 100) && isAuthor(wid, 'by')
         && d.entity in entities
         && d.action in ['create', 'update', 'delete', 'restore', 'purge', 'close', 'unlock']
         && optStr(d, 'revertOf', 100)
@@ -157,110 +194,150 @@ service cloud.firestore {
         && serverTime();
     }
 
-    function validSetting(name) {
+    function validFirm() {
       let d = data();
-      return d.id == name && serverTime() && (
-        (name == 'firm'
-          && fields(['id', 'version', 'syncedAt', 'name', 'address', 'phone', 'gstin', 'gstRegistered', 'bankName',
-              'accountName', 'accountNumber', 'ifsc', 'upiId', 'logo', 'signature', 'signatureLayout'],
-              ['createdAt', 'updatedAt', 'brandingApplied'])
-          && d.version is int && d.version >= 1 && versionGoesUp()
-          && str(d.name, 200) && str(d.address, 5000) && str(d.phone, 30) && str(d.gstin, 20)
-          && d.gstRegistered is bool && str(d.bankName, 200) && str(d.accountName, 200)
-          && str(d.accountNumber, 40) && str(d.ifsc, 20) && str(d.upiId, 100)
-          && image(d.logo) && image(d.signature) && d.signatureLayout is map)
-        || (name == 'quotation'
-          && fields(['id', 'version', 'syncedAt', 'title', 'clientName', 'validDays', 'terms', 'disclaimer'], ['createdAt', 'updatedAt'])
-          && d.version is int && d.version >= 1 && versionGoesUp()
-          && str(d.title, 200) && str(d.clientName, 200)
-          && d.validDays is int && d.validDays >= 0 && d.validDays <= 3650
-          && str(d.terms, 5000) && str(d.disclaimer, 5000))
-        || (name == 'printSettings'
-          && str(d.paper, 20) && str(d.orientation, 20) && d.keys().size() <= 40)
-        || (name == 'preferences'
-          && fields(['id', 'syncedAt', 'language', 'textSize'], [])
-          && d.language in ['en', 'hi'] && str(d.textSize, 20))
-        || (name == 'app'
-          && fields(['id', 'syncedAt', 'schemaVersion', 'activeBillId', 'meta'], [])
-          && d.schemaVersion is int && str(d.activeBillId, 100)
-          && d.meta is map && d.meta.keys().hasOnly(['lastBackupAt', 'onboarded']))
-      );
+      return fields(['id', 'version', 'updatedBy', 'syncedAt', 'name', 'address', 'phone', 'gstin', 'gstRegistered',
+          'bankName', 'accountName', 'accountNumber', 'ifsc', 'upiId', 'logo', 'signature', 'signatureLayout'],
+          ['createdAt', 'updatedAt', 'brandingApplied'])
+        && d.version is int && d.version >= 1 && versionGoesUp() && byMe('updatedBy')
+        && str(d.name, 200) && str(d.address, 5000) && str(d.phone, 30) && str(d.gstin, 20)
+        && d.gstRegistered is bool && str(d.bankName, 200) && str(d.accountName, 200)
+        && str(d.accountNumber, 40) && str(d.ifsc, 20) && str(d.upiId, 100)
+        && image(d.logo) && image(d.signature) && d.signatureLayout is map;
+    }
+
+    function validQuotation() {
+      let d = data();
+      return fields(['id', 'version', 'updatedBy', 'syncedAt', 'title', 'clientName', 'validDays', 'terms', 'disclaimer'], ['createdAt', 'updatedAt'])
+        && d.version is int && d.version >= 1 && versionGoesUp() && byMe('updatedBy')
+        && str(d.title, 200) && str(d.clientName, 200)
+        && d.validDays is int && d.validDays >= 0 && d.validDays <= 3650
+        && str(d.terms, 5000) && str(d.disclaimer, 5000);
+    }
+
+    function validPrintSettings() {
+      return str(data().paper, 20) && str(data().orientation, 20) && data().keys().size() <= 40;
     }
 
     // ── Paths ───────────────────────────────────────────────────────────
 
-    // Allow-list: readable by that account only, never written by the app.
-    match /owners/{uid} {
-      allow read: if signedIn() && request.auth.uid == uid;
+    // Who may create a workspace. Readable by that account only, never written by the app.
+    match /owners/{email} {
+      allow read: if verifiedEmail() && request.auth.token.email == email;
       allow write: if false;
     }
 
-    match /users/{uid} {
-      allow read: if isOwner(uid);
-      allow create, update: if isOwner(uid)
-        && fields(['schemaVersion', 'createdAt', 'syncedAt'], [])
-        && data().schemaVersion is int && str(data().createdAt, 40) && serverTime();
+    match /workspaces/{wid} {
+      allow read: if isMember(wid);
+      // Created once by an account listed in owners/{email}.
+      allow create: if verifiedEmail()
+        && exists(/databases/$(database)/documents/owners/$(request.auth.token.email))
+        && fields(['name', 'schemaVersion', 'createdAt', 'createdBy', 'syncedAt'], [])
+        && str(data().name, 200) && data().schemaVersion is int && str(data().createdAt, 40)
+        && byMe('createdBy') && serverTime();
+      allow update: if isAdmin(wid)
+        && fields(['name', 'schemaVersion', 'createdAt', 'createdBy', 'syncedAt'], [])
+        && data().createdBy == resource.data.createdBy && str(data().name, 200) && serverTime();
       allow delete: if false;
 
+      function validMember(uid) {
+        return fields(['uid', 'name', 'email', 'role', 'addedAt', 'syncedAt'], [])
+          && data().uid == uid && str(data().name, 200) && str(data().email, 200)
+          && role(data().role) && str(data().addedAt, 40) && serverTime();
+      }
+      function invitePath(email) {
+        return /databases/$(database)/documents/workspaces/$(wid)/invites/$(email);
+      }
+
+      match /members/{uid} {
+        allow read: if isMember(wid);
+        allow create: if request.auth.uid == uid && validMember(uid) && (
+          // The workspace's creator becomes its first admin…
+          (data().role == 'admin' && get(/databases/$(database)/documents/workspaces/$(wid)).data.createdBy == uid)
+          // …everyone else joins through an invite for their own verified email, with the invited role.
+          || (verifiedEmail() && data().email == request.auth.token.email
+              && exists(invitePath(request.auth.token.email))
+              && get(invitePath(request.auth.token.email)).data.role == data().role)
+        );
+        // Admins manage other people; nobody can change or remove their own membership (no lock-out).
+        allow update: if isAdmin(wid) && uid != request.auth.uid && validMember(uid);
+        allow delete: if isAdmin(wid) && uid != request.auth.uid;
+      }
+
+      match /invites/{email} {
+        allow read: if isAdmin(wid) || (verifiedEmail() && request.auth.token.email == email);
+        allow create, update: if isAdmin(wid)
+          && fields(['email', 'role', 'invitedAt', 'invitedBy', 'syncedAt'], [])
+          && data().email == email && role(data().role) && str(data().invitedAt, 40)
+          && byMe('invitedBy') && serverTime();
+        // Removed by an admin, or by the invited person once they have joined.
+        allow delete: if isAdmin(wid) || (verifiedEmail() && request.auth.token.email == email && isMember(wid));
+      }
+
       match /bills/{id} {
-        allow read: if isOwner(uid);
-        allow create, update: if isOwner(uid) && validBill(id) && versionGoesUp();
-        allow delete: if isOwner(uid) && inRecycleBin();
+        allow read: if isMember(wid);
+        allow create, update: if canWork(wid) && validBill(id) && versionGoesUp() && writerRecorded(wid);
+        allow delete: if isAdmin(wid) && inRecycleBin();
       }
       match /rates/{id} {
-        allow read: if isOwner(uid);
-        allow create, update: if isOwner(uid) && validRate(id) && versionGoesUp();
-        allow delete: if isOwner(uid) && inRecycleBin();
+        allow read: if isMember(wid);
+        allow create, update: if canWork(wid) && validRate(id) && versionGoesUp() && writerRecorded(wid);
+        allow delete: if isAdmin(wid) && inRecycleBin();
       }
       match /clients/{id} {
-        allow read: if isOwner(uid);
-        allow create, update: if isOwner(uid) && validClient(id) && versionGoesUp();
-        allow delete: if isOwner(uid) && inRecycleBin();
+        allow read: if isMember(wid);
+        allow create, update: if canWork(wid) && validClient(id) && versionGoesUp() && writerRecorded(wid);
+        allow delete: if isAdmin(wid) && inRecycleBin();
       }
       match /templates/{id} {
-        allow read: if isOwner(uid);
-        allow create, update: if isOwner(uid) && validTemplate(id) && versionGoesUp();
-        allow delete: if isOwner(uid) && inRecycleBin();
+        allow read: if isMember(wid);
+        allow create, update: if canWork(wid) && validTemplate(id) && versionGoesUp() && writerRecorded(wid);
+        allow delete: if isAdmin(wid) && inRecycleBin();
       }
       match /workers/{id} {
-        allow read: if isOwner(uid);
-        allow create, update: if isOwner(uid) && validWorker(id) && versionGoesUp();
-        allow delete: if isOwner(uid) && inRecycleBin();
+        allow read: if isMember(wid);
+        allow create, update: if canWork(wid) && validWorker(id) && versionGoesUp() && writerRecorded(wid);
+        allow delete: if isAdmin(wid) && inRecycleBin();
       }
       match /labourPayments/{id} {
-        allow read: if isOwner(uid);
-        allow create, update: if isOwner(uid) && validLabourPayment(id) && versionGoesUp();
-        allow delete: if isOwner(uid) && inRecycleBin();
+        allow read: if isMember(wid);
+        allow create, update: if canWork(wid) && validLabourPayment(id) && versionGoesUp() && writerRecorded(wid);
+        allow delete: if isAdmin(wid) && inRecycleBin();
       }
       // Marks are changed field by field (marks.DD.workerId), so two phones don't overwrite each other.
       match /attendance/{month} {
-        allow read: if isOwner(uid);
-        allow create, update: if isOwner(uid) && validAttendanceMonth(month);
+        allow read: if isMember(wid);
+        allow create, update: if canWork(wid) && validAttendanceMonth(month);
         allow delete: if false;
       }
       match /closedMonths/{month} {
-        allow read: if isOwner(uid);
-        allow create: if isOwner(uid) && isMonth(month)
-          && fields(['id', 'closedAt', 'syncedAt'], []) && data().id == month && str(data().closedAt, 40) && serverTime();
+        allow read: if isMember(wid);
+        allow create: if canWork(wid) && isMonth(month)
+          && fields(['id', 'closedAt', 'closedBy', 'syncedAt'], []) && data().id == month
+          && str(data().closedAt, 40) && str(data().closedBy, 100) && serverTime();
         allow update: if false;
-        allow delete: if isOwner(uid); // unlocking a month
+        allow delete: if isAdmin(wid); // unlocking a month is admin-only
       }
-      // History is append-only: entries can be added and trimmed, never edited.
+      // History is append-only: entries can be added, never edited; only an admin may trim it.
       match /history/{id} {
-        allow read: if isOwner(uid);
-        allow create: if isOwner(uid) && validHistoryEntry(id, ['bills', 'rates', 'clients', 'templates', 'firm', 'quotation']);
+        allow read: if isMember(wid);
+        allow create: if canWork(wid) && validHistoryEntry(wid, id, ['bills', 'rates', 'clients', 'templates', 'firm', 'quotation']);
         allow update: if false;
-        allow delete: if isOwner(uid);
+        allow delete: if isAdmin(wid);
       }
       match /labourLog/{id} {
-        allow read: if isOwner(uid);
-        allow create: if isOwner(uid) && validHistoryEntry(id, ['attendance', 'payment', 'worker', 'month']);
+        allow read: if isMember(wid);
+        allow create: if canWork(wid) && validHistoryEntry(wid, id, ['attendance', 'payment', 'worker', 'month']);
         allow update: if false;
-        allow delete: if isOwner(uid);
+        allow delete: if isAdmin(wid);
       }
       match /settings/{name} {
-        allow read: if isOwner(uid);
-        allow create, update: if isOwner(uid) && name in ['firm', 'quotation', 'printSettings', 'preferences', 'app'] && validSetting(name);
+        allow read: if isMember(wid);
+        allow create, update: if serverTime() && data().id == name && (
+          (name == 'firm' && isAdmin(wid) && validFirm())
+          || (name == 'quotation' && canWork(wid) && validQuotation())
+          || (name == 'printSettings' && canWork(wid) && validPrintSettings())
+        );
         allow delete: if false;
       }
     }

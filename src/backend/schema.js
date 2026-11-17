@@ -1,33 +1,41 @@
 /**
  * Cloud database schema (Firestore) and validators for every document.
  *
- * Everything belongs to one signed-in owner and lives under users/{uid}:
+ * One shared workspace for the business; people join it as members:
  *
- *   owners/{uid}                       allow-list: only these accounts may use the database
- *   users/{uid}                        profile        { schemaVersion, createdAt }
- *   users/{uid}/bills/{id}             bill or estimate (measurements and payments inside)
- *   users/{uid}/rates/{id}             work-item rate
- *   users/{uid}/clients/{id}           saved client
- *   users/{uid}/templates/{id}         saved section / area template
- *   users/{uid}/settings/{name}        firm | quotation | printSettings | preferences | app
- *   users/{uid}/workers/{id}           labour worker
- *   users/{uid}/labourPayments/{id}    advance / wage payment
- *   users/{uid}/attendance/{YYYY-MM}   one document per month: marks by day and worker
- *   users/{uid}/closedMonths/{YYYY-MM} locked labour month
- *   users/{uid}/history/{id}           history of bills, rates, clients, templates, firm, quotation
- *   users/{uid}/labourLog/{id}         history of labour changes
+ *   owners/{email}                          may create a workspace (added once by hand)
+ *   workspaces/{wid}                        { name, schemaVersion, createdAt, createdBy }
+ *   workspaces/{wid}/members/{uid}          { uid, name, email, role: admin | contractor, addedAt }
+ *   workspaces/{wid}/invites/{email}        { email, role, invitedAt, invitedBy }  (accepted on first sign-in)
+ *   workspaces/{wid}/bills/{id}             bill or estimate (measurements and payments inside)
+ *   workspaces/{wid}/rates/{id}             work-item rate
+ *   workspaces/{wid}/clients/{id}           saved client
+ *   workspaces/{wid}/templates/{id}         saved section / area template
+ *   workspaces/{wid}/settings/{name}        firm | quotation | printSettings
+ *   workspaces/{wid}/workers/{id}           labour worker
+ *   workspaces/{wid}/labourPayments/{id}    advance / wage payment
+ *   workspaces/{wid}/attendance/{YYYY-MM}   one document per month: marks by day and worker
+ *   workspaces/{wid}/closedMonths/{YYYY-MM} locked labour month
+ *   workspaces/{wid}/history/{id}           history of bills, rates, clients, templates, firm, quotation
+ *   workspaces/{wid}/labourLog/{id}         history of labour changes
  *
- * Records carry sync metadata (createdAt, updatedAt, deletedAt, version);
- * every write also sets `syncedAt` to the server time (added by the sync
- * layer, enforced by the security rules). These validators run in the app
- * before anything is sent; firestore.rules enforces the same limits on the
- * server, and tests keep the two in step.
+ * Language, text size, the open bill and onboarding stay on each device.
+ *
+ * Records carry sync metadata (createdAt, updatedAt, deletedAt, version) and
+ * `updatedBy` (who changed it); history entries carry `by`. Every write also
+ * sets `syncedAt` to the server time (added by the sync layer, enforced by the
+ * rules). These validators run in the app before anything is sent;
+ * firestore.rules enforces the same limits and the roles on the server, and
+ * tests keep the two in step.
  */
 import * as z from 'zod';
+import { ROLES } from '../domain/permissions.js';
 
 export const SCHEMA_VERSION = 1;
 
 export const COLLECTIONS = Object.freeze({
+  members: 'members',
+  invites: 'invites',
   bills: 'bills',
   rates: 'rates',
   clients: 'clients',
@@ -41,7 +49,7 @@ export const COLLECTIONS = Object.freeze({
   labourLog: 'labourLog'
 });
 
-export const SETTINGS_DOCS = Object.freeze(['firm', 'quotation', 'printSettings', 'preferences', 'app']);
+export const SETTINGS_DOCS = Object.freeze(['firm', 'quotation', 'printSettings']);
 
 /** Size limits, shared with firestore.rules. */
 export const LIMITS = Object.freeze({
@@ -55,8 +63,8 @@ export const LIMITS = Object.freeze({
   payments: 500
 });
 
-export const userPath = (uid) => `users/${uid}`;
-export const docPath = (uid, collection, id) => `users/${uid}/${collection}/${id}`;
+export const workspacePath = (wid) => `workspaces/${wid}`;
+export const docPath = (wid, collection, id) => `workspaces/${wid}/${collection}/${id}`;
 
 // ── Building blocks ───────────────────────────────────────────────────
 
@@ -66,6 +74,8 @@ const long = z.string().max(LIMITS.longText);
 const isoTime = z.string().max(40);
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const month = z.string().regex(/^\d{4}-\d{2}$/);
+const email = z.email().max(200);
+const role = z.enum(Object.keys(ROLES));
 /** Amounts typed into forms are kept as text ('' or '1500'); calculated ones are numbers. */
 const numberish = z.union([z.number().finite(), z.string().max(30)]);
 const paymentMode = z.enum(['upi', 'cash', 'bank', 'cheque']);
@@ -77,9 +87,24 @@ const meta = {
   updatedAt: isoTime,
   deletedAt: isoTime.nullable(),
   version: z.int().min(1),
+  /** Account that made the latest change. */
+  updatedBy: id,
   /** Position in the app's list, so the order survives a round trip. */
   order: z.int().min(0).optional()
 };
+
+// ── Workspace and people ──────────────────────────────────────────────
+
+export const workspaceSchema = z.strictObject({
+  name: short,
+  schemaVersion: z.int().min(1),
+  createdAt: isoTime,
+  createdBy: id
+});
+
+export const memberSchema = z.strictObject({ uid: id, name: short, email, role, addedAt: isoTime });
+
+export const inviteSchema = z.strictObject({ email, role, invitedAt: isoTime, invitedBy: id });
 
 // ── Bills ─────────────────────────────────────────────────────────────
 
@@ -163,6 +188,7 @@ export const firmSchema = z.strictObject({
   createdAt: isoTime.optional(),
   updatedAt: isoTime.optional(),
   version: z.int().min(1),
+  updatedBy: id,
   name: short,
   address: long,
   phone: z.string().max(30),
@@ -184,6 +210,7 @@ export const quotationSchema = z.strictObject({
   createdAt: isoTime.optional(),
   updatedAt: isoTime.optional(),
   version: z.int().min(1),
+  updatedBy: id,
   title: short,
   clientName: short,
   validDays: z.int().min(0).max(3650),
@@ -194,26 +221,10 @@ export const quotationSchema = z.strictObject({
 /** Print layout choices; checked loosely (normalised again when loaded). */
 export const printSettingsSchema = z.looseObject({ id: z.literal('printSettings'), paper: z.string().max(20), orientation: z.string().max(20) });
 
-export const preferencesSchema = z.strictObject({
-  id: z.literal('preferences'),
-  language: z.enum(['en', 'hi']),
-  textSize: z.string().max(20)
-});
-
-/** App-level values: which bill is open, onboarding and backup reminders. */
-export const appSettingsSchema = z.strictObject({
-  id: z.literal('app'),
-  schemaVersion: z.int().min(1),
-  activeBillId: z.string().max(LIMITS.id),
-  meta: z.strictObject({ lastBackupAt: z.string().max(40), onboarded: z.boolean() })
-});
-
 export const SETTINGS_SCHEMAS = Object.freeze({
   firm: firmSchema,
   quotation: quotationSchema,
-  printSettings: printSettingsSchema,
-  preferences: preferencesSchema,
-  app: appSettingsSchema
+  printSettings: printSettingsSchema
 });
 
 // ── Labour ────────────────────────────────────────────────────────────
@@ -244,11 +255,18 @@ export const attendanceMonthSchema = z.strictObject({
   marks: z.record(z.string().regex(/^\d{2}$/), z.record(id, mark))
 });
 
-export const closedMonthSchema = z.strictObject({ id: month, closedAt: isoTime });
+export const closedMonthSchema = z.strictObject({ id: month, closedAt: isoTime, closedBy: id });
 
 // ── History ───────────────────────────────────────────────────────────
 
-const historyBase = { id, at: isoTime, action: z.enum(['create', 'update', 'delete', 'restore', 'purge', 'close', 'unlock']), revertOf: id.optional() };
+const historyBase = {
+  id,
+  at: isoTime,
+  /** Account that made the change. */
+  by: id,
+  action: z.enum(['create', 'update', 'delete', 'restore', 'purge', 'close', 'unlock']),
+  revertOf: id.optional()
+};
 
 export const historyEntrySchema = z.strictObject({
   ...historyBase,
@@ -266,6 +284,8 @@ export const labourLogEntrySchema = z.looseObject({
 
 /** Validator for each collection (settings are looked up by document name). */
 export const DOCUMENT_SCHEMAS = Object.freeze({
+  members: memberSchema,
+  invites: inviteSchema,
   bills: billSchema,
   rates: rateSchema,
   clients: clientSchema,
@@ -285,5 +305,5 @@ export function validateDocument(collection, data) {
   const result = schema.safeParse(data);
   if (result.success) return '';
   const issue = result.error.issues[0];
-  return `${collection}/${data?.id}: ${issue.path.join('.') || '(document)'} ${issue.message}`;
+  return `${collection}/${data?.id ?? data?.uid ?? data?.email}: ${issue.path.join('.') || '(document)'} ${issue.message}`;
 }

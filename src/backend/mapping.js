@@ -1,15 +1,20 @@
 /**
- * Converts between the app's raw state and cloud documents.
+ * Converts between the app's raw state and workspace documents.
  *
- *   toDocuments(raw)   → [{ collection, id, data }]   one entry per Firestore document
- *   fromDocuments(docs) → raw state                   (normalised with hydrateState)
+ *   toDocuments(raw, { by })            → [{ collection, id, data }]   one entry per Firestore document
+ *   fromDocuments(docs, { local })      → raw state                   (normalised with hydrateState)
+ *
+ * `by` is the signed-in account sending the data: it fills `updatedBy` /
+ * `by` / `closedBy` where the device didn't record who made a change.
+ * Device-only values (language, text size, open bill, onboarding) are never
+ * sent; `fromDocuments` takes them from `local`.
  *
  * Only fields the schema knows are sent; anything else (left over from old
  * versions) is dropped. Lists keep their order through an `order` field.
  * `syncedAt` is not part of `data`: the sync layer adds the server time.
  */
 import { hydrateState } from '../domain/app-state.js';
-import { COLLECTIONS, DOCUMENT_SCHEMAS, SCHEMA_VERSION, SETTINGS_SCHEMAS } from './schema.js';
+import { COLLECTIONS, DOCUMENT_SCHEMAS, SETTINGS_SCHEMAS } from './schema.js';
 
 /** Drops undefined values (Firestore rejects them) and anything not plain JSON. */
 const plain = (value) => JSON.parse(JSON.stringify(value));
@@ -22,18 +27,19 @@ function pickKnown(schema, data) {
   return Object.fromEntries(Object.entries(data).filter(([key]) => known.includes(key)));
 }
 
-const record = (collection, data, extra = {}) => {
-  const value = plain({ ...data, ...extra });
-  return { collection, id: value.id, data: pickKnown(DOCUMENT_SCHEMAS[collection], value) };
-};
-
-const withRecordMeta = (item) => ({
+const withRecordMeta = (item, by) => ({
   ...item,
   createdAt: item.createdAt || '',
   updatedAt: item.updatedAt || item.createdAt || '',
   deletedAt: item.deletedAt || null,
-  version: Number(item.version) || 1
+  version: Number(item.version) || 1,
+  updatedBy: item.updatedBy || by
 });
+
+function record(collection, data) {
+  const value = plain(data);
+  return { collection, id: value.id, data: pickKnown(DOCUMENT_SCHEMAS[collection], value) };
+}
 
 const setting = (name, data) => ({ collection: COLLECTIONS.settings, id: name, data: pickKnown(SETTINGS_SCHEMAS[name], plain({ ...data, id: name })) });
 
@@ -48,27 +54,26 @@ function attendanceDocuments(attendance) {
   return [...months].map(([month, marks]) => ({ collection: COLLECTIONS.attendance, id: month, data: plain({ id: month, marks }) }));
 }
 
-/** Every document for a raw state. */
-export function toDocuments(raw) {
+/** Every workspace document for a raw state, sent by account `by`. */
+export function toDocuments(raw, { by }) {
+  if (!by) throw new Error('toDocuments needs the signed-in account (by).');
   const docs = [];
   for (const collection of ['bills', 'rates', 'clients', 'templates']) {
-    (raw[collection] || []).forEach((item, order) => docs.push(record(collection, withRecordMeta(item), { order })));
+    (raw[collection] || []).forEach((item, order) => docs.push(record(collection, { ...withRecordMeta(item, by), order })));
   }
   const labour = raw.labour || {};
-  (labour.workers || []).forEach((worker, order) => docs.push(record(COLLECTIONS.workers, withRecordMeta(worker), { order })));
-  (labour.payments || []).forEach((payment, order) => docs.push(record(COLLECTIONS.labourPayments, withRecordMeta(payment), { order })));
+  (labour.workers || []).forEach((worker, order) => docs.push(record(COLLECTIONS.workers, { ...withRecordMeta(worker, by), order })));
+  (labour.payments || []).forEach((payment, order) => docs.push(record(COLLECTIONS.labourPayments, { ...withRecordMeta(payment, by), order })));
   docs.push(...attendanceDocuments(labour.attendance));
   for (const [month, value] of Object.entries(labour.closedMonths || {})) {
-    docs.push({ collection: COLLECTIONS.closedMonths, id: month, data: { id: month, closedAt: value.closedAt || '' } });
+    docs.push(record(COLLECTIONS.closedMonths, { id: month, closedAt: value.closedAt || '', closedBy: value.closedBy || by }));
   }
-  (raw.log || []).forEach((entry) => docs.push(record(COLLECTIONS.history, entry)));
-  (labour.log || []).forEach((entry) => docs.push(record(COLLECTIONS.labourLog, entry)));
+  (raw.log || []).forEach((entry) => docs.push(record(COLLECTIONS.history, { ...entry, by: entry.by || by })));
+  (labour.log || []).forEach((entry) => docs.push(record(COLLECTIONS.labourLog, { ...entry, by: entry.by || by })));
 
-  docs.push(setting('firm', { ...raw.firm, version: Number(raw.firm?.version) || 1 }));
-  docs.push(setting('quotation', { ...raw.quotation, version: Number(raw.quotation?.version) || 1 }));
+  docs.push(setting('firm', { ...raw.firm, version: Number(raw.firm?.version) || 1, updatedBy: raw.firm?.updatedBy || by }));
+  docs.push(setting('quotation', { ...raw.quotation, version: Number(raw.quotation?.version) || 1, updatedBy: raw.quotation?.updatedBy || by }));
   docs.push(setting('printSettings', raw.printSettings));
-  docs.push(setting('preferences', raw.preferences));
-  docs.push(setting('app', { schemaVersion: SCHEMA_VERSION, activeBillId: raw.activeBillId, meta: raw.meta }));
   return docs;
 }
 
@@ -77,8 +82,11 @@ const byTime = (a, b) => String(a.at).localeCompare(String(b.at));
 const withoutOrder = ({ order: _order, ...rest }) => rest;
 const withoutId = ({ id: _id, ...rest }) => rest;
 
-/** Builds raw app state from documents. Returns null when there are no bills. */
-export function fromDocuments(docs, now = new Date()) {
+/**
+ * Builds raw app state from workspace documents. Device-only values come
+ * from `local` (this device's current state). Returns null when there are no bills.
+ */
+export function fromDocuments(docs, { local } = {}, now = new Date()) {
   const of = (collection) => docs.filter((doc) => doc.collection === collection).map((doc) => doc.data);
   const settings = Object.fromEntries(of(COLLECTIONS.settings).map((data) => [data.id, withoutId(data)]));
   const attendance = {};
@@ -94,14 +102,15 @@ export function fromDocuments(docs, now = new Date()) {
     firm: settings.firm,
     quotation: settings.quotation,
     printSettings: settings.printSettings,
-    preferences: settings.preferences,
-    activeBillId: settings.app?.activeBillId,
-    meta: settings.app?.meta,
+    // Device-only
+    preferences: local?.preferences,
+    meta: local?.meta,
+    activeBillId: local?.activeBillId,
     labour: {
       workers: of(COLLECTIONS.workers).sort(byOrder).map(withoutOrder),
       payments: of(COLLECTIONS.labourPayments).sort(byOrder).map(withoutOrder),
       attendance,
-      closedMonths: Object.fromEntries(of(COLLECTIONS.closedMonths).map((data) => [data.id, { closedAt: data.closedAt }])),
+      closedMonths: Object.fromEntries(of(COLLECTIONS.closedMonths).map((data) => [data.id, { closedAt: data.closedAt, closedBy: data.closedBy }])),
       log: of(COLLECTIONS.labourLog).sort(byTime)
     }
   };
