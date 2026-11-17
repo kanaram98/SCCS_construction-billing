@@ -63,19 +63,21 @@ export function drawLetterhead(doc, { firm, title, meta, billTo, margin, fontSiz
     doc.setFillColor(...mix(STRIPE_STOPS, index / (bands - 1)));
     doc.rect(margin + (stripeWidth / bands) * index, y, stripeWidth / bands + 0.2, 1.4, 'F');
   }
-  y += 6.5;
+  y += 1.4 + 4.5; // stripe height + gap, so the title row never touches the stripe
 
-  // Title (left) and number/date (right)
+  // Title (left) and number/date (right): first baselines sit below the stripe
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(fontSize + 5);
   doc.setTextColor(43);
-  doc.text(String(title).toUpperCase(), margin, y);
+  const metaLines = meta.filter(Boolean);
+  const titleBaseline = y + 4;
+  doc.text(String(title).toUpperCase(), margin, titleBaseline);
   doc.setFontSize(fontSize);
-  meta.filter(Boolean).forEach((line, index) => {
+  metaLines.forEach((line, index) => {
     doc.setFont('helvetica', index === 0 ? 'bold' : 'normal');
-    doc.text(line, right, y - 3.5 + index * 4.2, { align: 'right' });
+    doc.text(line, right, y + 3 + index * 4.2, { align: 'right' });
   });
-  y += Math.max(2, (meta.filter(Boolean).length - 1) * 4.2) + 2;
+  y = Math.max(titleBaseline, y + 3 + (metaLines.length - 1) * 4.2) + 3;
 
   // Bill to
   const lines = (billTo?.lines || []).filter(Boolean);

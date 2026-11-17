@@ -7,7 +7,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { formatCurrencyAscii, todayIso } from '../domain/formatters.js';
 import { QUOTATION_COLUMNS, quotationRows, splitLines, validUntil } from '../domain/quotation.js';
-import { makeTranslator } from '../i18n/translate.js';
+import { containsDevanagari, makeTranslator } from '../i18n/translate.js';
 import { deliverFile } from '../services/files.js';
 import { createImagePdf } from './pdf-image-export.js';
 import { drawLetterhead } from './letterhead-pdf.js';
@@ -86,7 +86,8 @@ function textPdf(quotation, rates, firm) {
  * @param {Element|null} rendered the on-screen quotation (needed for Hindi)
  */
 export async function exportQuotationPdf({ quotation, rates, firm, language, rendered, shareText }) {
-  const doc = language === 'hi' && rendered
+  const needsImage = language === 'hi' || containsDevanagari({ quotation, rates, firm: { name: firm.name, address: firm.address } });
+  const doc = needsImage && rendered
     ? await createImagePdf([rendered], { paper: 'a4', orientation: 'portrait', margin: 10, pageNumbers: false })
     : textPdf(quotation, rates, firm);
   return deliverFile(new File([doc.output('blob')], quotationFilename(firm), { type: 'application/pdf' }), { text: shareText });

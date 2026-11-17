@@ -2,6 +2,9 @@ import Button from '@mui/material/Button';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import { resolveBillLanguage } from '../../domain/print-settings.js';
 import DownloadIcon from '@mui/icons-material/Download';
 import PrintIcon from '@mui/icons-material/Print';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
@@ -9,10 +12,11 @@ import { IssuesAlert, SelectField } from '../../components/ui';
 import { getPrintDocument, isSignatureVisible } from '../../domain/print-settings.js';
 import DocumentPreview, { getPaperWidthPx } from './preview/DocumentPreview.jsx';
 import FitToWidth from './preview/FitToWidth.jsx';
-import { tr as t, trn } from '../../i18n/translate.js';
+import { getLanguage, tr as t, trn } from '../../i18n/translate.js';
 
 /** Export actions on top, the scaled page preview straight below. */
-export default function PreviewTab({ bill, firm, rates, printSettings, selectedDocuments, previewDocument, exportErrors, exporter, onPreviewChange, onSignatureLayoutChange, runningAccount }) {
+export default function PreviewTab({ bill, firm, rates, printSettings, selectedDocuments, previewDocument, exportErrors, exporter, onPreviewChange, onSignatureLayoutChange, runningAccount, onBillLanguageChange }) {
+  const billLanguage = resolveBillLanguage(printSettings, getLanguage());
   return (
     <>
       <Stack direction="row" spacing={1} sx={{ mb: 1.5, alignItems: 'center' }}>
@@ -40,6 +44,21 @@ export default function PreviewTab({ bill, firm, rates, printSettings, selectedD
       >
         {t('Send on WhatsApp')}
       </Button>
+
+      <Stack direction="row" spacing={1} sx={{ mb: 1.5, alignItems: 'center' }}>
+        <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>{t('Bill language')}</Typography>
+        <ToggleButtonGroup
+          size="small"
+          exclusive
+          color="primary"
+          value={billLanguage}
+          onChange={(_event, value) => value && onBillLanguageChange(value)}
+          aria-label={t('Bill language')}
+        >
+          <ToggleButton value="en" sx={{ px: 2, textTransform: 'none' }}>English</ToggleButton>
+          <ToggleButton value="hi" sx={{ px: 2 }}>हिंदी</ToggleButton>
+        </ToggleButtonGroup>
+      </Stack>
 
       <IssuesAlert issues={exportErrors} severity="error" suffix={t('to fix before export')} />
 

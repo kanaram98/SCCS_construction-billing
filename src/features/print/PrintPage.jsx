@@ -63,6 +63,7 @@ export default function PrintPage() {
               exportErrors={exportErrors}
               exporter={exporter}
               onPreviewChange={(value) => print.update({ previewDocument: value })}
+              onBillLanguageChange={(billLanguage) => print.update({ billLanguage })}
               onSignatureLayoutChange={print.setSignatureLayout}
               runningAccount={runningAccount}
             />

@@ -1,5 +1,5 @@
 import { useNotify } from '../../components/ui';
-import { getLanguage, makeTranslator, tr as t } from '../../i18n/translate.js';
+import { containsDevanagari, getLanguage, makeTranslator, tr as t } from '../../i18n/translate.js';
 import { resolveBillLanguage } from '../../domain/print-settings.js';
 import { getBillTotals } from '../../domain/calculations.js';
 import { billShareMessage, whatsappNumber, whatsappUrl } from '../../domain/whatsapp.js';
@@ -25,8 +25,9 @@ export function usePdfExport({ bill, rates, firm, printSettings, exportErrors, s
 
   /** Builds the PDF in the bill's language and shares or downloads it. */
   async function createPdf(options = {}) {
-    if (billLanguage === 'hi') {
-      // jsPDF cannot shape Hindi text, so Hindi bills are exported from the rendered preview.
+    // jsPDF's fonts have no Hindi letters, so a Hindi bill — or one with Hindi names in it —
+    // is exported from the rendered preview instead.
+    if (billLanguage === 'hi' || containsDevanagari({ bill, firm: { name: firm.name, address: firm.address } })) {
       const { exportImagePdf } = await import('../../documents/pdf-image-export.js');
       await exportImagePdf(bill, renderedDocuments(), printSettings, options);
     } else {
