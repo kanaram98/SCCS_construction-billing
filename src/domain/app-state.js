@@ -17,6 +17,11 @@ export function createDefaultFirm() {
     address: '',
     phone: '',
     gstin: '',
+    bankName: '',
+    accountName: '',
+    accountNumber: '',
+    ifsc: '',
+    upiId: '',
     logo: '',
     signature: '',
     signatureLayout: { ...DEFAULT_SIGNATURE_LAYOUT }
@@ -58,6 +63,8 @@ export function hydrateState(saved, { isLegacy = false } = {}) {
     };
   }
   firm.signatureLayout = normalizeSignatureLayout(firm.signatureLayout);
+  // The original app stored bank details as one free-text `bank` field.
+  if (!firm.bankName && typeof firm.bank === 'string' && firm.bank.trim()) firm.bankName = firm.bank.trim();
 
   const activeExists = saved.bills.some((bill) => bill.id === saved.activeBillId);
   return {

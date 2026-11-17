@@ -60,6 +60,8 @@ export function LayoutSettings({ settings, footer, onChange, onFooterChange }) {
           <Stack>
             <SwitchField label="Row numbers (1, 2, 3…)" checked={settings.rowNumbers} onChange={(rowNumbers) => onChange({ rowNumbers })} />
             <SwitchField label="Page numbers (Page 1 of N)" checked={settings.pageNumbers} onChange={(pageNumbers) => onChange({ pageNumbers })} />
+            <SwitchField label="Bank / UPI payment details" checked={settings.paymentDetails} onChange={(paymentDetails) => onChange({ paymentDetails })} />
+            <SwitchField label="UPI QR code for the balance" checked={settings.upiQr} onChange={(upiQr) => onChange({ upiQr })} />
           </Stack>
         </Grid>
         <Grid size={12}>

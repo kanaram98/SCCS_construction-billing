@@ -3,6 +3,7 @@ import BackupCard from '../backup/BackupCard.jsx';
 import BillDetailsCard from './BillDetailsCard.jsx';
 import AmountsCard from './AmountsCard.jsx';
 import FirmCard from './FirmCard.jsx';
+import PaymentDetailsCard from './PaymentDetailsCard.jsx';
 
 export default function ProjectPage() {
   return (
@@ -11,6 +12,7 @@ export default function ProjectPage() {
       <BillDetailsCard />
       <AmountsCard />
       <FirmCard />
+      <PaymentDetailsCard />
       <BackupCard />
     </section>
   );

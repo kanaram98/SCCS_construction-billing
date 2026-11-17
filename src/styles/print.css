@@ -26,6 +26,11 @@
 .paper .print-repeat-header { display: none; }
 .paper-footer { margin-top: 16px; font-size: 11px; }
 
+/* Payment details */
+.paper-payment { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-top: 14px; padding: 8px 10px; border: 1px solid #888; font-size: var(--print-font-size, 9pt); break-inside: avoid; }
+.paper-payment-title { margin-bottom: 3px; font-weight: 700; }
+.paper-payment-qr { flex-shrink: 0; text-align: center; font-size: 8pt; }
+
 /* Signature footer */
 .signature-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-top: 30px; font-size: 11px; }
 .paper-signature-area { position: relative; flex: 0 0 74mm; width: 74mm; height: 25mm; margin-right: calc(var(--paper-margin, 12mm) - var(--paper-padding-mm, 5.3mm)); }

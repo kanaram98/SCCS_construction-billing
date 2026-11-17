@@ -52,7 +52,9 @@ export function createDefaultPrintSettings() {
     pageNumbers: true,
     signatureMode: 'last',
     signatureWidth: 35,
-    previewDocument: 'bill'
+    previewDocument: 'bill',
+    paymentDetails: true,
+    upiQr: true
   };
 }
 
@@ -109,6 +111,8 @@ export function normalizePrintSettings(settings, legacyDocuments = [], legacySig
     rowNumbers: Boolean(saved.rowNumbers),
     summaryDetail: oneOf(saved.summaryDetail, Object.keys(SUMMARY_DETAILS), defaults.summaryDetail),
     pageNumbers: saved.pageNumbers !== false,
+    paymentDetails: saved.paymentDetails !== false,
+    upiQr: saved.upiQr !== false,
     signatureMode: oneOf(saved.signatureMode, Object.keys(SIGNATURE_MODES), defaults.signatureMode),
     signatureWidth: boundedNumber(signatureWidth, defaults.signatureWidth, SIGNATURE_WIDTH_RANGE.min, SIGNATURE_WIDTH_RANGE.max),
     previewDocument: oneOf(saved.previewDocument, DOCUMENT_IDS, defaults.previewDocument)

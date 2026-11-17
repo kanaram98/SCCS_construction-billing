@@ -5,6 +5,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { buildDocument } from './document-model.js';
 import { deliverFile } from '../services/files.js';
+import { buildPaymentBlock } from './payment-block.js';
 import { formatCurrencyAscii } from '../domain/formatters.js';
 import { SIGNATURE_AREA, normalizeSignatureLayout } from '../domain/signature-layout.js';
 import {
@@ -84,19 +85,65 @@ function drawHeader(doc, bill, firm, title, settings) {
   return y + 5;
 }
 
-/** Footer lines, signature image, signature line and date line after the table. */
-function drawClosing(doc, { bill, firm, settings, includeSignature, drawPageHeader }) {
+const QR_SIZE = 26;
+
+function paymentBlockHeight(block) {
+  if (!block) return 0;
+  const textHeight = 6 + block.lines.length * 4.2;
+  return Math.max(textHeight, block.qr ? QR_SIZE + 9 : 0) + 4;
+}
+
+/** Bordered "Payment details" box with bank/UPI lines and an optional QR code. Returns the y below it. */
+function drawPaymentBlock(doc, block, x, y, width, settings) {
+  const height = paymentBlockHeight(block);
+  doc.setDrawColor(136);
+  doc.rect(x, y, width, height);
+  doc.setTextColor(20);
+  doc.setFontSize(settings.fontSize);
+  doc.setFont(FONT, 'bold');
+  doc.text('Payment details', x + 3, y + 5.5);
+  doc.setFont(FONT, 'normal');
+  block.lines.forEach((line, index) => doc.text(line, x + 3, y + 10 + index * 4.2));
+
+  if (block.qr) {
+    const { matrix, amount } = block.qr;
+    const cell = QR_SIZE / (matrix.length + 2);
+    const qrX = x + width - QR_SIZE - 3;
+    const qrY = y + 2;
+    doc.setFillColor(0, 0, 0);
+    // One rectangle per horizontal run of dark modules keeps the PDF small.
+    matrix.forEach((row, rowIndex) => {
+      let start = -1;
+      row.concat(false).forEach((dark, colIndex) => {
+        if (dark && start < 0) start = colIndex;
+        if (!dark && start >= 0) {
+          doc.rect(qrX + (start + 1) * cell, qrY + (rowIndex + 1) * cell, (colIndex - start) * cell, cell, 'F');
+          start = -1;
+        }
+      });
+    });
+    doc.setFontSize(7);
+    doc.text(`Scan to pay ${formatCurrencyAscii(amount)}`, qrX + QR_SIZE / 2, qrY + QR_SIZE + 3.5, { align: 'center' });
+  }
+  return y + height + 4;
+}
+
+/** Payment details, footer lines, signature image, signature line and date line after the table. */
+function drawClosing(doc, { bill, rates, firm, settings, documentType, includeSignature, drawPageHeader }) {
   const { margin } = settings;
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const footerLines = getFooterLines(bill.footer);
+  const paymentBlock = buildPaymentBlock(documentType, bill, rates, firm, settings);
   let y = doc.lastAutoTable.finalY + 8;
 
-  if (y + footerLines.length * 5 + SIGNATURE_AREA.height + 16 > pageHeight - margin) {
+  if (y + paymentBlockHeight(paymentBlock) + footerLines.length * 5 + SIGNATURE_AREA.height + 16 > pageHeight - margin) {
     doc.addPage();
     y = settings.headerMode === 'all' ? drawPageHeader() + 4 : margin + 4;
     if (settings.headerMode === 'first') drawPageHeader();
   }
+
+  if (paymentBlock) y = drawPaymentBlock(doc, paymentBlock, margin, y, pageWidth - margin * 2, settings);
 
   doc.setFont(FONT, 'normal');
   doc.setFontSize(settings.fontSize - 1);
@@ -170,7 +217,7 @@ function renderDocument(doc, documentType, { bill, rates, firm, settings, includ
     });
   });
 
-  drawClosing(doc, { bill, firm, settings, includeSignature, drawPageHeader });
+  drawClosing(doc, { bill, rates, firm, settings, documentType, includeSignature, drawPageHeader });
 }
 
 function buildFilename(bill) {
