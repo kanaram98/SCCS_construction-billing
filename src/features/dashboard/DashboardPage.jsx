@@ -12,6 +12,7 @@ import { VIEWS } from '../../config/app.js';
 import { useBillFilters } from './useBillFilters.js';
 import BillFilters from './BillFilters.jsx';
 import BillCard from './BillCard.jsx';
+import BackupReminder from '../backup/BackupReminder.jsx';
 
 export default function DashboardPage({ onNavigate }) {
   const { data, bill: activeBill, actions } = useBilling();
@@ -68,6 +69,8 @@ export default function DashboardPage({ onNavigate }) {
         description="Your construction bills on this device."
         action={<Button variant="contained" startIcon={<AddIcon />} onClick={createBill}>New bill</Button>}
       />
+
+      <BackupReminder />
 
       <Grid container spacing={1.25} sx={{ mb: 2.5 }}>
         <Grid size={{ xs: 6, sm: 3 }}><StatCard label="Saved bills" value={bills.length} /></Grid>

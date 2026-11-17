@@ -4,6 +4,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { buildDocument } from './document-model.js';
+import { deliverFile } from '../services/files.js';
 import { formatCurrencyAscii } from '../domain/formatters.js';
 import { SIGNATURE_AREA, normalizeSignatureLayout } from '../domain/signature-layout.js';
 import {
@@ -177,13 +178,8 @@ function buildFilename(bill) {
 }
 
 /** Hands the PDF to the native share sheet when supported, otherwise downloads it. */
-async function deliverPdf(doc, filename) {
-  const file = new File([doc.output('blob')], filename, { type: 'application/pdf' });
-  if (navigator.canShare?.({ files: [file] }) && navigator.share) {
-    await navigator.share({ title: filename, files: [file] });
-  } else {
-    doc.save(filename);
-  }
+function deliverPdf(doc, filename) {
+  return deliverFile(new File([doc.output('blob')], filename, { type: 'application/pdf' }));
 }
 
 export async function exportBillPdf(bill, rates, firm, printSettings) {

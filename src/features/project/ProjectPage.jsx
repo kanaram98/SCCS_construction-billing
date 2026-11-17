@@ -1,4 +1,5 @@
 import { PageHeading } from '../../components/ui';
+import BackupCard from '../backup/BackupCard.jsx';
 import BillDetailsCard from './BillDetailsCard.jsx';
 import AmountsCard from './AmountsCard.jsx';
 import FirmCard from './FirmCard.jsx';
@@ -10,6 +11,7 @@ export default function ProjectPage() {
       <BillDetailsCard />
       <AmountsCard />
       <FirmCard />
+      <BackupCard />
     </section>
   );
 }

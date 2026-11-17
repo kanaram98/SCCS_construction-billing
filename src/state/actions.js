@@ -260,8 +260,25 @@ function createPrintActions({ setData }) {
   };
 }
 
+function createDataActions({ setData }) {
+  return {
+    /** Replaces everything with restored backup data. */
+    restore(state) {
+      setData(state);
+    },
+    /** Puts back a previously captured state, e.g. to undo a delete. */
+    restoreSnapshot(snapshot) {
+      setData(snapshot);
+    },
+    markBackedUp(date = new Date()) {
+      setData((current) => ({ ...current, meta: { ...current.meta, lastBackupAt: date.toISOString() } }));
+    }
+  };
+}
+
 export function createActions(context) {
   return {
+    data: createDataActions(context),
     bills: createBillActions(context),
     entry: createEntryActions(context),
     templates: createTemplateActions(context),

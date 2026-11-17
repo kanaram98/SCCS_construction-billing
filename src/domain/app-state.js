@@ -33,7 +33,8 @@ export function createInitialState() {
     clients: [],
     firm: createDefaultFirm(),
     templates: [],
-    printSettings: createDefaultPrintSettings()
+    printSettings: createDefaultPrintSettings(),
+    meta: { lastBackupAt: '' }
   };
 }
 
@@ -67,6 +68,7 @@ export function hydrateState(saved, { isLegacy = false } = {}) {
     firm,
     templates: isLegacy ? [] : arrayOr(saved.templates),
     printSettings: normalizePrintSettings(saved.printSettings, saved.pdfDocuments, firm.signatureLayout),
+    meta: { ...defaults.meta, ...(saved.meta && typeof saved.meta === 'object' ? saved.meta : {}) },
     activeBillId: activeExists ? saved.activeBillId : saved.bills[0].id
   };
 }

@@ -19,8 +19,9 @@ export function FeedbackProvider({ children }) {
   const [confirmation, setConfirmation] = useState(null);
   const resolver = useRef(null);
 
-  const notify = useCallback((message, severity = 'success') => {
-    if (message) setToast({ message, severity, key: Date.now() });
+  /** @param {{ label: string, onClick: () => void }} [action] optional button, e.g. Undo */
+  const notify = useCallback((message, severity = 'success', action) => {
+    if (message) setToast({ message, severity, action, key: Date.now() });
   }, []);
 
   const confirm = useCallback((options) => new Promise((resolve) => {
@@ -42,14 +43,32 @@ export function FeedbackProvider({ children }) {
       <Snackbar
         key={toast?.key}
         open={Boolean(toast)}
-        autoHideDuration={3500}
+        autoHideDuration={toast?.action ? 6000 : 3500}
         onClose={(_event, reason) => { if (reason !== 'clickaway') setToast(null); }}
         className="no-print"
         // Sit above the bottom navigation and the BottomActionBar.
         sx={{ bottom: { xs: 'calc(148px + env(safe-area-inset-bottom))', md: 100 } }}
       >
         {toast ? (
-          <Alert severity={toast.severity} variant="filled" onClose={() => setToast(null)} sx={{ width: '100%' }}>
+          <Alert
+            severity={toast.severity}
+            variant="filled"
+            onClose={() => setToast(null)}
+            sx={{ width: '100%', alignItems: 'center' }}
+            action={toast.action ? (
+              <Button
+                color="inherit"
+                size="small"
+                sx={{ fontWeight: 700 }}
+                onClick={() => {
+                  toast.action.onClick();
+                  setToast(null);
+                }}
+              >
+                {toast.action.label}
+              </Button>
+            ) : undefined}
+          >
             {toast.message}
           </Alert>
         ) : undefined}
@@ -85,7 +104,7 @@ function useFeedback() {
   return context;
 }
 
-/** `notify(message, severity?)` shows a short toast. */
+/** `notify(message, severity?, action?)` shows a short toast, optionally with a button such as Undo. */
 export const useNotify = () => useFeedback().notify;
 
 /** `await confirm({ title, message, confirmLabel, danger })` resolves to true when confirmed. */
