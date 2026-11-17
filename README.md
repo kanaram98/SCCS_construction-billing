@@ -2,7 +2,15 @@
 
 A mobile-first React app (Material UI) for construction measurements in feet and inches, work-item rates, bill totals, and PDF export. It runs in a browser and can be installed as a Progressive Web App (PWA) on phones and desktops. The Windows `.exe` build is also available.
 
-Bills and reusable section/area templates are stored locally. The dashboard can filter by project or bill search, client, date range, and payment status (derived from the bill's advance amount; it is not a payment ledger). PDF / Print includes document selection and ordering, paper size and orientation, margins, text size, headers, page breaks, row numbering, summary detail, page numbers, footer lines, and signature placement.
+## Features
+
+- **Measurements** in feet.inches (`15.4` = 15′4″) by floor and room, with area, length, volume, count and direct-quantity work items. Entries can be reordered, copied between floors, searched, and saved as reusable templates.
+- **Bills** with discount, GST shown as CGST + SGST (same state) or IGST (other state), the total in words, an advance, and a list of payments received. Payment status and balance are tracked per bill.
+- **PDF and print**: summary, bill, measurement sheet and item totals, with paper size, margins, headers, page breaks, a draggable signature, and bank/UPI details with a UPI QR code for the balance due.
+- **Safety**: every delete can be undone, and a backup file can be saved to WhatsApp, Drive or email and restored later. The app reminds you when you haven't backed up for a week.
+- **Mobile-first** Material UI design with bottom navigation, full-screen forms on phones, and light/dark themes. It installs as an app and works offline.
+
+All data stays in the browser on each device; nothing is uploaded.
 
 ## Run locally
 
@@ -81,4 +89,8 @@ tests/           node:test suites for domain/ and documents/
 - `electron.cjs` configures the Windows desktop build.
 - `legacy/` holds the original standalone version (`billing.html`, `app.js`, `styles.css`). Its saved data is migrated automatically on first launch.
 
-Run the tests with `npm test`.
+## Testing
+
+- `npm test` runs everything: `test:unit` (billing logic, with Node's test runner) and `test:ui` (screens rendered at phone size with Vitest + Testing Library).
+- `npm run verify` runs the tests and the production build. Netlify runs this on every deploy, so a failing test stops a broken update from going live.
+- GitHub Actions (`.github/workflows/ci.yml`) runs the same checks on every push.
