@@ -15,7 +15,7 @@
     "emulators": "firebase emulators:start --project demo-sccs",
     "test:rules": "firebase emulators:exec --config firebase.e2e.json --only firestore --project demo-sccs \"vitest run --config vitest.rules.config.js\"",
     "test:e2e": "playwright test",
-    "deploy": "npm run verify && firebase deploy --only hosting,firestore:rules --project live"
+    "deploy": "node scripts/deploy.mjs"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",

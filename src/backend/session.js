@@ -4,7 +4,7 @@
  * After Google sign-in, `joinWorkspace` works out the person's place:
  *   - already a member                 → their role
  *   - invited by email                 → becomes a member with the invited role
- *   - listed in owners/{email} and the
+ *   - an owner (firestore.rules) and the
  *     workspace doesn't exist yet      → creates it and becomes admin
  *   - otherwise                        → 'no-access' (ask the admin for an invite)
  *
@@ -32,15 +32,17 @@ export async function joinWorkspace({ db, fs }, wid, user, now = new Date()) {
     return { status: 'member', role, joined: true };
   }
 
-  // Allowed to create the workspace?
-  const owner = await fs.getDoc(fs.doc(db, `owners/${user.email}`)).catch(() => null);
-  if (owner?.exists()) {
-    const workspaceRef = fs.doc(db, workspacePath(wid));
-    const workspace = await fs.getDoc(workspaceRef).catch(() => null);
-    if (!workspace?.exists()) {
+  // Not invited: the first owner creates the workspace. The server decides who
+  // is an owner, so just try; anyone else is refused.
+  const workspaceRef = fs.doc(db, workspacePath(wid));
+  const workspace = await fs.getDoc(workspaceRef).catch(() => null);
+  if (!workspace?.exists()) {
+    try {
       await fs.setDoc(workspaceRef, { name: 'SCCS', schemaVersion: SCHEMA_VERSION, createdAt: at, createdBy: user.uid, syncedAt: fs.serverTimestamp() });
       await fs.setDoc(memberRef, member('admin'));
       return { status: 'member', role: 'admin', created: true };
+    } catch (error) {
+      if (error?.code !== 'permission-denied') throw error;
     }
   }
   return { status: 'no-access' };

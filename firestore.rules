@@ -51,6 +51,18 @@ service cloud.firestore {
       return roleIn(wid, ['admin', 'contractor']);
     }
 
+    // Who may create a workspace: an account listed in owners/{email} (console),
+    // or one of the emails baked in at deploy time (scripts/deploy.mjs replaces
+    // the empty list below with OWNER_EMAILS from the untracked .env.production).
+    function ownerEmails() {
+      return [] /* OWNER_EMAILS */;
+    }
+    function isOwnerEmail() {
+      return verifiedEmail()
+        && (request.auth.token.email in ownerEmails()
+          || exists(/databases/$(database)/documents/owners/$(request.auth.token.email)));
+    }
+
     // ── Field checks ────────────────────────────────────────────────────
     function str(value, max) {
       return value is string && value.size() <= max;
@@ -237,9 +249,8 @@ service cloud.firestore {
 
     match /workspaces/{wid} {
       allow read: if isMember(wid);
-      // Created once by an account listed in owners/{email}.
-      allow create: if verifiedEmail()
-        && exists(/databases/$(database)/documents/owners/$(request.auth.token.email))
+      // Created once by an owner (see isOwnerEmail).
+      allow create: if isOwnerEmail()
         && fields(['name', 'schemaVersion', 'createdAt', 'createdBy', 'syncedAt'], [])
         && str(data().name, 200) && data().schemaVersion is int && str(data().createdAt, 40)
         && byMe('createdBy') && serverTime();
