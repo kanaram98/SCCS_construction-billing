@@ -22,6 +22,7 @@ import { createTemplate } from '../domain/templates.js';
 import { createPayment } from '../domain/payments.js';
 import { DEFAULT_SIGNATURE_LAYOUT, normalizeSignatureLayout } from '../domain/signature-layout.js';
 import { moveDocument, normalizePrintSettings, toggleDocument } from '../domain/print-settings.js';
+import { tr } from '../i18n/translate.js';
 
 /** Applies `updater` to the active bill within the full state. */
 function updateActiveBill(state, updater) {
@@ -180,7 +181,7 @@ function createClientActions({ data, bill, setData }) {
       }, clientDetailsPatch(client)));
       return {
         ok: true,
-        message: updateExisting ? 'Saved client profile updated.' : 'Client profile saved for future bills.'
+        message: updateExisting ? tr('Saved client profile updated.') : tr('Client profile saved for future bills.')
       };
     },
     /** Deletes a saved profile; bills keep their copied client details. */
@@ -293,6 +294,14 @@ function createPaymentActions({ setData }) {
   };
 }
 
+function createPreferenceActions({ setData }) {
+  return {
+    setLanguage(language) {
+      setData((current) => ({ ...current, preferences: { ...current.preferences, language } }));
+    }
+  };
+}
+
 function createDataActions({ setData }) {
   return {
     /** Replaces everything with restored backup data. */
@@ -312,6 +321,7 @@ function createDataActions({ setData }) {
 export function createActions(context) {
   return {
     data: createDataActions(context),
+    preferences: createPreferenceActions(context),
     payments: createPaymentActions(context),
     bills: createBillActions(context),
     entry: createEntryActions(context),

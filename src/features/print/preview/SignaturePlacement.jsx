@@ -15,7 +15,7 @@ export function signatureStyle(layout) {
  * Draggable, resizable signature stamp inside the footer signature area.
  * Supports pointer drag, a corner resize handle, and arrow keys (Shift resizes).
  */
-export default function SignaturePlacement({ image, layout, onChange }) {
+export default function SignaturePlacement({ image, layout, caption = 'Signature', onChange }) {
   const areaRef = useRef(null);
   const interactionRef = useRef(null);
   const [current, setCurrent] = useState(() => normalizeSignatureLayout(layout));
@@ -112,7 +112,7 @@ export default function SignaturePlacement({ image, layout, onChange }) {
           <span aria-hidden="true">↘</span>
         </button>
       </div>
-      <span className="paper-signature-caption">Signature</span>
+      <span className="paper-signature-caption">{caption}</span>
     </div>
   );
 }

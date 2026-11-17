@@ -4,6 +4,7 @@
  */
 import qrcode from 'qrcode-generator';
 import { text } from './formatters.js';
+import { tr } from '../i18n/translate.js';
 
 export const PAYMENT_FIELDS = Object.freeze([
   { key: 'bankName', label: 'Bank name' },
@@ -19,11 +20,11 @@ export function hasPaymentDetails(firm) {
   return PAYMENT_FIELDS.some(({ key }) => text(firm?.[key]));
 }
 
-/** Printable lines such as "IFSC: SBIN0001234", skipping empty fields. */
-export function getPaymentLines(firm) {
+/** Printable lines such as "IFSC: SBIN0001234", skipping empty fields. `translate` localises the labels. */
+export function getPaymentLines(firm, translate = (value) => value) {
   return PAYMENT_FIELDS
     .filter(({ key }) => text(firm?.[key]))
-    .map(({ key }) => `${PRINT_LABELS[key]}: ${text(firm[key])}`);
+    .map(({ key }) => `${translate(PRINT_LABELS[key])}: ${text(firm[key])}`);
 }
 
 const UPI_ID_PATTERN = /^[\w.-]{2,}@[a-zA-Z][\w]{1,}$/;
@@ -36,9 +37,9 @@ export function getPaymentFieldErrors(firm) {
   const ifsc = text(firm?.ifsc).toUpperCase();
   const account = text(firm?.accountNumber).replace(/\s/g, '');
   return {
-    upiId: upiId && !UPI_ID_PATTERN.test(upiId) ? 'Check the UPI ID, e.g. name@okbank.' : '',
-    ifsc: ifsc && !IFSC_PATTERN.test(ifsc) ? 'IFSC is 11 characters, e.g. SBIN0001234.' : '',
-    accountNumber: account && !ACCOUNT_PATTERN.test(account) ? 'Account number should be 9–18 digits.' : ''
+    upiId: upiId && !UPI_ID_PATTERN.test(upiId) ? tr('Check the UPI ID, e.g. name@okbank.') : '',
+    ifsc: ifsc && !IFSC_PATTERN.test(ifsc) ? tr('IFSC is 11 characters, e.g. SBIN0001234.') : '',
+    accountNumber: account && !ACCOUNT_PATTERN.test(account) ? tr('Account number should be 9–18 digits.') : ''
   };
 }
 

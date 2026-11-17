@@ -8,6 +8,7 @@ import { IssuesAlert, SelectField } from '../../components/ui';
 import { getPrintDocument, isSignatureVisible } from '../../domain/print-settings.js';
 import DocumentPreview, { getPaperWidthPx } from './preview/DocumentPreview.jsx';
 import FitToWidth from './preview/FitToWidth.jsx';
+import { tr as t, trn } from '../../i18n/translate.js';
 
 /** Export actions on top, the scaled page preview straight below. */
 export default function PreviewTab({ bill, firm, rates, printSettings, selectedDocuments, previewDocument, exportErrors, exporter, onPreviewChange, onSignatureLayoutChange }) {
@@ -15,21 +16,21 @@ export default function PreviewTab({ bill, firm, rates, printSettings, selectedD
     <>
       <Stack direction="row" spacing={1} sx={{ mb: 1.5, alignItems: 'center' }}>
         <SelectField
-          label="Document"
+          label={t('Document')}
           value={previewDocument}
           options={selectedDocuments.map((id) => ({ value: id, label: getPrintDocument(id).label }))}
           onChange={onPreviewChange}
           sx={{ bgcolor: 'background.paper' }}
         />
         <Button variant="contained" startIcon={<DownloadIcon />} onClick={exporter.downloadPdf} disabled={!exporter.canExport} sx={{ flexShrink: 0 }}>
-          PDF
+          {t('PDF')}
         </Button>
         <Button variant="outlined" startIcon={<PrintIcon />} onClick={exporter.print} disabled={!exporter.canExport} sx={{ flexShrink: 0 }}>
-          Print
+          {t('Print')}
         </Button>
       </Stack>
 
-      <IssuesAlert issues={exportErrors} severity="error" suffix="to fix before export" />
+      <IssuesAlert issues={exportErrors} severity="error" suffix={t('to fix before export')} />
 
       <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, bgcolor: 'action.selected' }}>
         <FitToWidth contentWidth={getPaperWidthPx(printSettings)}>
@@ -47,8 +48,8 @@ export default function PreviewTab({ bill, firm, rates, printSettings, selectedD
         </FitToWidth>
       </Paper>
       <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 1 }}>
-        {selectedDocuments.length} {selectedDocuments.length === 1 ? 'document' : 'documents'} in the export.
-        {printSettings.signatureMode !== 'off' && firm.signature ? ' Drag the signature to reposition it.' : ''}
+        {trn(selectedDocuments.length, '{count} document in the export.', '{count} documents in the export.')}
+        {printSettings.signatureMode !== 'off' && firm.signature ? t(' Drag the signature to reposition it.') : ''}
       </Typography>
     </>
   );

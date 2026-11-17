@@ -15,6 +15,7 @@ import { EmptyState, ResponsiveDialog, SelectField, TextField, useNotify } from 
 import { useUndoable } from '../../hooks/useUndoable.js';
 import { createTemplateContent } from '../../domain/bill-tree.js';
 import { getTemplateSources, parseTemplateSource } from '../../domain/templates.js';
+import { tr as t } from '../../i18n/translate.js';
 
 /** Save sections/areas as reusable templates and add saved templates to the bill. */
 export default function TemplatesDialog({ open, onClose, onApplied }) {
@@ -34,14 +35,14 @@ export default function TemplatesDialog({ open, onClose, onApplied }) {
     const { type, sectionId, areaId } = parseTemplateSource(source);
     const content = createTemplateContent(bill, type, sectionId, areaId);
     if (!content) {
-      setMessage('Choose a section or area to save as a template.');
+      setMessage(t('Choose a section or area to save as a template.'));
       return;
     }
     if (!actions.templates.save({ type, name, content })) {
-      setMessage('Enter a unique template name before saving.');
+      setMessage(t('Enter a unique template name before saving.'));
       return;
     }
-    notify(`Saved “${name.trim()}” for reuse on this device.`);
+    notify(t('Saved “{name}” for reuse on this device.', { name: name.trim() }));
     setMessage('');
     setName('');
     setSource('');
@@ -50,7 +51,7 @@ export default function TemplatesDialog({ open, onClose, onApplied }) {
   function applyTemplate(template) {
     const result = actions.templates.apply(template.id, target?.id);
     if (!result) {
-      setMessage('Add a section before adding an area template.');
+      setMessage(t('Add a section before adding an area template.'));
       return;
     }
     onClose();
@@ -58,36 +59,36 @@ export default function TemplatesDialog({ open, onClose, onApplied }) {
   }
 
   function removeTemplate(template) {
-    undoable(`Template “${template.name}” removed.`, () => actions.templates.remove(template.id));
+    undoable(t('Template “{name}” removed.', { name: template.name }), () => actions.templates.remove(template.id));
   }
 
   return (
-    <ResponsiveDialog open={open} title="Reusable templates" onClose={onClose}>
+    <ResponsiveDialog open={open} title={t('Reusable templates')} onClose={onClose}>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Save a section or area with its entries, then reuse it in any bill.
+        {t('Save a section or area with its entries, then reuse it in any bill.')}
       </Typography>
 
       <Stack component="form" spacing={1.5} onSubmit={saveTemplate}>
         <SelectField
-          label="Save from"
+          label={t('Save from')}
           value={source}
-          placeholder="Choose a section or area"
+          placeholder={t('Choose a section or area')}
           options={getTemplateSources(sections)}
           onChange={setSource}
         />
-        <TextField label="Template name" value={name} placeholder="e.g. Standard bathroom" onChange={setName} />
+        <TextField label={t('Template name')} value={name} placeholder={t('e.g. Standard bathroom')} onChange={setName} />
         <Button type="submit" variant="contained" startIcon={<SaveIcon />} disabled={!source || !name.trim()}>
-          Save template
+          {t('Save template')}
         </Button>
         {message && <Typography variant="body2" color="error">{message}</Typography>}
       </Stack>
 
       <Divider sx={{ my: 2.5 }} />
-      <Typography variant="subtitle1" sx={{ mb: 1 }}>Saved templates ({templates.length})</Typography>
+      <Typography variant="subtitle1" sx={{ mb: 1 }}>{t('Saved templates ({count})', { count: templates.length })}</Typography>
 
       {templates.some((template) => template.type === 'area') && sections.length > 1 && (
         <SelectField
-          label="Add area templates to"
+          label={t('Add area templates to')}
           value={target?.id || ''}
           options={sections.map((section) => ({ value: section.id, label: section.name }))}
           onChange={setTargetSectionId}
@@ -110,9 +111,9 @@ export default function TemplatesDialog({ open, onClose, onApplied }) {
                     disabled={template.type === 'area' && !target}
                     onClick={() => applyTemplate(template)}
                   >
-                    Add
+                    {t('Add')}
                   </Button>
-                  <IconButton aria-label={`Remove ${template.name}`} color="error" onClick={() => removeTemplate(template)}>
+                  <IconButton aria-label={t('Remove {name}', { name: template.name })} color="error" onClick={() => removeTemplate(template)}>
                     <DeleteIcon />
                   </IconButton>
                 </Stack>
@@ -122,13 +123,13 @@ export default function TemplatesDialog({ open, onClose, onApplied }) {
               <ListItemText
                 primary={template.name}
                 secondary={template.type === 'section'
-                  ? 'Section · adds a new section'
-                  : `Area · adds to ${target?.name || 'a section'}`}
+                  ? t('Section · adds a new section')
+                  : `Area · adds to ${target?.name || t('a section')}`}
               />
             </ListItem>
           ))}
         </List>
-      ) : <EmptyState compact description="No templates yet. Save a section or area above." />}
+      ) : <EmptyState compact description={t('No templates yet. Save a section or area above.')} />}
     </ResponsiveDialog>
   );
 }

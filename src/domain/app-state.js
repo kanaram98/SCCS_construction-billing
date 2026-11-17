@@ -39,7 +39,8 @@ export function createInitialState() {
     firm: createDefaultFirm(),
     templates: [],
     printSettings: createDefaultPrintSettings(),
-    meta: { lastBackupAt: '' }
+    meta: { lastBackupAt: '' },
+    preferences: { language: 'en' }
   };
 }
 
@@ -76,6 +77,7 @@ export function hydrateState(saved, { isLegacy = false } = {}) {
     templates: isLegacy ? [] : arrayOr(saved.templates),
     printSettings: normalizePrintSettings(saved.printSettings, saved.pdfDocuments, firm.signatureLayout),
     meta: { ...defaults.meta, ...(saved.meta && typeof saved.meta === 'object' ? saved.meta : {}) },
+    preferences: { ...defaults.preferences, ...(saved.preferences && typeof saved.preferences === 'object' ? saved.preferences : {}) },
     activeBillId: activeExists ? saved.activeBillId : saved.bills[0].id
   };
 }

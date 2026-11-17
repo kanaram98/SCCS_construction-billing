@@ -4,6 +4,7 @@ import ListItemText from '@mui/material/ListItemText';
 import Typography from '@mui/material/Typography';
 import { ResponsiveDialog } from '../../components/ui';
 import { pluralize } from '../../domain/formatters.js';
+import { tr as t, trn } from '../../i18n/translate.js';
 
 /** Lets the user choose a target section (excluding the current one). */
 export default function SectionPickerDialog({ open, title, description, sections, currentSectionId, onPick, onClose }) {
@@ -16,7 +17,7 @@ export default function SectionPickerDialog({ open, title, description, sections
           <ListItemButton key={section.id} onClick={() => onPick(section.id)}>
             <ListItemText
               primary={section.name}
-              secondary={`${section.areas.length} ${pluralize(section.areas.length, 'area')}`}
+              secondary={trn(section.areas.length, '{count} area', '{count} areas')}
             />
           </ListItemButton>
         ))}

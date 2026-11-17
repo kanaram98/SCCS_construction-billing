@@ -7,6 +7,7 @@ import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Tooltip from '@mui/material/Tooltip';
 import CheckIcon from '@mui/icons-material/Check';
+import { tr as t } from '../../i18n/translate.js';
 
 /**
  * Icon button that opens a single-choice menu (e.g. sort order).
@@ -16,7 +17,7 @@ export default function ChoiceMenu({ icon, label, title, options, value, onChang
   const [anchor, setAnchor] = useState(null);
   return (
     <>
-      <Tooltip title={`${label}: ${options[value]}`}>
+      <Tooltip title={`${label}: ${t(options[value])}`}>
         <IconButton aria-label={label} onClick={(event) => setAnchor(event.currentTarget)}>{icon}</IconButton>
       </Tooltip>
       <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)}>
@@ -31,7 +32,7 @@ export default function ChoiceMenu({ icon, label, title, options, value, onChang
             }}
           >
             <ListItemIcon>{optionValue === value && <CheckIcon fontSize="small" />}</ListItemIcon>
-            <ListItemText>{optionLabel}</ListItemText>
+            <ListItemText>{t(optionLabel)}</ListItemText>
           </MenuItem>
         ))}
       </Menu>

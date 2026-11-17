@@ -2,6 +2,7 @@ import Grid from '@mui/material/Grid';
 import { TextField } from '../../components/ui';
 import { getDimensionFields, usesCount } from '../../domain/rates.js';
 import DimensionInput from './DimensionInput.jsx';
+import { tr as t } from '../../i18n/translate.js';
 
 /** Measurement inputs for the selected work item's measurement type. */
 export default function EntryFields({ rate, entry, showErrors = true, onChange }) {
@@ -9,9 +10,9 @@ export default function EntryFields({ rate, entry, showErrors = true, onChange }
     <>
       <Grid size={{ xs: 6, sm: 4 }}>
         {usesCount(rate.type) ? (
-          <TextField label="Number of items" type="number" min="0" step="any" value={entry.count} onChange={(count) => onChange({ count })} />
+          <TextField label={t('Number of items')} type="number" min="0" step="any" value={entry.count} onChange={(count) => onChange({ count })} />
         ) : (
-          <TextField label={`Quantity (${rate.unit})`} type="number" min="0" step="any" value={entry.quantity} onChange={(quantity) => onChange({ quantity })} />
+          <TextField label={t('Quantity ({unit})', { unit: rate.unit })} type="number" min="0" step="any" value={entry.quantity} onChange={(quantity) => onChange({ quantity })} />
         )}
       </Grid>
       {getDimensionFields(rate.type).map((field) => (
@@ -26,7 +27,7 @@ export default function EntryFields({ rate, entry, showErrors = true, onChange }
         </Grid>
       ))}
       <Grid size={12}>
-        <TextField label="Note (optional)" value={entry.note} onChange={(note) => onChange({ note })} />
+        <TextField label={t('Note (optional)')} value={entry.note} onChange={(note) => onChange({ note })} />
       </Grid>
     </>
   );

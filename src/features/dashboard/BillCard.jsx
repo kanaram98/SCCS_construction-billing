@@ -9,6 +9,7 @@ import DeleteIcon from '@mui/icons-material/DeleteOutlined';
 import { ActionMenu } from '../../components/ui';
 import { formatCurrency } from '../../domain/formatters.js';
 import { paymentStatusLabel } from '../../domain/calculations.js';
+import { tr as t } from '../../i18n/translate.js';
 
 const STATUS_COLORS = { paid: 'success', partial: 'warning', unpaid: 'default' };
 
@@ -27,8 +28,8 @@ export default function BillCard({ bill, summary, selected, onOpen, onDuplicate,
       <CardActionArea onClick={onOpen} sx={{ p: 1.75, flex: 1, minWidth: 0 }}>
         <Stack direction="row" spacing={1} sx={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <Box sx={{ minWidth: 0 }}>
-            <Typography variant="subtitle1" noWrap>Bill {bill.number} · {bill.projectName || 'Untitled project'}</Typography>
-            <Typography variant="body2" color="text.secondary" noWrap>{bill.client || 'No client'} · {bill.date}</Typography>
+            <Typography variant="subtitle1" noWrap>{t('Bill {number}', { number: bill.number })} · {bill.projectName || t('Untitled project')}</Typography>
+            <Typography variant="body2" color="text.secondary" noWrap>{bill.client || t('No client')} · {bill.date}</Typography>
           </Box>
           <Typography variant="subtitle1" color="primary" sx={{ whiteSpace: 'nowrap' }}>
             {formatCurrency(summary.totals.total)}
@@ -36,7 +37,7 @@ export default function BillCard({ bill, summary, selected, onOpen, onDuplicate,
         </Stack>
         <Chip
           size="small"
-          label={paymentStatusLabel(summary.status)}
+          label={t(paymentStatusLabel(summary.status))}
           color={STATUS_COLORS[summary.status]}
           variant={summary.status === 'unpaid' ? 'outlined' : 'filled'}
           sx={{ mt: 1 }}
@@ -44,10 +45,10 @@ export default function BillCard({ bill, summary, selected, onOpen, onDuplicate,
       </CardActionArea>
       <Box sx={{ display: 'flex', alignItems: 'flex-start', pt: 0.5, pr: 0.5 }}>
         <ActionMenu
-          label={`Actions for bill ${bill.number}`}
+          label={t('Actions for bill {number}', { number: bill.number })}
           items={[
-            { label: 'Duplicate', icon: <ContentCopyIcon fontSize="small" />, onClick: onDuplicate },
-            { label: 'Delete', icon: <DeleteIcon fontSize="small" />, onClick: onDelete, danger: true }
+            { label: t('Duplicate'), icon: <ContentCopyIcon fontSize="small" />, onClick: onDuplicate },
+            { label: t('Delete'), icon: <DeleteIcon fontSize="small" />, onClick: onDelete, danger: true }
           ]}
         />
       </Box>

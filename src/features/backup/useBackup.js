@@ -2,7 +2,7 @@ import { useBilling } from '../../state/BillingContext.jsx';
 import { useConfirm, useNotify } from '../../components/ui';
 import { backupFilename, createBackup, parseBackup } from '../../domain/backup.js';
 import { deliverFile, isShareCancelled, readFileAsText } from '../../services/files.js';
-import { pluralize } from '../../domain/formatters.js';
+import { tr as t, trn } from '../../i18n/translate.js';
 
 /** Export a backup file, or restore one after confirmation (with undo). */
 export function useBackup() {
@@ -20,11 +20,11 @@ export function useBackup() {
     try {
       const how = await deliverFile(file);
       actions.data.markBackedUp(now);
-      notify(how === 'shared' ? 'Backup shared. Keep it somewhere safe.' : 'Backup file downloaded.');
+      notify(how === 'shared' ? t('Backup shared. Keep it somewhere safe.') : t('Backup file downloaded.'));
     } catch (error) {
       if (isShareCancelled(error)) return;
       console.error('Could not export backup.', error);
-      notify(`Backup failed: ${error.message || 'Unknown error'}`, 'error');
+      notify(t('Backup failed: {reason}', { reason: error.message || t('Unknown error') }), 'error');
     }
   }
 
@@ -36,17 +36,17 @@ export function useBackup() {
       notify(error.message, 'error');
       return;
     }
-    const date = parsed.exportedAt ? new Date(parsed.exportedAt).toLocaleDateString() : 'an unknown date';
+    const date = parsed.exportedAt ? new Date(parsed.exportedAt).toLocaleDateString() : t('an unknown date');
     const confirmed = await confirm({
-      title: 'Restore this backup?',
-      message: `It has ${parsed.billCount} ${pluralize(parsed.billCount, 'bill')} from ${date}. All bills, rates and settings on this device will be replaced.`,
-      confirmLabel: 'Restore',
+      title: t('Restore this backup?'),
+      message: trn(parsed.billCount, 'It has {count} bill from {date}. All bills, rates and settings on this device will be replaced.', 'It has {count} bills from {date}. All bills, rates and settings on this device will be replaced.', { date }),
+      confirmLabel: t('Restore'),
       danger: true
     });
     if (!confirmed) return;
     const previous = data;
     actions.data.restore(parsed.state);
-    notify('Backup restored.', 'success', { label: 'Undo', onClick: () => actions.data.restoreSnapshot(previous) });
+    notify(t('Backup restored.'), 'success', { label: t('Undo'), onClick: () => actions.data.restoreSnapshot(previous) });
   }
 
   return { exportBackup, restoreBackup };

@@ -12,6 +12,7 @@ import { ActionMenu } from '../../components/ui';
 import { formatCurrency } from '../../domain/formatters.js';
 import { getItemQuantity, getLineAmount } from '../../domain/calculations.js';
 import { describeMeasurement, resolveRate } from '../../domain/rates.js';
+import { tr as t } from '../../i18n/translate.js';
 
 /** Entries in one area as tappable cards (tap to edit). */
 export default function EntryList({ items, rates, canCopy, canMove = true, onEdit, onDelete, onCopy, onMove }) {
@@ -41,13 +42,13 @@ export default function EntryList({ items, rates, canCopy, canMove = true, onEdi
             <Box sx={{ pt: 0.25 }}>
               <ActionMenu
                 size="small"
-                label={`Actions for ${rate.name}`}
+                label={t('Actions for {name}', { name: rate.name })}
                 items={[
-                  { label: 'Edit', icon: <EditIcon fontSize="small" />, onClick: () => onEdit(item) },
-                  { label: 'Move up', icon: <ArrowUpwardIcon fontSize="small" />, onClick: () => onMove(item.id, -1), disabled: index === 0, hidden: !canMove },
-                  { label: 'Move down', icon: <ArrowDownwardIcon fontSize="small" />, onClick: () => onMove(item.id, 1), disabled: index === items.length - 1, hidden: !canMove },
-                  { label: 'Copy to section…', icon: <ContentCopyIcon fontSize="small" />, onClick: () => onCopy(item.id), disabled: !canCopy },
-                  { label: 'Delete', icon: <DeleteIcon fontSize="small" />, onClick: () => onDelete(item), danger: true }
+                  { label: t('Edit'), icon: <EditIcon fontSize="small" />, onClick: () => onEdit(item) },
+                  { label: t('Move up'), icon: <ArrowUpwardIcon fontSize="small" />, onClick: () => onMove(item.id, -1), disabled: index === 0, hidden: !canMove },
+                  { label: t('Move down'), icon: <ArrowDownwardIcon fontSize="small" />, onClick: () => onMove(item.id, 1), disabled: index === items.length - 1, hidden: !canMove },
+                  { label: t('Copy to section…'), icon: <ContentCopyIcon fontSize="small" />, onClick: () => onCopy(item.id), disabled: !canCopy },
+                  { label: t('Delete'), icon: <DeleteIcon fontSize="small" />, onClick: () => onDelete(item), danger: true }
                 ]}
               />
             </Box>

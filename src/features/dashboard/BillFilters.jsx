@@ -13,6 +13,7 @@ import SortIcon from '@mui/icons-material/Sort';
 import { ChoiceMenu, SelectField, TextField } from '../../components/ui';
 import { PAYMENT_STATUSES } from '../../domain/calculations.js';
 import { BILL_SORTS } from '../../domain/bill-filters.js';
+import { tr as t } from '../../i18n/translate.js';
 
 /** Search box with a collapsible panel for client, date and status filters. */
 export default function BillFilters({ filters, sort, onSortChange, clientNames, resultCount, totalCount, onChange, onClear }) {
@@ -25,59 +26,59 @@ export default function BillFilters({ filters, sort, onSortChange, clientNames, 
         <TextField
           type="search"
           value={filters.search}
-          placeholder="Search bill no., project or client"
+          placeholder={t('Search bill no., project or client')}
           onChange={(value) => onChange('search', value)}
           slotProps={{
             input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> },
-            htmlInput: { 'aria-label': 'Search bills' }
+            htmlInput: { 'aria-label': t('Search bills') }
           }}
           sx={{ bgcolor: 'background.paper' }}
         />
         <IconButton
-          aria-label={expanded ? 'Hide filters' : 'Show filters'}
+          aria-label={expanded ? t('Hide filters') : t('Show filters')}
           aria-expanded={expanded}
           onClick={() => setExpanded((open) => !open)}
           color={expanded || activeCount ? 'primary' : 'default'}
         >
           <Badge badgeContent={activeCount} color="secondary"><FilterListIcon /></Badge>
         </IconButton>
-        <ChoiceMenu icon={<SortIcon />} label="Sort bills" title="Sort by" options={BILL_SORTS} value={sort} onChange={onSortChange} />
+        <ChoiceMenu icon={<SortIcon />} label={t('Sort bills')} title={t('Sort by')} options={BILL_SORTS} value={sort} onChange={onSortChange} />
       </Stack>
 
       <Collapse in={expanded}>
         <Grid container spacing={1.5} sx={{ pt: 1, pb: 1 }}>
           <Grid size={{ xs: 12, sm: 6 }}>
             <SelectField
-              label="Client"
+              label={t('Client')}
               value={filters.client}
-              placeholder="All clients"
+              placeholder={t('All clients')}
               options={clientNames.map((name) => ({ value: name, label: name }))}
               onChange={(value) => onChange('client', value)}
             />
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
             <SelectField
-              label="Payment status"
+              label={t('Payment status')}
               value={filters.payment}
-              placeholder="All statuses"
+              placeholder={t('All statuses')}
               options={PAYMENT_STATUSES.map(({ id, label }) => ({ value: id, label }))}
               onChange={(value) => onChange('payment', value)}
             />
           </Grid>
           <Grid size={6}>
-            <TextField label="From date" type="date" value={filters.dateFrom} max={filters.dateTo || undefined} onChange={(value) => onChange('dateFrom', value)} />
+            <TextField label={t('From date')} type="date" value={filters.dateFrom} max={filters.dateTo || undefined} onChange={(value) => onChange('dateFrom', value)} />
           </Grid>
           <Grid size={6}>
-            <TextField label="To date" type="date" value={filters.dateTo} min={filters.dateFrom || undefined} onChange={(value) => onChange('dateTo', value)} />
+            <TextField label={t('To date')} type="date" value={filters.dateTo} min={filters.dateFrom || undefined} onChange={(value) => onChange('dateTo', value)} />
           </Grid>
         </Grid>
       </Collapse>
 
       <Stack direction="row" sx={{ mb: 1.5, alignItems: 'center', justifyContent: 'space-between' }}>
         <Typography variant="caption" color="text.secondary">
-          {resultCount} of {totalCount} bills · status is based on payments received
+          {t('{shown} of {total} bills · status is based on payments received', { shown: resultCount, total: totalCount })}
         </Typography>
-        <Button size="small" onClick={onClear}>Clear</Button>
+        <Button size="small" onClick={onClear}>{t('Clear')}</Button>
       </Stack>
     </>
   );

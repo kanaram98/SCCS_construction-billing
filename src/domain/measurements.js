@@ -1,3 +1,5 @@
+import { tr } from '../i18n/translate.js';
+
 /**
  * Feet-and-inches measurement helpers.
  *
@@ -13,8 +15,8 @@ export function feetInchesError(value) {
   const text = String(value ?? '').trim();
   if (!text) return null;
   const match = text.match(FEET_INCHES_PATTERN);
-  if (!match) return 'Use feet.inches format, for example 15.4.';
-  if (Number(match[2] || 0) > 11) return 'Inches must be from 0 to 11.';
+  if (!match) return tr('Use feet.inches format, for example 15.4.');
+  if (Number(match[2] || 0) > 11) return tr('Inches must be from 0 to 11.');
   return null;
 }
 

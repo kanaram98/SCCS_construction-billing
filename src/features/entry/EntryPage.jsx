@@ -19,11 +19,12 @@ import { BottomActionBar, EmptyState, IssuesAlert, PageHeading, SelectField, Tex
 import { countSearchResults, searchEntries } from '../../domain/entry-search.js';
 import { countBillContents, getBillTotals } from '../../domain/calculations.js';
 import { getBillValidation } from '../../domain/validation.js';
-import { formatCurrency, pluralize } from '../../domain/formatters.js';
+import { formatCurrency } from '../../domain/formatters.js';
 import { VIEWS } from '../../config/app.js';
 import { useEntryDisclosure } from './useEntryDisclosure.js';
 import SectionPanel from './SectionPanel.jsx';
 import TemplatesDialog from './TemplatesDialog.jsx';
+import { tr as t, trn } from '../../i18n/translate.js';
 
 export default function EntryPage({ onNavigate }) {
   const { data, bill, actions } = useBilling();
@@ -38,7 +39,9 @@ export default function EntryPage({ onNavigate }) {
   const totals = useMemo(() => getBillTotals(bill, data.rates), [bill, data.rates]);
   const errors = useMemo(() => getBillValidation(bill, data.rates), [bill, data.rates]);
   const counts = countBillContents(bill);
-  const sectionLabel = bill.firstLevelName || 'Section';
+  /** Level names are user-editable; common defaults (Section, Floor…) are translated. */
+  const sectionLabel = t(bill.firstLevelName || 'Section');
+  const areaLabel = t(bill.secondLevelName || 'Area');
 
   /** Shows the result of a copy or template action and expands what it created. */
   function showResult(result) {
@@ -59,21 +62,21 @@ export default function EntryPage({ onNavigate }) {
   return (
     <section>
       <PageHeading
-        eyebrow={`Bill ${bill.number || '—'}${bill.projectName ? ` · ${bill.projectName}` : ''}`}
-        title="Measurements"
+        eyebrow={`${t('Bill {number}', { number: bill.number || '—' })}${bill.projectName ? ` · ${bill.projectName}` : ''}`}
+        title={t('Measurements')}
         action={<Chip color="primary" variant="outlined" label={formatCurrency(totals.total)} sx={{ fontWeight: 700 }} />}
       />
 
       <Stack direction="row" spacing={1} sx={{ mb: 1.5, alignItems: 'center' }}>
         <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
-          {counts.sections} {pluralize(counts.sections, 'section')} · {counts.areas} {pluralize(counts.areas, 'area')} · {counts.items} {pluralize(counts.items, 'entry', 'entries')}
+          {trn(counts.sections, '{count} section', '{count} sections')} · {trn(counts.areas, '{count} area', '{count} areas')} · {trn(counts.items, '{count} entry', '{count} entries')}
         </Typography>
-        <Tooltip title="Templates">
-          <IconButton aria-label="Templates" onClick={() => setTemplatesOpen(true)}><BookmarksIcon /></IconButton>
+        <Tooltip title={t('Templates')}>
+          <IconButton aria-label={t('Templates')} onClick={() => setTemplatesOpen(true)}><BookmarksIcon /></IconButton>
         </Tooltip>
         {sections.length > 0 && (
-          <Tooltip title={disclosure.anySectionOpen ? 'Collapse all' : 'Expand all'}>
-            <IconButton aria-label={disclosure.anySectionOpen ? 'Collapse all' : 'Expand all'} onClick={disclosure.toggleAllSections}>
+          <Tooltip title={disclosure.anySectionOpen ? t('Collapse all') : t('Expand all')}>
+            <IconButton aria-label={disclosure.anySectionOpen ? t('Collapse all') : t('Expand all')} onClick={disclosure.toggleAllSections}>
               {disclosure.anySectionOpen ? <UnfoldLessIcon /> : <UnfoldMoreIcon />}
             </IconButton>
           </Tooltip>
@@ -85,12 +88,12 @@ export default function EntryPage({ onNavigate }) {
         <TextField
           type="search"
           value={query}
-          placeholder="Search entries, notes or rooms"
+          placeholder={t('Search entries, notes or rooms')}
           onChange={setQuery}
-          helperText={results ? `${countSearchResults(results)} matching ${pluralize(countSearchResults(results), 'entry', 'entries')}` : undefined}
+          helperText={results ? trn(countSearchResults(results), '{count} matching entry', '{count} matching entries') : undefined}
           slotProps={{
             input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> },
-            htmlInput: { 'aria-label': 'Search entries' }
+            htmlInput: { 'aria-label': t('Search entries') }
           }}
           sx={{ mb: 1.5, bgcolor: 'background.paper' }}
         />
@@ -98,23 +101,23 @@ export default function EntryPage({ onNavigate }) {
 
       {!results && sections.length > 1 && (
         <SelectField
-          label={`Go to ${sectionLabel.toLowerCase()}`}
+          label={t('Go to {level}', { level: sectionLabel.toLowerCase() })}
           value=""
-          placeholder={`Jump to a ${sectionLabel.toLowerCase()}…`}
+          placeholder={t('Jump to a {level}…', { level: sectionLabel.toLowerCase() })}
           options={sections.map((section) => ({ value: section.id, label: section.name }))}
           onChange={(sectionId) => sectionId && disclosure.reveal(sectionId)}
           sx={{ mb: 1.5, bgcolor: 'background.paper' }}
         />
       )}
 
-      {counts.items > 0 && <IssuesAlert issues={errors} suffix="to fix before export" />}
+      {counts.items > 0 && <IssuesAlert issues={errors} suffix={t('to fix before export')} />}
 
       {sections.length === 0 && (
         <EmptyState
           icon={<StraightenIcon />}
-          title={`Start with a ${sectionLabel.toLowerCase()}`}
-          description={`Add a ${sectionLabel.toLowerCase()} (e.g. a floor), then ${(bill.secondLevelName || 'area').toLowerCase()}s and their measurements.`}
-          action={<Button variant="contained" startIcon={<AddIcon />} onClick={addSection}>Add first {sectionLabel.toLowerCase()}</Button>}
+          title={t('Start with a {level}', { level: sectionLabel.toLowerCase() })}
+          description={t('Add a {level} (e.g. a floor), then its {sublevel}s and their measurements.', { level: sectionLabel.toLowerCase(), sublevel: areaLabel.toLowerCase() })}
+          action={<Button variant="contained" startIcon={<AddIcon />} onClick={addSection}>{t('Add first {level}', { level: sectionLabel.toLowerCase() })}</Button>}
         />
       )}
 
@@ -138,19 +141,19 @@ export default function EntryPage({ onNavigate }) {
       {results && results.length === 0 && (
         <EmptyState
           compact
-          title="No matching entries"
-          description={`Nothing matches “${query.trim()}”.`}
-          action={<Button onClick={() => setQuery('')}>Clear search</Button>}
+          title={t('No matching entries')}
+          description={t('Nothing matches “{query}”.', { query: query.trim() })}
+          action={<Button onClick={() => setQuery('')}>{t('Clear search')}</Button>}
         />
       )}
 
       {sections.length > 0 && (
         <BottomActionBar>
           <Box sx={{ minWidth: 0 }}>
-            <Typography variant="caption" color="text.secondary" component="div" noWrap>Grand total</Typography>
+            <Typography variant="caption" color="text.secondary" component="div" noWrap>{t('Grand total')}</Typography>
             <Typography variant="h6" color="primary" noWrap>{formatCurrency(totals.total)}</Typography>
           </Box>
-          <Button variant="contained" startIcon={<PictureAsPdfIcon />} onClick={() => onNavigate(VIEWS.print)}>Review PDF</Button>
+          <Button variant="contained" startIcon={<PictureAsPdfIcon />} onClick={() => onNavigate(VIEWS.print)}>{t('Review PDF')}</Button>
         </BottomActionBar>
       )}
 

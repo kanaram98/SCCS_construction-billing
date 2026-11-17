@@ -17,6 +17,7 @@ import { useUndoable } from '../../hooks/useUndoable.js';
 import { sectionAnchorId } from './useEntryDisclosure.js';
 import GroupSummary from './GroupSummary.jsx';
 import AreaPanel from './AreaPanel.jsx';
+import { tr as t, trn } from '../../i18n/translate.js';
 
 /**
  * @param {Array<{ area, items }> | null} visibleAreas search results to show instead of every area
@@ -33,14 +34,14 @@ export default function SectionPanel({ section, sections, index, open, disclosur
   async function deleteSection() {
     if (section.areas.length) {
       const confirmed = await confirm({
-        title: `Delete ${section.name}?`,
-        message: `This removes ${section.areas.length} ${pluralize(section.areas.length, 'area')} and ${itemCount} ${pluralize(itemCount, 'entry', 'entries')}.`,
-        confirmLabel: 'Delete',
+        title: t('Delete {name}?', { name: section.name }),
+        message: t('This removes {areas} and {entries}.', { areas: trn(section.areas.length, '{count} area', '{count} areas'), entries: trn(itemCount, '{count} entry', '{count} entries') }),
+        confirmLabel: t('Delete'),
         danger: true
       });
       if (!confirmed) return;
     }
-    undoable(`${section.name} deleted.`, () => entry.removeSection(section.id));
+    undoable(t('{name} deleted.', { name: section.name }), () => entry.removeSection(section.id));
   }
 
   return (
@@ -53,19 +54,19 @@ export default function SectionPanel({ section, sections, index, open, disclosur
       <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderLeft: 4, borderColor: 'primary.main' }}>
         <GroupSummary
           name={section.name}
-          meta={`${section.areas.length} ${pluralize(section.areas.length, 'area')} · ${itemCount} ${pluralize(itemCount, 'entry', 'entries')}`}
+          meta={`${trn(section.areas.length, '{count} area', '{count} areas')} · ${trn(itemCount, '{count} entry', '{count} entries')}`}
           total={getSectionTotal(section, data.rates)}
         />
       </AccordionSummary>
       <AccordionDetails sx={{ px: { xs: 1, sm: 2 } }}>
         <Stack direction="row" spacing={0.5} sx={{ mb: 1.5, alignItems: 'center' }}>
-          <TextField label="Section name" value={section.name} onChange={(name) => entry.updateSection(section.id, { name })} />
+          <TextField label={t('Section name')} value={section.name} onChange={(name) => entry.updateSection(section.id, { name })} />
           <ActionMenu
-            label={`Actions for ${section.name}`}
+            label={t('Actions for {name}', { name: section.name })}
             items={[
-              { label: 'Move up', icon: <ArrowUpwardIcon fontSize="small" />, onClick: () => entry.moveSection(section.id, -1), disabled: index === 0 },
-              { label: 'Move down', icon: <ArrowDownwardIcon fontSize="small" />, onClick: () => entry.moveSection(section.id, 1), disabled: index === sections.length - 1 },
-              { label: 'Delete section', icon: <DeleteIcon fontSize="small" />, onClick: deleteSection, danger: true }
+              { label: t('Move up'), icon: <ArrowUpwardIcon fontSize="small" />, onClick: () => entry.moveSection(section.id, -1), disabled: index === 0 },
+              { label: t('Move down'), icon: <ArrowDownwardIcon fontSize="small" />, onClick: () => entry.moveSection(section.id, 1), disabled: index === sections.length - 1 },
+              { label: t('Delete section'), icon: <DeleteIcon fontSize="small" />, onClick: deleteSection, danger: true }
             ]}
           />
         </Stack>
@@ -90,11 +91,11 @@ export default function SectionPanel({ section, sections, index, open, disclosur
           })}
         </Stack>
         {!searching && section.areas.length === 0 && (
-          <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>No areas yet. Add one to start measuring.</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>{t('No areas yet. Add one to start measuring.')}</Typography>
         )}
 
         <Button fullWidth startIcon={<AddIcon />} onClick={() => onAddArea(section.id)} sx={{ mt: 1.5 }}>
-          Add {levelName || 'area'}
+          {t('Add {level}', { level: t(levelName || 'Area').toLowerCase() })}
         </Button>
       </AccordionDetails>
     </Accordion>

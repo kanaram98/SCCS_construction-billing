@@ -1,5 +1,6 @@
 import { newId } from './ids.js';
 import { todayIso } from './formatters.js';
+import { tr } from '../i18n/translate.js';
 
 export function createBill(number = '1') {
   return {
@@ -76,7 +77,7 @@ export function duplicateBill(source, number) {
     ...copy,
     id: newId(),
     number,
-    projectName: `${source.projectName || 'Untitled'} (copy)`,
+    projectName: tr('{name} (copy)', { name: source.projectName || tr('Untitled') }),
     payments: [],
     sections: cloneSections(copy.sections)
   };
@@ -88,5 +89,5 @@ function structuredCloneSafe(value) {
 
 /** Default label for the next section/area, e.g. "Floor 3". */
 export function nextLevelName(levelName, fallback, existingCount) {
-  return `${levelName || fallback} ${existingCount + 1}`;
+  return `${tr(levelName || fallback)} ${existingCount + 1}`;
 }

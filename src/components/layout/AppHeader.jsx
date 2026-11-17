@@ -12,6 +12,8 @@ import { APP_NAME } from '../../config/app.js';
 import { SAVE_STATUS } from '../../state/useBillingStore.js';
 import { DRAWER_WIDTH } from '../../theme.js';
 import ColorModeToggle from './ColorModeToggle.jsx';
+import LanguageSwitch from './LanguageSwitch.jsx';
+import { tr as t } from '../../i18n/translate.js';
 
 export default function AppHeader({ subtitle, saveStatus, canInstall, onInstall }) {
   const saveFailed = saveStatus === SAVE_STATUS.failed;
@@ -26,17 +28,18 @@ export default function AppHeader({ subtitle, saveStatus, canInstall, onInstall 
       <Toolbar sx={{ gap: 1.5, pt: 'env(safe-area-inset-top)' }}>
         <Avatar variant="rounded" sx={{ bgcolor: 'primary.main', fontWeight: 800, width: 38, height: 38 }}>₹</Avatar>
         <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Typography variant="subtitle1" noWrap sx={{ lineHeight: 1.2 }}>{APP_NAME}</Typography>
+          <Typography variant="subtitle1" noWrap sx={{ lineHeight: 1.2 }}>{t(APP_NAME)}</Typography>
           <Typography variant="caption" color="text.secondary" noWrap component="div">
-            {subtitle || 'Feet-and-inches billing'}
+            {subtitle || t('Feet-and-inches billing')}
           </Typography>
         </Box>
         {canInstall && (
-          <Button size="small" variant="contained" startIcon={<InstallMobileIcon />} onClick={onInstall}>Install</Button>
+          <Button size="small" variant="contained" startIcon={<InstallMobileIcon />} onClick={onInstall}>{t('Install')}</Button>
         )}
+        <LanguageSwitch />
         <ColorModeToggle />
-        <Tooltip title={saveStatus}>
-          <Box role="status" aria-label={saveStatus} sx={{ display: 'flex', color: saveFailed ? 'error.main' : 'success.main' }}>
+        <Tooltip title={t(saveStatus)}>
+          <Box role="status" aria-label={t(saveStatus)} sx={{ display: 'flex', color: saveFailed ? 'error.main' : 'success.main' }}>
             {saveFailed ? <CloudOffIcon /> : <CloudDoneIcon />}
           </Box>
         </Tooltip>

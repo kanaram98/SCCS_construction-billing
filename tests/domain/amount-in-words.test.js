@@ -28,3 +28,14 @@ test('formats rupees with paise and "Only"', () => {
   assert.equal(amountInWords(0), 'Rupees Zero Only');
   assert.equal(amountInWords(-5), 'Rupees Zero Only');
 });
+
+test('Hindi amounts in words', async () => {
+  const { amountInWordsFor, numberToHindiWords } = await import('../../src/domain/amount-in-words.js');
+  assert.equal(numberToHindiWords(51), 'इक्यावन');
+  assert.equal(numberToHindiWords(19751), 'उन्नीस हज़ार सात सौ इक्यावन');
+  assert.equal(numberToHindiWords(1234567), 'बारह लाख चौंतीस हज़ार पाँच सौ सड़सठ');
+  assert.equal(numberToHindiWords(15000000), 'एक करोड़ पचास लाख');
+  assert.equal(amountInWordsFor(13895, 'hi'), 'रुपये तेरह हज़ार आठ सौ पचानबे मात्र');
+  assert.equal(amountInWordsFor(250000.5, 'hi'), 'रुपये दो लाख पचास हज़ार और पचास पैसे मात्र');
+  assert.equal(amountInWordsFor(13895, 'en'), 'Rupees Thirteen Thousand Eight Hundred Ninety-Five Only');
+});

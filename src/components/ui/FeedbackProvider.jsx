@@ -7,6 +7,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 import Snackbar from '@mui/material/Snackbar';
+import { tr as t } from '../../i18n/translate.js';
 
 const FeedbackContext = createContext(null);
 
@@ -81,14 +82,14 @@ export function FeedbackProvider({ children }) {
               <DialogContent><DialogContentText>{confirmation.message}</DialogContentText></DialogContent>
             )}
             <DialogActions>
-              <Button onClick={() => close(false)}>Cancel</Button>
+              <Button onClick={() => close(false)}>{t('Cancel')}</Button>
               <Button
                 variant="contained"
                 color={confirmation.danger ? 'error' : 'primary'}
                 onClick={() => close(true)}
                 autoFocus
               >
-                {confirmation.confirmLabel || 'OK'}
+                {confirmation.confirmLabel || t('OK')}
               </Button>
             </DialogActions>
           </>

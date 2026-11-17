@@ -5,11 +5,12 @@ import AmountsCard from './AmountsCard.jsx';
 import FirmCard from './FirmCard.jsx';
 import PaymentDetailsCard from './PaymentDetailsCard.jsx';
 import PaymentsCard from './PaymentsCard.jsx';
+import { tr as t } from '../../i18n/translate.js';
 
 export default function ProjectPage() {
   return (
     <section>
-      <PageHeading title="Project" description="Bill, client, amounts and your firm details." />
+      <PageHeading title={t('Project')} description={t('Bill, client, amounts and your firm details.')} />
       <BillDetailsCard />
       <AmountsCard />
       <PaymentsCard />

@@ -1,6 +1,7 @@
 /** Payments received against a bill (in addition to the advance). */
 import { newId } from './ids.js';
 import { text, todayIso } from './formatters.js';
+import { tr } from '../i18n/translate.js';
 
 export const PAYMENT_MODES = Object.freeze({
   upi: 'UPI',
@@ -39,8 +40,8 @@ export function createPayment(values) {
 export function getPaymentErrors(values) {
   const amount = Number(values.amount);
   return {
-    date: text(values.date) ? '' : 'Choose the payment date.',
-    amount: text(values.amount) && Number.isFinite(amount) && amount > 0 ? '' : 'Enter an amount greater than zero.'
+    date: text(values.date) ? '' : tr('Choose the payment date.'),
+    amount: text(values.amount) && Number.isFinite(amount) && amount > 0 ? '' : tr('Enter an amount greater than zero.')
   };
 }
 

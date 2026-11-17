@@ -10,12 +10,13 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import { CollapsibleCard } from '../../components/ui';
 import { getPrintDocument } from '../../domain/print-settings.js';
+import { tr as t } from '../../i18n/translate.js';
 
 /** Choose which documents to export and reorder them. */
 export default function DocumentSelection({ settings, selectedCount, onToggle, onMove }) {
   const { documentOrder } = settings;
   return (
-    <CollapsibleCard className="no-print" title="Documents" meta={`${selectedCount} selected`} defaultOpen>
+    <CollapsibleCard className="no-print" title={t('Documents')} meta={t('{count} selected', { count: selectedCount })} defaultOpen>
       <List disablePadding>
         {documentOrder.map((documentId, index) => {
           const { label } = getPrintDocument(documentId);
@@ -25,10 +26,10 @@ export default function DocumentSelection({ settings, selectedCount, onToggle, o
               disablePadding
               secondaryAction={(
                 <Stack direction="row">
-                  <IconButton aria-label={`Move ${label} up`} disabled={index === 0} onClick={() => onMove(documentId, -1)}>
+                  <IconButton aria-label={t('Move {name} up', { name: t(label) })} disabled={index === 0} onClick={() => onMove(documentId, -1)}>
                     <ArrowUpwardIcon fontSize="small" />
                   </IconButton>
-                  <IconButton aria-label={`Move ${label} down`} disabled={index === documentOrder.length - 1} onClick={() => onMove(documentId, 1)}>
+                  <IconButton aria-label={t('Move {name} down', { name: t(label) })} disabled={index === documentOrder.length - 1} onClick={() => onMove(documentId, 1)}>
                     <ArrowDownwardIcon fontSize="small" />
                   </IconButton>
                 </Stack>
@@ -36,9 +37,9 @@ export default function DocumentSelection({ settings, selectedCount, onToggle, o
             >
               <ListItemButton onClick={() => onToggle(documentId)} sx={{ pr: 12 }}>
                 <ListItemIcon sx={{ minWidth: 40 }}>
-                  <Checkbox edge="start" checked={settings.documents[documentId]} tabIndex={-1} disableRipple slotProps={{ input: { 'aria-label': label } }} />
+                  <Checkbox edge="start" checked={settings.documents[documentId]} tabIndex={-1} disableRipple slotProps={{ input: { 'aria-label': t(label) } }} />
                 </ListItemIcon>
-                <ListItemText primary={label} />
+                <ListItemText primary={t(label)} />
               </ListItemButton>
             </ListItem>
           );

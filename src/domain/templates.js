@@ -1,5 +1,6 @@
 import { newId } from './ids.js';
 import { sameText, text } from './formatters.js';
+import { tr } from '../i18n/translate.js';
 
 export const TEMPLATE_TYPES = Object.freeze(['section', 'area']);
 
@@ -14,10 +15,10 @@ export function createTemplate(existing, template) {
 /** Options for the "Save from" picker: every section, and every area within it. */
 export function getTemplateSources(sections) {
   return sections.flatMap((section, sectionIndex) => [
-    { value: `section|${section.id}`, label: `Section · ${section.name} (${sectionIndex + 1})` },
+    { value: `section|${section.id}`, label: tr('Section · {name} ({number})', { name: section.name, number: sectionIndex + 1 }) },
     ...section.areas.map((area, areaIndex) => ({
       value: `area|${section.id}|${area.id}`,
-      label: `Area · ${section.name} (${sectionIndex + 1}) / ${area.name} (${areaIndex + 1})`
+      label: tr('Area · {section} ({sectionNumber}) / {name} ({number})', { section: section.name, sectionNumber: sectionIndex + 1, name: area.name, number: areaIndex + 1 })
     }))
   ]);
 }

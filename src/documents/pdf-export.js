@@ -4,7 +4,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { buildDocument } from './document-model.js';
-import { deliverFile } from '../services/files.js';
+import { deliverPdf } from './pdf-file.js';
 import { buildPaymentBlock } from './payment-block.js';
 import { formatCurrencyAscii } from '../domain/formatters.js';
 import { SIGNATURE_AREA, normalizeSignatureLayout } from '../domain/signature-layout.js';
@@ -222,15 +222,6 @@ function renderDocument(doc, documentType, { bill, rates, firm, settings, includ
   drawClosing(doc, { bill, rates, firm, settings, documentType, includeSignature, drawPageHeader });
 }
 
-function buildFilename(bill) {
-  return `Bill-${bill.number || '1'}-${bill.projectName || 'Construction'}`.replace(/[^\w.-]/g, '_') + '.pdf';
-}
-
-/** Hands the PDF to the native share sheet when supported, otherwise downloads it. */
-function deliverPdf(doc, filename) {
-  return deliverFile(new File([doc.output('blob')], filename, { type: 'application/pdf' }));
-}
-
 export async function exportBillPdf(bill, rates, firm, printSettings) {
   const settings = normalizePrintSettings(printSettings);
   const documents = getSelectedDocuments(settings);
@@ -249,5 +240,5 @@ export async function exportBillPdf(bill, rates, firm, printSettings) {
   });
 
   if (settings.pageNumbers) drawPageNumbers(doc, settings);
-  await deliverPdf(doc, buildFilename(bill));
+  await deliverPdf(doc, bill);
 }

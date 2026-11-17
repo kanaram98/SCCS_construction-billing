@@ -5,6 +5,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import IconButton from '@mui/material/IconButton';
 import CloseIcon from '@mui/icons-material/Close';
 import { useIsPhone } from '../../hooks/useIsMobile.js';
+import { tr as t } from '../../i18n/translate.js';
 
 /**
  * Dialog that fills the screen on phones and is a centred card elsewhere.
@@ -25,7 +26,7 @@ export default function ResponsiveDialog({ open, title, onClose, actions, onSubm
     >
       <DialogTitle sx={{ pr: 6 }}>
         {title}
-        <IconButton aria-label="Close" onClick={onClose} sx={{ position: 'absolute', right: 8, top: 8 }}>
+        <IconButton aria-label={t('Close')} onClick={onClose} sx={{ position: 'absolute', right: 8, top: 8 }}>
           <CloseIcon />
         </IconButton>
       </DialogTitle>

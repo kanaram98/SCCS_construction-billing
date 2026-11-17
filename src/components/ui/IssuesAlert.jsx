@@ -4,10 +4,10 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Collapse from '@mui/material/Collapse';
 import { MessageList } from './Feedback.jsx';
-import { pluralize } from '../../domain/formatters.js';
+import { tr as t, trn } from '../../i18n/translate.js';
 
 /** Compact one-line summary of problems, expandable to the full list. */
-export default function IssuesAlert({ issues, severity = 'warning', suffix = 'to fix', className, sx }) {
+export default function IssuesAlert({ issues, severity = 'warning', suffix, className, sx }) {
   const [open, setOpen] = useState(false);
   if (!issues.length) return null;
   return (
@@ -15,9 +15,9 @@ export default function IssuesAlert({ issues, severity = 'warning', suffix = 'to
       severity={severity}
       className={className}
       sx={{ mb: 1.5, ...sx }}
-      action={<Button color="inherit" size="small" onClick={() => setOpen((shown) => !shown)}>{open ? 'Hide' : 'Show'}</Button>}
+      action={<Button color="inherit" size="small" onClick={() => setOpen((shown) => !shown)}>{open ? t('Hide') : t('Show')}</Button>}
     >
-      {issues.length} {pluralize(issues.length, 'issue')} {suffix}
+      {trn(issues.length, '{count} issue', '{count} issues')} {suffix || t('to fix')}
       <Collapse in={open}><Box sx={{ mt: 1 }}><MessageList messages={issues} /></Box></Collapse>
     </Alert>
   );

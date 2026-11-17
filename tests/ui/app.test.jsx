@@ -123,3 +123,14 @@ describe('PDF screen', () => {
     expect(await screen.findByText('Page setup')).toBeTruthy();
   });
 });
+
+describe('Language', () => {
+  it('switches the app to Hindi and remembers it', async () => {
+    const { user } = renderApp(SAMPLE_STATE);
+    await user.click(screen.getByRole('button', { name: 'Language' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'हिंदी' }));
+    expect(await screen.findByRole('button', { name: 'नया बिल' })).toBeTruthy();
+    expect(within(screen.getByRole('navigation', { name: 'मुख्य मेनू' })).getByRole('button', { name: 'दरें' })).toBeTruthy();
+    expect(savedState().preferences.language).toBe('hi');
+  });
+});

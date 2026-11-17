@@ -1,4 +1,9 @@
 import { useNotify } from '../../components/ui';
+import { getLanguage, tr as t } from '../../i18n/translate.js';
+import { resolveBillLanguage } from '../../domain/print-settings.js';
+
+/** Rendered documents in the hidden print batch (used for Hindi image PDFs). */
+const renderedDocuments = () => [...document.querySelectorAll('.print-batch .print-document')];
 
 /**
  * PDF download and browser print, guarded by export validation.
@@ -8,8 +13,9 @@ export function usePdfExport({ bill, rates, firm, printSettings, exportErrors, s
   const notify = useNotify();
 
   function blockedReason(action) {
-    if (exportErrors.length) return `Fix the listed issues before ${action}.`;
-    if (!selectedDocuments.length) return `Select at least one document to ${action === 'printing' ? 'print' : 'export'}.`;
+    const printing = action === 'printing';
+    if (exportErrors.length) return printing ? t('Fix the listed issues before printing.') : t('Fix the listed issues before exporting the PDF.');
+    if (!selectedDocuments.length) return printing ? t('Select at least one document to print.') : t('Select at least one document to export.');
     return '';
   }
 
@@ -20,14 +26,20 @@ export function usePdfExport({ bill, rates, firm, printSettings, exportErrors, s
       return;
     }
     try {
-      notify('Preparing PDF…', 'info');
-      const { exportBillPdf } = await import('../../documents/pdf-export.js');
-      await exportBillPdf(bill, rates, firm, printSettings);
-      notify('PDF ready to save or share.');
+      notify(t('Preparing PDF…'), 'info');
+      if (resolveBillLanguage(printSettings, getLanguage()) === 'hi') {
+        // jsPDF cannot shape Hindi text, so Hindi bills are exported from the rendered preview.
+        const { exportImagePdf } = await import('../../documents/pdf-image-export.js');
+        await exportImagePdf(bill, renderedDocuments(), printSettings);
+      } else {
+        const { exportBillPdf } = await import('../../documents/pdf-export.js');
+        await exportBillPdf(bill, rates, firm, printSettings);
+      }
+      notify(t('PDF ready to save or share.'));
     } catch (error) {
       if (error?.name === 'AbortError') return; // user closed the share sheet
       console.error('Could not export PDF.', error);
-      notify(`PDF export failed: ${error.message || 'Unknown error'}`, 'error');
+      notify(t('PDF export failed: {reason}', { reason: error.message || t('Unknown error') }), 'error');
     }
   }
 

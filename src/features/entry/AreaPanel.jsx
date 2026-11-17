@@ -21,6 +21,7 @@ import GroupSummary from './GroupSummary.jsx';
 import EntryList from './EntryList.jsx';
 import EntryDialog from './EntryDialog.jsx';
 import SectionPickerDialog from './SectionPickerDialog.jsx';
+import { tr as t, trn } from '../../i18n/translate.js';
 
 /** One area: its entries, the add/edit dialog, and copy/delete actions. */
 /** @param {object[] | null} visibleItems search results to show instead of every entry */
@@ -53,21 +54,21 @@ export default function AreaPanel({ section, area, index, sections, open, visibl
   }
 
   function deleteEntry(item) {
-    undoable(`${item.name || 'Entry'} deleted.`, () => entry.removeItem(section.id, area.id, item.id));
+    undoable(t('{name} deleted.', { name: item.name || t('Entry') }), () => entry.removeItem(section.id, area.id, item.id));
     form.handleItemRemoved(item.id);
   }
 
   async function deleteArea() {
     if (area.items.length) {
       const confirmed = await confirm({
-        title: `Delete ${area.name}?`,
-        message: `Its ${area.items.length} ${pluralize(area.items.length, 'entry', 'entries')} will be removed.`,
-        confirmLabel: 'Delete',
+        title: t('Delete {name}?', { name: area.name }),
+        message: trn(area.items.length, 'Its {count} entry will be removed.', 'Its {count} entries will be removed.'),
+        confirmLabel: t('Delete'),
         danger: true
       });
       if (!confirmed) return;
     }
-    undoable(`${area.name} deleted.`, () => entry.removeArea(section.id, area.id));
+    undoable(t('{name} deleted.', { name: area.name }), () => entry.removeArea(section.id, area.id));
   }
 
   function copyTo(targetSectionId) {
@@ -84,20 +85,20 @@ export default function AreaPanel({ section, area, index, sections, open, visibl
         <GroupSummary
           variant="area"
           name={area.name}
-          meta={`${area.items.length} ${pluralize(area.items.length, 'entry', 'entries')}`}
+          meta={trn(area.items.length, '{count} entry', '{count} entries')}
           total={getAreaTotal(area, data.rates)}
         />
       </AccordionSummary>
       <AccordionDetails sx={{ pt: 0 }}>
         <Stack direction="row" spacing={0.5} sx={{ mb: 1.5, alignItems: 'center' }}>
-          <TextField label="Area name" value={area.name} onChange={(name) => entry.updateArea(section.id, area.id, { name })} />
+          <TextField label={t('Area name')} value={area.name} onChange={(name) => entry.updateArea(section.id, area.id, { name })} />
           <ActionMenu
-            label={`Actions for ${area.name}`}
+            label={t('Actions for {name}', { name: area.name })}
             items={[
-              { label: 'Move up', icon: <ArrowUpwardIcon fontSize="small" />, onClick: () => entry.moveArea(section.id, area.id, -1), disabled: index === 0 },
-              { label: 'Move down', icon: <ArrowDownwardIcon fontSize="small" />, onClick: () => entry.moveArea(section.id, area.id, 1), disabled: index === section.areas.length - 1 },
-              { label: 'Copy area to section…', icon: <ContentCopyIcon fontSize="small" />, onClick: () => setCopyRequest({ type: 'area' }), disabled: sections.length < 2 },
-              { label: 'Delete area', icon: <DeleteIcon fontSize="small" />, onClick: deleteArea, danger: true }
+              { label: t('Move up'), icon: <ArrowUpwardIcon fontSize="small" />, onClick: () => entry.moveArea(section.id, area.id, -1), disabled: index === 0 },
+              { label: t('Move down'), icon: <ArrowDownwardIcon fontSize="small" />, onClick: () => entry.moveArea(section.id, area.id, 1), disabled: index === section.areas.length - 1 },
+              { label: t('Copy area to section…'), icon: <ContentCopyIcon fontSize="small" />, onClick: () => setCopyRequest({ type: 'area' }), disabled: sections.length < 2 },
+              { label: t('Delete area'), icon: <DeleteIcon fontSize="small" />, onClick: deleteArea, danger: true }
             ]}
           />
         </Stack>
@@ -114,19 +115,19 @@ export default function AreaPanel({ section, area, index, sections, open, visibl
             onMove={(itemId, direction) => entry.moveItem(section.id, area.id, itemId, direction)}
           />
         ) : (
-          <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>No entries yet.</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>{t('No entries yet.')}</Typography>
         )}
 
         <Button fullWidth variant="outlined" startIcon={<AddIcon />} onClick={openNewEntry} sx={{ mt: 1.5, py: 1 }}>
-          Add entry
+          {t('Add entry')}
         </Button>
       </AccordionDetails>
 
       <EntryDialog open={editorOpen} areaName={area.name} form={form} onClose={() => setEditorOpen(false)} />
       <SectionPickerDialog
         open={Boolean(copyRequest)}
-        title={copyRequest?.type === 'area' ? `Copy ${area.name} to…` : 'Copy entry to…'}
-        description="Entries go into an area with the same name, or a new one is created."
+        title={copyRequest?.type === 'area' ? t('Copy {name} to…', { name: area.name }) : t('Copy entry to…')}
+        description={t('Entries go into an area with the same name, or a new one is created.')}
         sections={sections}
         currentSectionId={section.id}
         onPick={copyTo}

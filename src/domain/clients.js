@@ -1,4 +1,5 @@
 import { sameText, text } from './formatters.js';
+import { tr } from '../i18n/translate.js';
 
 /** Bill fields that are copied from / saved to a client profile. */
 export function clientDetailsPatch(client) {
@@ -45,10 +46,10 @@ export function getClientProfileState(bill, clients) {
  */
 export function getClientSaveError(bill, clients, updateExisting) {
   const state = getClientProfileState(bill, clients);
-  if (!text(bill.client)) return 'Enter a client name before saving the profile.';
-  if (updateExisting && !state.selectedClient) return 'Select a saved client before updating it.';
+  if (!text(bill.client)) return tr('Enter a client name before saving the profile.');
+  if (updateExisting && !state.selectedClient) return tr('Select a saved client before updating it.');
   if (updateExisting ? state.duplicateClient : state.sameNameClient) {
-    return 'A client with this name is already saved. Select that profile or change the name.';
+    return tr('A client with this name is already saved. Select that profile or change the name.');
   }
   return '';
 }

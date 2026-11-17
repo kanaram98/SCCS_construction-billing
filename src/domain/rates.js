@@ -1,4 +1,5 @@
 import { formatDimension } from './measurements.js';
+import { tr } from '../i18n/translate.js';
 
 export const DEFAULT_RATES = Object.freeze([
   { id: 'floor-tiles', name: 'Floor tiles', unit: 'sqft', type: 'area', rate: 85 },
@@ -58,10 +59,10 @@ export function measurementTypeLabel(type) {
 export function getRateErrors(rate) {
   const value = Number(rate.rate);
   return {
-    name: String(rate.name ?? '').trim() ? '' : 'Enter an item name.',
-    unit: String(rate.unit ?? '').trim() ? '' : 'Enter a unit, e.g. sqft.',
-    type: MEASUREMENT_TYPES.some((entry) => entry.id === rate.type) ? '' : 'Choose how it is measured.',
-    rate: String(rate.rate ?? '').trim() !== '' && Number.isFinite(value) && value >= 0 ? '' : 'Enter a rate of zero or more.'
+    name: String(rate.name ?? '').trim() ? '' : tr('Enter an item name.'),
+    unit: String(rate.unit ?? '').trim() ? '' : tr('Enter a unit, e.g. sqft.'),
+    type: MEASUREMENT_TYPES.some((entry) => entry.id === rate.type) ? '' : tr('Choose how it is measured.'),
+    rate: String(rate.rate ?? '').trim() !== '' && Number.isFinite(value) && value >= 0 ? '' : tr('Enter a rate of zero or more.')
   };
 }
 
@@ -79,11 +80,11 @@ export function resolveRate(item, rates) {
 
 /** Human-readable measurement summary for an entry, e.g. `12'0" × 10'6"`. */
 export function describeMeasurement(item, rate) {
-  if (rate.type === 'direct') return 'Manual quantity';
-  if (rate.type === 'count') return 'Count';
+  if (rate.type === 'direct') return tr('Manual quantity');
+  if (rate.type === 'count') return tr('Count');
   const dimensions = getDimensionFields(rate.type)
     .filter((field) => field.required || item[field.key])
     .map((field) => formatDimension(item[field.key]))
     .filter(Boolean);
-  return dimensions.join(' × ') || 'Measurements needed';
+  return dimensions.join(' × ') || tr('Measurements needed');
 }

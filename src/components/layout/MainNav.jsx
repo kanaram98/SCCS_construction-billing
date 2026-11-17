@@ -15,6 +15,7 @@ import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdfOutlined';
 import { NAVIGATION, VIEWS } from '../../config/app.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { BOTTOM_NAV_HEIGHT, DRAWER_WIDTH } from '../../theme.js';
+import { tr as t } from '../../i18n/translate.js';
 
 const ICONS = {
   [VIEWS.bills]: <ReceiptLongIcon />,
@@ -34,12 +35,12 @@ export default function MainNav({ activeView, onNavigate }) {
         elevation={8}
         className="no-print"
         component="nav"
-        aria-label="Main navigation"
+        aria-label={t('Main navigation')}
         sx={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: (theme) => theme.zIndex.appBar + 1, pb: 'env(safe-area-inset-bottom)' }}
       >
         <BottomNavigation showLabels value={activeView} onChange={(_event, view) => onNavigate(view)} sx={{ height: BOTTOM_NAV_HEIGHT }}>
           {NAVIGATION.map(({ id, shortLabel, label }) => (
-            <BottomNavigationAction key={id} value={id} label={shortLabel || label} icon={ICONS[id]} />
+            <BottomNavigationAction key={id} value={id} label={t(shortLabel || label)} icon={ICONS[id]} />
           ))}
         </BottomNavigation>
       </Paper>
@@ -53,7 +54,7 @@ export default function MainNav({ activeView, onNavigate }) {
       sx={{ width: DRAWER_WIDTH, flexShrink: 0, '& .MuiDrawer-paper': { width: DRAWER_WIDTH, boxSizing: 'border-box' } }}
     >
       <Toolbar />
-      <List component="nav" aria-label="Main navigation" sx={{ px: 1 }}>
+      <List component="nav" aria-label={t('Main navigation')} sx={{ px: 1 }}>
         {NAVIGATION.map(({ id, label }) => (
           <ListItemButton
             key={id}
@@ -62,7 +63,7 @@ export default function MainNav({ activeView, onNavigate }) {
             sx={{ mb: 0.5, '&.Mui-selected': { bgcolor: 'rgba(245, 168, 0, 0.2)' }, '&.Mui-selected:hover': { bgcolor: 'rgba(245, 168, 0, 0.3)' } }}
           >
             <ListItemIcon sx={{ minWidth: 40 }}>{ICONS[id]}</ListItemIcon>
-            <ListItemText primary={label} />
+            <ListItemText primary={t(label)} />
           </ListItemButton>
         ))}
       </List>

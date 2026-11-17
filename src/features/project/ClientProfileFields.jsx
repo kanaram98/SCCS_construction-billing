@@ -11,6 +11,7 @@ import { useUndoable } from '../../hooks/useUndoable.js';
 import { getClientProfileState } from '../../domain/clients.js';
 import { getRequiredDetailErrors } from '../../domain/validation.js';
 import { gstinWarning, phoneWarning } from '../../domain/warnings.js';
+import { tr as t } from '../../i18n/translate.js';
 
 /** Client fields for the bill plus saved-profile management. Renders grid items. */
 export default function ClientProfileFields() {
@@ -31,41 +32,41 @@ export default function ClientProfileFields() {
   function removeProfile() {
     const { selectedClient } = profile;
     if (!selectedClient) return;
-    undoable(`Saved client “${selectedClient.name}” removed.`, () => actions.clients.removeProfile(selectedClient.id));
+    undoable(t('Saved client “{name}” removed.', { name: selectedClient.name }), () => actions.clients.removeProfile(selectedClient.id));
   }
 
   return (
     <>
       <Grid size={12}>
         <SelectField
-          label="Client profile"
+          label={t('Client profile')}
           value={bill.clientId || ''}
-          placeholder="Custom / unsaved client"
+          placeholder={t('Custom / unsaved client')}
           options={data.clients.map((client) => ({ value: client.id, label: client.name }))}
           onChange={actions.clients.select}
-          helperText="Saved profiles fill in the client details below."
+          helperText={t('Saved profiles fill in the client details below.')}
         />
       </Grid>
       <Grid size={{ xs: 12, sm: 6 }}>
-        <TextField label="Client name" required value={bill.client} error={nameError} onChange={(client) => update({ client })} />
+        <TextField label={t('Client name')} required value={bill.client} error={nameError} onChange={(client) => update({ client })} />
       </Grid>
       <Grid size={{ xs: 12, sm: 6 }}>
-        <TextField label="Client phone" type="tel" value={bill.clientPhone} warning={phoneWarning(bill.clientPhone)} onChange={(clientPhone) => update({ clientPhone })} />
+        <TextField label={t('Client phone')} type="tel" value={bill.clientPhone} warning={phoneWarning(bill.clientPhone)} onChange={(clientPhone) => update({ clientPhone })} />
       </Grid>
       <Grid size={{ xs: 12, sm: 6 }}>
-        <TextField label="Client address" value={bill.clientAddress} onChange={(clientAddress) => update({ clientAddress })} />
+        <TextField label={t('Client address')} value={bill.clientAddress} onChange={(clientAddress) => update({ clientAddress })} />
       </Grid>
       <Grid size={{ xs: 12, sm: 6 }}>
-        <TextField label="Client GSTIN" value={bill.clientGstin} warning={gstinWarning(bill.clientGstin)} onChange={(clientGstin) => update({ clientGstin: clientGstin.toUpperCase() })} />
+        <TextField label={t('Client GSTIN')} value={bill.clientGstin} warning={gstinWarning(bill.clientGstin)} onChange={(clientGstin) => update({ clientGstin: clientGstin.toUpperCase() })} />
       </Grid>
       <Grid size={12}>
         <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1 }}>
-          <Button size="small" variant="outlined" startIcon={<PersonAddIcon />} disabled={!profile.canSaveNew} onClick={() => saveProfile(false)}>Save as new</Button>
-          <Button size="small" variant="outlined" startIcon={<SaveIcon />} disabled={!profile.canUpdate} onClick={() => saveProfile(true)}>Update saved</Button>
-          <Button size="small" color="error" startIcon={<PersonRemoveIcon />} disabled={!profile.selectedClient} onClick={removeProfile}>Remove saved</Button>
+          <Button size="small" variant="outlined" startIcon={<PersonAddIcon />} disabled={!profile.canSaveNew} onClick={() => saveProfile(false)}>{t('Save as new')}</Button>
+          <Button size="small" variant="outlined" startIcon={<SaveIcon />} disabled={!profile.canUpdate} onClick={() => saveProfile(true)}>{t('Update saved')}</Button>
+          <Button size="small" color="error" startIcon={<PersonRemoveIcon />} disabled={!profile.selectedClient} onClick={removeProfile}>{t('Remove saved')}</Button>
         </Stack>
         {profile.duplicateClient && (
-          <Typography variant="caption" color="text.secondary">This client name already exists in saved profiles.</Typography>
+          <Typography variant="caption" color="text.secondary">{t('This client name already exists in saved profiles.')}</Typography>
         )}
       </Grid>
     </>

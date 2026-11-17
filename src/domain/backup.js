@@ -3,6 +3,7 @@
  * so a restore can reject unrelated JSON and backups from newer app versions.
  */
 import { hydrateState } from './app-state.js';
+import { tr } from '../i18n/translate.js';
 
 export const BACKUP_FORMAT = 'construction-billing-backup';
 export const BACKUP_VERSION = 1;
@@ -34,16 +35,16 @@ export function parseBackup(text) {
   try {
     backup = JSON.parse(text);
   } catch {
-    throw new Error('This file is not a valid backup.');
+    throw new Error(tr('This file is not a valid backup.'));
   }
   if (backup?.format !== BACKUP_FORMAT || !backup.data) {
-    throw new Error('This file is not a Construction Billing backup.');
+    throw new Error(tr('This file is not a Construction Billing backup.'));
   }
   if (Number(backup.version) > BACKUP_VERSION) {
-    throw new Error('This backup was made by a newer version of the app. Update the app and try again.');
+    throw new Error(tr('This backup was made by a newer version of the app. Update the app and try again.'));
   }
   const state = hydrateState(backup.data);
-  if (!state) throw new Error('This backup does not contain any bills.');
+  if (!state) throw new Error(tr('This backup does not contain any bills.'));
   return { state, exportedAt: backup.exportedAt || '', billCount: state.bills.length };
 }
 
@@ -59,8 +60,8 @@ export function needsBackupReminder(state, now = new Date()) {
 /** Human-readable age of the last backup, e.g. "today", "3 days ago", or "never". */
 export function describeLastBackup(state, now = new Date()) {
   const last = Date.parse(state.meta?.lastBackupAt || '');
-  if (!Number.isFinite(last)) return 'never';
+  if (!Number.isFinite(last)) return tr('never');
   const days = Math.floor((now.getTime() - last) / DAY_MS);
-  if (days <= 0) return 'today';
-  return days === 1 ? 'yesterday' : `${days} days ago`;
+  if (days <= 0) return tr('today');
+  return days === 1 ? tr('yesterday') : tr('{count} days ago', { count: days });
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { tr } from '../i18n/translate.js';
 
 const isStandalone = () =>
   window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
@@ -23,7 +24,7 @@ export function useInstallPrompt() {
     const handleInstalled = () => {
       setIsInstalled(true);
       setPromptEvent(null);
-      setMessage('App installed successfully.');
+      setMessage(tr('App installed successfully.'));
     };
     window.addEventListener('beforeinstallprompt', handlePrompt);
     window.addEventListener('appinstalled', handleInstalled);
@@ -38,10 +39,10 @@ export function useInstallPrompt() {
     try {
       await promptEvent.prompt();
       const choice = await promptEvent.userChoice;
-      setMessage(choice.outcome === 'accepted' ? 'Installation started.' : 'You can install it later from your browser menu.');
+      setMessage(choice.outcome === 'accepted' ? tr('Installation started.') : tr('You can install it later from your browser menu.'));
     } catch (error) {
       console.error('Could not open the browser install prompt.', error);
-      setMessage('Use your browser menu to install this app.');
+      setMessage(tr('Use your browser menu to install this app.'));
     } finally {
       setPromptEvent(null);
     }

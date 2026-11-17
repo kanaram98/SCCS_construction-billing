@@ -24,6 +24,13 @@ export const PAGE_BREAKS = Object.freeze({
   none: 'Continuous'
 });
 export const SUMMARY_DETAILS = Object.freeze({ area: 'Sections and areas', section: 'Section totals only' });
+export const BILL_LANGUAGES = Object.freeze({ app: 'Same as app', en: 'English', hi: 'हिंदी' });
+
+/** The language a bill is printed in. */
+export function resolveBillLanguage(settings, appLanguage) {
+  return settings.billLanguage && settings.billLanguage !== 'app' ? settings.billLanguage : appLanguage;
+}
+
 export const SIGNATURE_MODES = Object.freeze({
   last: 'Last document only',
   all: 'Every document',
@@ -54,7 +61,9 @@ export function createDefaultPrintSettings() {
     signatureWidth: 35,
     previewDocument: 'bill',
     paymentDetails: true,
-    upiQr: true
+    upiQr: true,
+    /** 'app' follows the app language; or a fixed 'en' / 'hi'. */
+    billLanguage: 'app'
   };
 }
 
@@ -113,6 +122,7 @@ export function normalizePrintSettings(settings, legacyDocuments = [], legacySig
     pageNumbers: saved.pageNumbers !== false,
     paymentDetails: saved.paymentDetails !== false,
     upiQr: saved.upiQr !== false,
+    billLanguage: oneOf(saved.billLanguage, Object.keys(BILL_LANGUAGES), defaults.billLanguage),
     signatureMode: oneOf(saved.signatureMode, Object.keys(SIGNATURE_MODES), defaults.signatureMode),
     signatureWidth: boundedNumber(signatureWidth, defaults.signatureWidth, SIGNATURE_WIDTH_RANGE.min, SIGNATURE_WIDTH_RANGE.max),
     previewDocument: oneOf(saved.previewDocument, DOCUMENT_IDS, defaults.previewDocument)

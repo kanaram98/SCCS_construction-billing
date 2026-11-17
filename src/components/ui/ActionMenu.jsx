@@ -5,19 +5,20 @@ import ListItemText from '@mui/material/ListItemText';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import { tr as t } from '../../i18n/translate.js';
 
 /**
  * "⋮" overflow menu.
  * @param {{ items: Array<{ label: string, icon?: React.ReactNode, onClick: () => void, danger?: boolean, disabled?: boolean, hidden?: boolean }> }} props
  */
-export default function ActionMenu({ label = 'More actions', items, size = 'medium' }) {
+export default function ActionMenu({ label, items, size = 'medium' }) {
   const [anchor, setAnchor] = useState(null);
   const visibleItems = items.filter((item) => !item.hidden);
 
   return (
     <>
       <IconButton
-        aria-label={label}
+        aria-label={label || t('More actions')}
         size={size}
         onClick={(event) => {
           event.stopPropagation();

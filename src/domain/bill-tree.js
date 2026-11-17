@@ -8,6 +8,7 @@
  */
 import { createArea, createSection, cloneItems } from './factories.js';
 import { sameText } from './formatters.js';
+import { tr } from '../i18n/translate.js';
 
 export const applyPatch = (target, updater) =>
   typeof updater === 'function' ? updater(target) : { ...target, ...updater };
@@ -123,8 +124,8 @@ export function copyAreaToSection(bill, sourceSectionId, sourceAreaId, targetSec
       sectionId: targetSectionId,
       areaIds: [area.id],
       message: placement.merged
-        ? `Copied ${sourceArea.name} entries into ${targetSection.name} · ${area.name}.`
-        : `Copied area ${sourceArea.name} into ${targetSection.name}.`
+        ? tr('Copied {source} entries into {section} · {area}.', { source: sourceArea.name, section: targetSection.name, area: area.name })
+        : tr('Copied area {source} into {section}.', { source: sourceArea.name, section: targetSection.name })
     }
   };
 }
@@ -142,8 +143,8 @@ export function copyItemToSection(bill, sourceSectionId, sourceAreaId, itemId, t
       sectionId: targetSectionId,
       areaIds: [area.id],
       message: placement.merged
-        ? `Copied ${sourceItem.name} into ${targetSection.name} · ${area.name}.`
-        : `Copied ${sourceItem.name} into a new ${area.name} area in ${targetSection.name}.`
+        ? tr('Copied {item} into {section} · {area}.', { item: sourceItem.name, section: targetSection.name, area: area.name })
+        : tr('Copied {item} into a new {area} area in {section}.', { item: sourceItem.name, section: targetSection.name, area: area.name })
     }
   };
 }
@@ -179,7 +180,7 @@ export function applyTemplate(bill, template, targetSectionId) {
       result: {
         sectionId: section.id,
         areaIds: section.areas.map((area) => area.id),
-        message: `Added section template “${template.name}”.`
+        message: tr('Added section template “{name}”.', { name: template.name })
       }
     };
   }
@@ -193,7 +194,7 @@ export function applyTemplate(bill, template, targetSectionId) {
       result: {
         sectionId: target.id,
         areaIds: [area.id],
-        message: `Added area template “${template.name}” to ${target.name}.`
+        message: tr('Added area template “{name}” to {section}.', { name: template.name, section: target.name })
       }
     };
   }

@@ -11,7 +11,7 @@ export const PAYMENT_DOCUMENTS = new Set(['bill', 'summary']);
 /**
  * @returns {null | { lines: string[], qr: null | { matrix: boolean[][], amount: number } }}
  */
-export function buildPaymentBlock(documentType, bill, rates, firm, settings) {
+export function buildPaymentBlock(documentType, bill, rates, firm, settings, translate = (value) => value) {
   if (!settings.paymentDetails || !PAYMENT_DOCUMENTS.has(documentType) || !hasPaymentDetails(firm)) return null;
   const { balance } = getBillTotals(bill, rates);
   const amount = Math.max(0, balance);
@@ -26,5 +26,5 @@ export function buildPaymentBlock(documentType, bill, rates, firm, settings) {
         }))
       }
     : null;
-  return { lines: getPaymentLines(firm), qr };
+  return { lines: getPaymentLines(firm, translate), qr };
 }

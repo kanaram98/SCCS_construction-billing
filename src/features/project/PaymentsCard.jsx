@@ -18,6 +18,7 @@ import { formatCurrency } from '../../domain/formatters.js';
 import { getPayments, paymentModeLabel, sortPayments } from '../../domain/payments.js';
 import { getAmountErrors } from '../../domain/validation.js';
 import PaymentDialog from './PaymentDialog.jsx';
+import { tr as t } from '../../i18n/translate.js';
 
 const STATUS_COLORS = { paid: 'success', partial: 'warning', unpaid: 'default' };
 
@@ -45,25 +46,25 @@ export default function PaymentsCard() {
   function save(values) {
     if (editing === 'new') {
       actions.payments.add(values);
-      notify(`Payment of ${formatCurrency(values.amount)} recorded.`);
+      notify(t('Payment of {amount} recorded.', { amount: formatCurrency(values.amount) }));
     } else {
       actions.payments.update(editing.id, values);
-      notify('Payment updated.');
+      notify(t('Payment updated.'));
     }
     setEditing(null);
   }
 
   return (
     <Card
-      title="Payments"
-      action={<Chip size="small" label={paymentStatusLabel(status)} color={STATUS_COLORS[status]} variant={status === 'unpaid' ? 'outlined' : 'filled'} />}
+      title={t('Payments')}
+      action={<Chip size="small" label={t(paymentStatusLabel(status))} color={STATUS_COLORS[status]} variant={status === 'unpaid' ? 'outlined' : 'filled'} />}
     >
       <Stack spacing={0.5} sx={{ mb: 1.5 }}>
-        <SummaryRow label="Bill total" value={formatCurrency(totals.total)} />
-        {totals.advance > 0 && <SummaryRow label="Advance" value={`- ${formatCurrency(totals.advance)}`} />}
-        {totals.received > 0 && <SummaryRow label="Payments received" value={`- ${formatCurrency(totals.received)}`} />}
+        <SummaryRow label={t('Bill total')} value={formatCurrency(totals.total)} />
+        {totals.advance > 0 && <SummaryRow label={t('Advance')} value={`- ${formatCurrency(totals.advance)}`} />}
+        {totals.received > 0 && <SummaryRow label={t('Payments received')} value={`- ${formatCurrency(totals.received)}`} />}
         <Divider />
-        <SummaryRow label="Balance due" value={formatCurrency(totals.balance)} strong />
+        <SummaryRow label={t('Balance due')} value={formatCurrency(totals.balance)} strong />
         {overpaid && <Typography variant="caption" color="error">{overpaid}</Typography>}
       </Stack>
 
@@ -76,21 +77,21 @@ export default function PaymentsCard() {
               secondaryAction={(
                 <ActionMenu
                   size="small"
-                  label={`Actions for payment on ${payment.date}`}
+                  label={t('Actions for payment on {date}', { date: payment.date })}
                   items={[
-                    { label: 'Edit', icon: <EditIcon fontSize="small" />, onClick: () => setEditing(payment) },
+                    { label: t('Edit'), icon: <EditIcon fontSize="small" />, onClick: () => setEditing(payment) },
                     {
-                      label: 'Delete',
+                      label: t('Delete'),
                       icon: <DeleteIcon fontSize="small" />,
                       danger: true,
-                      onClick: () => undoable('Payment deleted.', () => actions.payments.remove(payment.id))
+                      onClick: () => undoable(t('Payment deleted.'), () => actions.payments.remove(payment.id))
                     }
                   ]}
                 />
               )}
             >
               <ListItemText
-                primary={`${formatCurrency(payment.amount)} · ${paymentModeLabel(payment.mode)}`}
+                primary={`${formatCurrency(payment.amount)} · ${t(paymentModeLabel(payment.mode))}`}
                 secondary={[payment.date, payment.note].filter(Boolean).join(' · ')}
               />
             </ListItem>
@@ -98,7 +99,7 @@ export default function PaymentsCard() {
         </List>
       )}
 
-      <Button fullWidth variant="outlined" startIcon={<AddIcon />} onClick={() => setEditing('new')}>Record payment</Button>
+      <Button fullWidth variant="outlined" startIcon={<AddIcon />} onClick={() => setEditing('new')}>{t('Record payment')}</Button>
       <PaymentDialog
         open={Boolean(editing)}
         payment={editing === 'new' ? null : editing}

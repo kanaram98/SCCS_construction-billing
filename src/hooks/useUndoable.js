@@ -1,5 +1,6 @@
 import { useBilling } from '../state/BillingContext.jsx';
 import { useNotify } from '../components/ui';
+import { tr } from '../i18n/translate.js';
 
 /**
  * Runs a destructive change and shows a toast with Undo, which puts the
@@ -15,7 +16,7 @@ export function useUndoable() {
     const snapshot = data;
     change();
     notify(message, 'info', {
-      label: 'Undo',
+      label: tr('Undo'),
       onClick: () => actions.data.restoreSnapshot(snapshot)
     });
   };

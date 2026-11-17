@@ -12,6 +12,8 @@ import AppHeader from './components/layout/AppHeader.jsx';
 import MainNav from './components/layout/MainNav.jsx';
 import AppNotices from './components/layout/AppNotices.jsx';
 import DashboardPage from './features/dashboard/DashboardPage.jsx';
+import LanguageGate from './i18n/LanguageGate.jsx';
+import { tr as t } from './i18n/translate.js';
 
 /**
  * The Bills screen ships in the main bundle; the others load on demand.
@@ -48,10 +50,9 @@ const PAGES = {
   [VIEWS.print]: PrintPage
 };
 
-function AppShell() {
+function AppShell({ view, setView }) {
   const { bill, saveStatus, storageError } = useBilling();
   const installer = useInstallPrompt();
-  const [view, setView] = useState(VIEWS.bills);
   const Page = PAGES[view];
   usePrefetchPages();
 
@@ -80,11 +81,11 @@ function AppShell() {
       >
         <Container maxWidth="md" sx={{ px: { xs: 1.5, sm: 3 } }}>
           <AppNotices storageError={storageError} isInstalled={installer.isInstalled} installMessage={installer.message} />
-          <Suspense fallback={<LinearProgress sx={{ my: 2 }} aria-label="Loading" />}>
+          <Suspense fallback={<LinearProgress sx={{ my: 2 }} aria-label={t('Loading')} />}>
             <Page onNavigate={navigate} />
           </Suspense>
           <Typography className="no-print" variant="caption" color="text.secondary" component="footer" sx={{ display: 'block', textAlign: 'center', mt: 3 }}>
-            Bills are stored on this device. Export a PDF to share or archive a copy.
+            {t('Bills are stored on this device. Export a PDF to share or archive a copy.')}
           </Typography>
         </Container>
       </Box>
@@ -92,11 +93,21 @@ function AppShell() {
   );
 }
 
+/** Keeps the current screen across language changes (LanguageGate remounts the shell). */
+function LocalizedApp() {
+  const [view, setView] = useState(VIEWS.bills);
+  return (
+    <LanguageGate>
+      <AppShell view={view} setView={setView} />
+    </LanguageGate>
+  );
+}
+
 export default function App() {
   return (
     <FeedbackProvider>
       <BillingProvider>
-        <AppShell />
+        <LocalizedApp />
       </BillingProvider>
     </FeedbackProvider>
   );

@@ -16,6 +16,7 @@ import DocumentSelection from './DocumentSelection.jsx';
 import { LayoutSettings, PageSetupSettings } from './PageSettings.jsx';
 import SignatureSettings from './SignatureSettings.jsx';
 import DocumentPreview from './preview/DocumentPreview.jsx';
+import { tr as t } from '../../i18n/translate.js';
 
 const TABS = { preview: 'preview', settings: 'settings' };
 
@@ -41,9 +42,9 @@ export default function PrintPage() {
       <PrintPageStyle settings={printSettings} />
 
       <Paper variant="outlined" className="no-print" sx={{ mb: 2 }}>
-        <Tabs value={tab} onChange={(_event, value) => setTab(value)} variant="fullWidth" aria-label="PDF and print">
-          <Tab value={TABS.preview} label="Preview" icon={<VisibilityIcon fontSize="small" />} iconPosition="start" sx={{ minHeight: 52 }} />
-          <Tab value={TABS.settings} label="Settings" icon={<TuneIcon fontSize="small" />} iconPosition="start" sx={{ minHeight: 52 }} />
+        <Tabs value={tab} onChange={(_event, value) => setTab(value)} variant="fullWidth" aria-label={t('PDF and print')}>
+          <Tab value={TABS.preview} label={t('Preview')} icon={<VisibilityIcon fontSize="small" />} iconPosition="start" sx={{ minHeight: 52 }} />
+          <Tab value={TABS.settings} label={t('Settings')} icon={<TuneIcon fontSize="small" />} iconPosition="start" sx={{ minHeight: 52 }} />
         </Tabs>
       </Paper>
 
@@ -64,9 +65,9 @@ export default function PrintPage() {
             />
           ) : (
             <EmptyState
-              title="No documents selected"
-              description="Choose which documents to include in Settings."
-              action={<Button variant="contained" onClick={() => setTab(TABS.settings)}>Open settings</Button>}
+              title={t('No documents selected')}
+              description={t('Choose which documents to include in Settings.')}
+              action={<Button variant="contained" onClick={() => setTab(TABS.settings)}>{t('Open settings')}</Button>}
             />
           )}
         </div>
@@ -95,7 +96,7 @@ export default function PrintPage() {
             onResetPlacement={print.resetSignatureLayout}
           />
           <Button fullWidth variant="contained" startIcon={<VisibilityIcon />} onClick={() => setTab(TABS.preview)}>
-            Back to preview
+            {t('Back to preview')}
           </Button>
         </div>
       )}

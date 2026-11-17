@@ -5,6 +5,7 @@ import Typography from '@mui/material/Typography';
 import { MessageList, ResponsiveDialog, useNotify } from '../../components/ui';
 import EntryFields from './EntryFields.jsx';
 import WorkItemPicker from './WorkItemPicker.jsx';
+import { tr as t } from '../../i18n/translate.js';
 
 /**
  * Add/edit entry dialog (full screen on phones). When adding, "Add & next"
@@ -17,7 +18,7 @@ export default function EntryDialog({ open, areaName, form, onClose }) {
   function save(keepOpen) {
     const name = selectedRate?.name;
     if (!form.submit()) return;
-    if (keepOpen) notify(`${name} added. Enter the next one.`);
+    if (keepOpen) notify(t('{name} added. Enter the next one.', { name }));
     else onClose();
   }
 
@@ -25,16 +26,16 @@ export default function EntryDialog({ open, areaName, form, onClose }) {
     <ResponsiveDialog
       open={open}
       onClose={onClose}
-      title={`${isEditing ? 'Edit entry' : 'Add entry'} · ${areaName}`}
+      title={`${isEditing ? t('Edit entry') : t('Add entry')} · ${areaName}`}
       onSubmit={(event) => {
         event.preventDefault();
         save(false);
       }}
       actions={(
         <>
-          <Button onClick={onClose}>Cancel</Button>
-          {!isEditing && <Button variant="outlined" disabled={!form.canSubmit} onClick={() => save(true)}>Add &amp; next</Button>}
-          <Button type="submit" variant="contained" disabled={!form.canSubmit}>{isEditing ? 'Save' : 'Add'}</Button>
+          <Button onClick={onClose}>{t('Cancel')}</Button>
+          {!isEditing && <Button variant="outlined" disabled={!form.canSubmit} onClick={() => save(true)}>{t('Add & next')}</Button>}
+          <Button type="submit" variant="contained" disabled={!form.canSubmit}>{isEditing ? t('Save') : t('Add')}</Button>
         </>
       )}
     >
@@ -50,7 +51,7 @@ export default function EntryDialog({ open, areaName, form, onClose }) {
         </Alert>
       )}
       {!selectedRate && (
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>Select a work item to enter measurements.</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>{t('Select a work item to enter measurements.')}</Typography>
       )}
     </ResponsiveDialog>
   );

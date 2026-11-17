@@ -18,10 +18,14 @@ import {
 } from '../domain/calculations.js';
 import { resolveRate, usesCount, usesDimension } from '../domain/rates.js';
 import { formatDimension } from '../domain/measurements.js';
-import { amountInWords } from '../domain/amount-in-words.js';
+import { amountInWordsFor } from '../domain/amount-in-words.js';
+import { makeTranslator } from '../i18n/translate.js';
 
 /** Full-width italic row with the amount in words. */
-const wordsRow = (amount) => ({ kind: 'words', cells: [`Amount in words: ${amountInWords(amount)}`] });
+const wordsRow = (amount, context) => ({
+  kind: 'words',
+  cells: [context.t('Amount in words: {words}', { words: amountInWordsFor(amount, context.language) })]
+});
 
 export const DOCUMENT_COLUMNS = Object.freeze({
   bill: ['Item', 'Qty', 'Unit', 'Rate', 'Amount'],
@@ -45,7 +49,7 @@ function numbered(label, index, settings) {
 
 function itemRow(documentType, item, rate, index, context) {
   const { settings, money } = context;
-  const name = `${numbered(item.name || 'Work item', index, settings)}${item.note ? `\n${item.note}` : ''}`;
+  const name = `${numbered(item.name || context.t('Work item'), index, settings)}${item.note ? `\n${item.note}` : ''}`;
   const quantity = String(getItemQuantity(item, rate));
   if (documentType === 'measurement') {
     const dimension = (key) => usesDimension(rate.type, key) ? formatDimension(item[key]) : '';
@@ -68,14 +72,14 @@ function areaRows(documentType, area, context) {
     rows.push(itemRow(documentType, item, resolveRate(item, context.rates), index, context));
   });
   if (documentType === 'bill') {
-    rows.push(amountRow('total', `${area.name} total`, context.money(getAreaTotal(area, context.rates))));
+    rows.push(amountRow('total', context.t('{name} total', { name: area.name }), context.money(getAreaTotal(area, context.rates))));
   }
   return rows;
 }
 
 function sectionTotalRow(documentType, section, context) {
   return documentType === 'bill'
-    ? [amountRow('sectionTotal', `${section.name} total`, context.money(getSectionTotal(section, context.rates)))]
+    ? [amountRow('sectionTotal', context.t('{name} total', { name: section.name }), context.money(getSectionTotal(section, context.rates)))]
     : [];
 }
 
@@ -91,14 +95,14 @@ function sectionRows(documentType, section, context) {
 function detailChunks(documentType, bill, context) {
   const sections = bill.sections || [];
   const { pageBreak } = context.settings;
-  if (!sections.length) return [[row('normal', ['No entries yet'])]];
+  if (!sections.length) return [[row('normal', [context.t('No entries yet')])]];
   if (pageBreak === 'none') return [sections.flatMap((section) => sectionRows(documentType, section, context))];
   if (pageBreak === 'section') return sections.map((section) => sectionRows(documentType, section, context));
 
   // One page per area; the section heading travels with its first area.
   return sections.flatMap((section) => {
     const areas = section.areas || [];
-    if (!areas.length) return [[row('section', [section.name]), row('normal', ['No areas yet'])]];
+    if (!areas.length) return [[row('section', [section.name]), row('normal', [context.t('No areas yet')])]];
     return areas.map((area, areaIndex) => [
       ...(areaIndex === 0 ? [row('section', [section.name])] : []),
       ...areaRows(documentType, area, context),
@@ -109,16 +113,16 @@ function detailChunks(documentType, bill, context) {
 
 function billTotalRows(bill, context) {
   const totals = getBillTotals(bill, context.rates);
-  const { money } = context;
+  const { money, t } = context;
   return [
-    amountRow('sectionTotal', 'Subtotal', money(totals.subtotal)),
-    ...(totals.discount ? [amountRow('normal', 'Discount', `- ${money(totals.discount)}`)] : []),
+    amountRow('sectionTotal', t('Subtotal'), money(totals.subtotal)),
+    ...(totals.discount ? [amountRow('normal', t('Discount'), `- ${money(totals.discount)}`)] : []),
     ...getTaxLines(bill, totals).map((line) => amountRow('normal', line.label, money(line.amount))),
-    amountRow('grandTotal', 'Total', money(totals.total)),
-    wordsRow(totals.total),
-    ...(totals.advance ? [amountRow('normal', 'Advance received', `- ${money(totals.advance)}`)] : []),
-    ...(totals.received ? [amountRow('normal', 'Payments received', `- ${money(totals.received)}`)] : []),
-    ...(totals.paid ? [amountRow('grandTotal', 'Balance due', money(totals.balance))] : [])
+    amountRow('grandTotal', t('Total'), money(totals.total)),
+    wordsRow(totals.total, context),
+    ...(totals.advance ? [amountRow('normal', t('Advance received'), `- ${money(totals.advance)}`)] : []),
+    ...(totals.received ? [amountRow('normal', t('Payments received'), `- ${money(totals.received)}`)] : []),
+    ...(totals.paid ? [amountRow('grandTotal', t('Balance due'), money(totals.balance))] : [])
   ];
 }
 
@@ -133,11 +137,11 @@ function summaryRows(bill, context) {
       row('section', [numbered(section.name, sectionIndex, settings), '']),
       ...(section.areas || []).map((area, areaIndex) =>
         row('normal', [numbered(area.name, areaIndex, settings), money(getAreaTotal(area, rates))])),
-      row('sectionTotal', [`${section.name} total`, sectionTotal])
+      row('sectionTotal', [context.t('{name} total', { name: section.name }), sectionTotal])
     ];
   });
   const { total } = getBillTotals(bill, rates);
-  rows.push(row('grandTotal', ['Grand total', money(total)]), wordsRow(total));
+  rows.push(row('grandTotal', [context.t('Grand total'), money(total)]), wordsRow(total, context));
   return rows;
 }
 
@@ -152,18 +156,19 @@ function itemTotalRows(bill, context) {
       money(group.rate),
       money(group.amount)
     ])),
-    amountRow('grandTotal', 'Item totals', money(groups.reduce((sum, group) => sum + group.amount, 0)))
+    amountRow('grandTotal', context.t('Item totals'), money(groups.reduce((sum, group) => sum + group.amount, 0)))
   ];
 }
 
 /**
  * @param {'summary'|'bill'|'measurement'|'items'} documentType
- * @param {{ money: (value: number) => string }} options currency formatter for the target renderer
+ * @param {{ money: (value: number) => string, language?: 'en'|'hi' }} options currency formatter and bill language
  * @returns {{ columns: string[], chunks: { kind: string, cells: string[] }[][] }}
  */
-export function buildDocument(documentType, bill, rates, settings, { money }) {
-  const context = { rates, settings, money };
-  const columns = DOCUMENT_COLUMNS[documentType];
+export function buildDocument(documentType, bill, rates, settings, { money, language = 'en' }) {
+  const t = makeTranslator(language);
+  const context = { rates, settings, money, language, t };
+  const columns = DOCUMENT_COLUMNS[documentType].map((column) => t(column));
   if (documentType === 'summary') return { columns, chunks: [summaryRows(bill, context)] };
   if (documentType === 'items') return { columns, chunks: [itemTotalRows(bill, context)] };
 

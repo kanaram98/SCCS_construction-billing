@@ -2,6 +2,7 @@ import MuiTextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Switch from '@mui/material/Switch';
+import { tr as t } from '../../i18n/translate.js';
 
 /**
  * Text input bound to a string value. `onChange` receives the new value.
@@ -52,6 +53,8 @@ export function TextField({
  * Select input.
  * @param {{ options: Array<{ value: string|number, label: string }> | Record<string, string>, placeholder?: string }} props
  *   `options` may be an array or a `{ value: label }` map; `placeholder` adds an empty first option.
+ *   Option labels are translated, so fixed lists (e.g. GST types) appear in the app language;
+ *   user-entered names have no translation and show unchanged.
  */
 export function SelectField({ value, onChange, options, placeholder, error = '', helperText, slotProps, ...props }) {
   const entries = Array.isArray(options)
@@ -72,7 +75,7 @@ export function SelectField({ value, onChange, options, placeholder, error = '',
       }}
     >
       {placeholder !== undefined && <MenuItem value=""><em>{placeholder}</em></MenuItem>}
-      {entries.map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
+      {entries.map((option) => <MenuItem key={option.value} value={option.value}>{t(option.label)}</MenuItem>)}
     </MuiTextField>
   );
 }

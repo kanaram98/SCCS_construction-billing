@@ -6,6 +6,7 @@ import Typography from '@mui/material/Typography';
 import DeleteIcon from '@mui/icons-material/DeleteOutlined';
 import ImageIcon from '@mui/icons-material/Image';
 import { IMAGE_UPLOAD } from '../../config/app.js';
+import { tr as t } from '../../i18n/translate.js';
 
 /**
  * Image picker with preview and remove button. `onSelect` receives the chosen File.
@@ -16,7 +17,7 @@ export default function ImageUploadField({ label, value, onSelect, onRemove, var
     <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'action.hover' }}>
       <Stack direction="row" sx={{ mb: 1, alignItems: 'baseline', justifyContent: 'space-between', gap: 1 }}>
         <Typography variant="subtitle2">{label}</Typography>
-        <Typography variant="caption" color="text.secondary">PNG or JPG · up to 5 MB</Typography>
+        <Typography variant="caption" color="text.secondary">{t('PNG or JPG · up to 5 MB')}</Typography>
       </Stack>
       <Box
         sx={{
@@ -38,11 +39,11 @@ export default function ImageUploadField({ label, value, onSelect, onRemove, var
       >
         {value
           ? <Box component="img" src={value} alt={`${label} preview`} sx={{ maxWidth: '100%', maxHeight: 100, objectFit: 'contain' }} />
-          : <Typography variant="caption">No image selected</Typography>}
+          : <Typography variant="caption">{t('No image selected')}</Typography>}
       </Box>
       <Stack direction="row" spacing={1}>
         <Button component="label" variant="outlined" size="small" startIcon={<ImageIcon />} sx={{ flex: 1 }}>
-          {value ? 'Change' : 'Choose image'}
+          {value ? t('Change') : t('Choose image')}
           <input
             hidden
             type="file"
@@ -54,7 +55,7 @@ export default function ImageUploadField({ label, value, onSelect, onRemove, var
             }}
           />
         </Button>
-        <Button color="error" size="small" startIcon={<DeleteIcon />} disabled={!value} onClick={onRemove}>Remove</Button>
+        <Button color="error" size="small" startIcon={<DeleteIcon />} disabled={!value} onClick={onRemove}>{t('Remove')}</Button>
       </Stack>
     </Paper>
   );

@@ -14,6 +14,7 @@ import { useBillFilters } from './useBillFilters.js';
 import BillFilters from './BillFilters.jsx';
 import BillCard from './BillCard.jsx';
 import BackupReminder from '../backup/BackupReminder.jsx';
+import { tr as t } from '../../i18n/translate.js';
 
 export default function DashboardPage({ onNavigate }) {
   const { data, bill: activeBill, actions } = useBilling();
@@ -48,39 +49,39 @@ export default function DashboardPage({ onNavigate }) {
 
   function duplicateBill(bill) {
     actions.bills.duplicate(bill);
-    notify(`Bill ${bill.number} duplicated.`);
+    notify(t('Bill {number} duplicated.', { number: bill.number }));
     onNavigate(VIEWS.entry);
   }
 
   async function deleteBill(bill) {
     const confirmed = await confirm({
-      title: `Delete bill ${bill.number}?`,
-      message: 'This cannot be undone.',
-      confirmLabel: 'Delete',
+      title: t('Delete bill {number}?', { number: bill.number }),
+      message: t('This cannot be undone.'),
+      confirmLabel: t('Delete'),
       danger: true
     });
     if (!confirmed) return;
-    undoable(`Bill ${bill.number} deleted.`, () => actions.bills.remove(bill.id));
+    undoable(t('Bill {number} deleted.', { number: bill.number }), () => actions.bills.remove(bill.id));
   }
 
   return (
     <section>
       <PageHeading
-        title="Bills"
-        description="Your construction bills on this device."
-        action={<Button variant="contained" startIcon={<AddIcon />} onClick={createBill}>New bill</Button>}
+        title={t('Bills')}
+        description={t('Your construction bills on this device.')}
+        action={<Button variant="contained" startIcon={<AddIcon />} onClick={createBill}>{t('New bill')}</Button>}
       />
 
       <BackupReminder />
 
       <Grid container spacing={1.25} sx={{ mb: 2.5 }}>
-        <Grid size={{ xs: 6, sm: 3 }}><StatCard label="Saved bills" value={bills.length} /></Grid>
-        <Grid size={{ xs: 6, sm: 3 }}><StatCard label="Total billed" value={formatCurrency(stats.billed)} /></Grid>
-        <Grid size={{ xs: 6, sm: 3 }}><StatCard label="Outstanding" value={formatCurrency(stats.outstanding)} /></Grid>
-        <Grid size={{ xs: 6, sm: 3 }}><StatCard label="Current bill" value={formatCurrency(summaries.get(activeBill.id).totals.total)} /></Grid>
+        <Grid size={{ xs: 6, sm: 3 }}><StatCard label={t('Saved bills')} value={bills.length} /></Grid>
+        <Grid size={{ xs: 6, sm: 3 }}><StatCard label={t('Total billed')} value={formatCurrency(stats.billed)} /></Grid>
+        <Grid size={{ xs: 6, sm: 3 }}><StatCard label={t('Outstanding')} value={formatCurrency(stats.outstanding)} /></Grid>
+        <Grid size={{ xs: 6, sm: 3 }}><StatCard label={t('Current bill')} value={formatCurrency(summaries.get(activeBill.id).totals.total)} /></Grid>
       </Grid>
 
-      <Typography variant="h6" component="h2" sx={{ mb: 1 }}>Your bills</Typography>
+      <Typography variant="h6" component="h2" sx={{ mb: 1 }}>{t('Your bills')}</Typography>
       <BillFilters
         filters={filters}
         sort={sort}
@@ -107,16 +108,16 @@ export default function DashboardPage({ onNavigate }) {
       {filteredBills.length === 0 && (
         bills.length ? (
           <EmptyState
-            title="No matching bills"
-            description="Adjust or clear the search and filters to see more bills."
-            action={<Button variant="outlined" onClick={clearFilters}>Clear filters</Button>}
+            title={t('No matching bills')}
+            description={t('Adjust or clear the search and filters to see more bills.')}
+            action={<Button variant="outlined" onClick={clearFilters}>{t('Clear filters')}</Button>}
           />
         ) : (
           <EmptyState
             icon={<ReceiptLongIcon />}
-            title="Start a bill"
-            description="Create your first bill to begin entering measurements."
-            action={<Button variant="contained" startIcon={<AddIcon />} onClick={createBill}>Create first bill</Button>}
+            title={t('Start a bill')}
+            description={t('Create your first bill to begin entering measurements.')}
+            action={<Button variant="contained" startIcon={<AddIcon />} onClick={createBill}>{t('Create first bill')}</Button>}
           />
         )
       )}

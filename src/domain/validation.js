@@ -2,6 +2,7 @@ import { feetInchesError, parseFeetInches } from './measurements.js';
 import { getDimensionFields, resolveRate } from './rates.js';
 import { getBillTotals } from './calculations.js';
 import { text } from './formatters.js';
+import { tr } from '../i18n/translate.js';
 
 /**
  * Checks one dimension value.
@@ -19,7 +20,7 @@ export function getDimensionIssue(value, required) {
 export function describeDimensionIssue(issue) {
   if (!issue) return null;
   if (issue.kind === 'format') return issue.detail;
-  return issue.kind === 'required' ? 'Required' : 'Must be greater than zero';
+  return issue.kind === 'required' ? tr('Required') : tr('Must be greater than zero');
 }
 
 /**
@@ -44,33 +45,36 @@ export function getItemIssues(values, rate) {
 }
 
 const ENTRY_MESSAGES = {
-  name: () => 'Enter a work item name.',
-  unit: () => 'Enter a unit.',
-  rate: () => 'Rate must be zero or greater.',
-  quantity: () => 'Quantity must be greater than zero.',
-  dimension: (issue) => ({
-    format: `${issue.label}: ${issue.detail}`,
-    required: `${issue.label} is required.`,
-    positive: `${issue.label} must be greater than zero.`
-  })[issue.kind]
+  name: () => tr('Enter a work item name.'),
+  unit: () => tr('Enter a unit.'),
+  rate: () => tr('Rate must be zero or greater.'),
+  quantity: () => tr('Quantity must be greater than zero.'),
+  dimension: (issue) => {
+    const label = tr(issue.label);
+    return {
+      format: `${label}: ${issue.detail}`,
+      required: tr('{label} is required.', { label }),
+      positive: tr('{label} must be greater than zero.', { label })
+    }[issue.kind];
+  }
 };
 
 /** Validates the add/edit entry form. */
 export function validateEntry(entry, rate) {
-  if (!rate) return ['Choose a work item.'];
+  if (!rate) return [tr('Choose a work item.')];
   return getItemIssues(entry, rate).map((issue) => ENTRY_MESSAGES[issue.code](issue));
 }
 
 function describeBillItemIssue(issue, name) {
-  if (issue.code === 'name') return 'Work item: enter an item name.';
-  if (issue.code === 'unit') return `${name}: enter a unit.`;
-  if (issue.code === 'rate') return `${name}: rate must be zero or greater.`;
-  if (issue.code === 'quantity') return `${name}: quantity must be greater than zero.`;
-  const label = issue.label.toLowerCase();
+  if (issue.code === 'name') return tr('Work item: enter an item name.');
+  if (issue.code === 'unit') return tr('{name}: enter a unit.', { name });
+  if (issue.code === 'rate') return tr('{name}: rate must be zero or greater.', { name });
+  if (issue.code === 'quantity') return tr('{name}: quantity must be greater than zero.', { name });
+  const label = tr(issue.label).toLowerCase();
   return {
     format: `${name}: ${label} — ${issue.detail}`,
-    required: `${name}: enter ${label}.`,
-    positive: `${name}: ${label} must be greater than zero.`
+    required: tr('{name}: enter {label}.', { name, label }),
+    positive: tr('{name}: {label} must be greater than zero.', { name, label })
   }[issue.kind];
 }
 
@@ -82,19 +86,19 @@ export function getAmountErrors(bill, rates, totals = getBillTotals(bill, rates)
   const advance = Number(bill.advance);
 
   if (text(bill.discount) && (!Number.isFinite(discount) || discount < 0)) {
-    errors.discount = 'Discount must be zero or greater.';
+    errors.discount = tr('Discount must be zero or greater.');
   } else if (discount > totals.subtotal) {
-    errors.discount = 'Discount cannot exceed the subtotal.';
+    errors.discount = tr('Discount cannot exceed the subtotal.');
   }
   if (text(bill.taxRate) && (!Number.isFinite(taxRate) || taxRate < 0 || taxRate > 100)) {
-    errors.taxRate = 'GST must be between 0 and 100%.';
+    errors.taxRate = tr('GST must be between 0 and 100%.');
   }
   if (text(bill.advance) && (!Number.isFinite(advance) || advance < 0)) {
-    errors.advance = 'Advance must be zero or greater.';
+    errors.advance = tr('Advance must be zero or greater.');
   } else if (advance > totals.total) {
-    errors.advance = 'Advance cannot exceed the bill total.';
+    errors.advance = tr('Advance cannot exceed the bill total.');
   } else if (totals.paid > totals.total) {
-    errors.payments = 'Payments received exceed the bill total.';
+    errors.payments = tr('Payments received exceed the bill total.');
   }
   return errors;
 }
@@ -107,11 +111,11 @@ export function getBillValidation(bill, rates) {
     (area.items || []).forEach((item) => {
       itemCount += 1;
       const rate = resolveRate(item, rates);
-      const name = text(rate.name || item.name) || 'Work item';
+      const name = text(rate.name || item.name) || tr('Work item');
       getItemIssues(item, rate).forEach((issue) => errors.push(describeBillItemIssue(issue, name)));
     })));
 
-  if (itemCount === 0) errors.push('Add at least one work item before exporting a bill.');
+  if (itemCount === 0) errors.push(tr('Add at least one work item before exporting a bill.'));
   const amountErrors = getAmountErrors(bill, rates);
   return [...errors, ...Object.values(amountErrors).filter(Boolean)];
 }
@@ -123,9 +127,9 @@ export function isBillNumberTaken(bills, bill) {
 /** Required project details for export, keyed by field. */
 export function getRequiredDetailErrors(bill, firm) {
   return {
-    projectName: text(bill.projectName) ? '' : 'Project or site name is required for PDF export.',
-    client: text(bill.client) ? '' : 'Client name is required for PDF export.',
-    firmName: text(firm?.name) ? '' : 'Firm name is required for PDF export.'
+    projectName: text(bill.projectName) ? '' : tr('Project or site name is required for PDF export.'),
+    client: text(bill.client) ? '' : tr('Client name is required for PDF export.'),
+    firmName: text(firm?.name) ? '' : tr('Firm name is required for PDF export.')
   };
 }
 
@@ -134,10 +138,10 @@ export function getExportErrors({ bill, bills, rates, firm, billErrors = getBill
   const required = getRequiredDetailErrors(bill, firm);
   return [
     ...billErrors,
-    ...(!text(bill.number) ? ['Enter a bill number in Project details.'] : []),
-    ...(isBillNumberTaken(bills, bill) ? ['Bill number is already used by another bill.'] : []),
-    ...(required.projectName ? ['Enter a project or site name in Project details.'] : []),
-    ...(required.client ? ['Enter a client name in Project details.'] : []),
-    ...(required.firmName ? ['Enter your firm name in Project details.'] : [])
+    ...(!text(bill.number) ? [tr('Enter a bill number in Project details.')] : []),
+    ...(isBillNumberTaken(bills, bill) ? [tr('Bill number is already used by another bill.')] : []),
+    ...(required.projectName ? [tr('Enter a project or site name in Project details.')] : []),
+    ...(required.client ? [tr('Enter a client name in Project details.')] : []),
+    ...(required.firmName ? [tr('Enter your firm name in Project details.')] : [])
   ];
 }

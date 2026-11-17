@@ -7,6 +7,7 @@ import { useBilling } from '../../state/BillingContext.jsx';
 import { Card } from '../../components/ui';
 import { describeLastBackup } from '../../domain/backup.js';
 import { useBackup } from './useBackup.js';
+import { tr as t } from '../../i18n/translate.js';
 
 /** Back up all data to a file, or restore from one. */
 export default function BackupCard() {
@@ -15,13 +16,13 @@ export default function BackupCard() {
 
   return (
     <Card
-      title="Backup & restore"
-      description="Bills are stored only on this device. Save a backup file to WhatsApp, Drive or email so you can restore it if the phone is reset or changed."
+      title={t('Backup & restore')}
+      description={t('Bills are stored only on this device. Save a backup file to WhatsApp, Drive or email so you can restore it if the phone is reset or changed.')}
     >
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-        <Button variant="contained" startIcon={<BackupIcon />} onClick={exportBackup}>Back up now</Button>
+        <Button variant="contained" startIcon={<BackupIcon />} onClick={exportBackup}>{t('Back up now')}</Button>
         <Button component="label" variant="outlined" startIcon={<RestoreIcon />}>
-          Restore from file
+          {t('Restore from file')}
           <input
             hidden
             type="file"
@@ -35,7 +36,7 @@ export default function BackupCard() {
         </Button>
       </Stack>
       <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 1 }}>
-        Last backup: {describeLastBackup(data)}
+        {t('Last backup: {when}', { when: t(describeLastBackup(data)) })}
       </Typography>
     </Card>
   );
