@@ -25,7 +25,8 @@ function addLog(labour, entry, now) {
 }
 
 /** Bumps a record's version and updatedAt. */
-const touch = (record, patch, now) => ({ ...record, ...patch, updatedAt: now.toISOString(), version: (Number(record.version) || 1) + 1 });
+/** A change made on this device: new version, and the author is whoever uploads it (cleared here). */
+const touch = (record, patch, now) => ({ ...record, ...patch, updatedAt: now.toISOString(), version: (Number(record.version) || 1) + 1, updatedBy: undefined });
 
 // ── Attendance ────────────────────────────────────────────────────────
 

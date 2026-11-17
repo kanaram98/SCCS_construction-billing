@@ -39,10 +39,11 @@ const iso = (now) => now.toISOString();
 /** Sync metadata for a new record. */
 export function stampNew(record, now) {
   const at = iso(now);
-  return { ...record, createdAt: at, updatedAt: at, deletedAt: null, version: 1 };
+  return { ...record, createdAt: at, updatedAt: at, deletedAt: null, version: 1, updatedBy: undefined };
 }
 
-const touch = (record, patch, now) => ({ ...record, ...patch, updatedAt: iso(now), version: (Number(record.version) || 1) + 1 });
+/** A change made on this device: new version, and the author is whoever uploads it (cleared here). */
+const touch = (record, patch, now) => ({ ...record, ...patch, updatedAt: iso(now), version: (Number(record.version) || 1) + 1, updatedBy: undefined });
 
 /** Fills in sync metadata on records saved before it existed. */
 export function withMeta(record) {

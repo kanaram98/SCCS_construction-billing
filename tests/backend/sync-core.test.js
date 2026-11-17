@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { adoptCloud, applyIncoming, createSyncState, keyOf, planUpload } from '../../src/backend/sync-core.js';
 import { toDocuments } from '../../src/backend/mapping.js';
 import { createInitialState } from '../../src/domain/app-state.js';
-import { liveState, recordChanges, undoEntry } from '../../src/domain/history.js';
+import { liveState, purgeRecord, recordChanges, undoEntry } from '../../src/domain/history.js';
 import * as ops from '../../src/domain/labour-ops.js';
 import { buildSampleState } from './sample-state.js';
 
@@ -216,4 +216,23 @@ test('a labour payment changed on both phones keeps the other version in the lab
   assert.equal(admin.raw.labour.payments[0].amount, 2500);
   const entry = admin.raw.labour.log.at(-1);
   assert.deepEqual([entry.entity, entry.action, entry.before.amount], ['payment', 'conflict', 1800]);
+});
+
+test('a permanent delete and a month unlock reach the other phone through History', () => {
+  const cloud = createCloud();
+  const admin = device(buildSampleState(), 'admin');
+  sync(admin, cloud);
+  const father = device(structuredClone(admin.raw), 'father');
+  father.sync = structuredClone(admin.sync);
+  father.seen = admin.seen;
+  const binned = admin.raw.bills.find((bill) => bill.deletedAt);
+  admin.raw = purgeRecord(admin.raw, 'bills', binned.id, at(1));
+  admin.raw = { ...admin.raw, labour: ops.unlockMonth(admin.raw.labour, Object.keys(admin.raw.labour.closedMonths)[0], at(2)) };
+  const plan = planUpload(admin.raw, admin.sync, { by: 'admin' });
+  // The cloud applies the uploads but its change feed misses the deletes.
+  cloud.apply(plan.ops.filter((op) => op.kind !== 'delete'));
+  admin.sync = { ...admin.sync, sent: plan.sent, marks: plan.marks };
+  sync(father, cloud);
+  assert.equal(father.raw.bills.some((bill) => bill.id === binned.id), false);
+  assert.deepEqual(father.raw.labour.closedMonths, {});
 });

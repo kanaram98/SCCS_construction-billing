@@ -193,6 +193,7 @@ export function applyIncoming(raw, docs, syncState, now = new Date(), { by = '' 
       const log = getIn(next, path) || [];
       if (!log.some((entry) => entry.id === doc.id)) {
         next = setIn(next, path, [...log, data].sort((a, b) => String(a.at).localeCompare(String(b.at))));
+        next = applyLoggedRemoval(next, doc.collection, data);
       }
       state.sent[key] = '1';
       continue;
@@ -236,6 +237,42 @@ export function applyIncoming(raw, docs, syncState, now = new Date(), { by = '' 
   if (appConflicts.length) next = { ...next, log: [...(next.log || []), ...appConflicts] };
   if (labourConflicts.length) next = setIn(next, ['labour', 'log'], [...(next.labour?.log || []), ...labourConflicts]);
   return { raw: next, syncState: state, conflicts };
+}
+
+/**
+ * Permanent deletes and month unlocks done on another device remove a
+ * document from the cloud, which a change feed may not report. Their history
+ * entries always arrive, so they are applied from there.
+ */
+function applyLoggedRemoval(raw, collection, entry) {
+  if (collection === 'history' && entry.action === 'purge' && RECORD_LISTS[entry.entity]) {
+    const path = RECORD_LISTS[entry.entity];
+    return setIn(raw, path, (getIn(raw, path) || []).filter((item) => !(item.id === entry.refId && item.deletedAt)));
+  }
+  if (collection !== 'labourLog') return raw;
+  if (entry.entity === 'month' && entry.action === 'unlock') {
+    const closed = raw.labour?.closedMonths?.[entry.month];
+    if (closed && String(closed.closedAt) <= String(entry.at)) {
+      const { [entry.month]: _unlocked, ...rest } = raw.labour.closedMonths;
+      return setIn(raw, ['labour', 'closedMonths'], rest);
+    }
+  }
+  if (entry.entity === 'payment' && entry.action === 'purge') {
+    return setIn(raw, ['labour', 'payments'], (raw.labour?.payments || []).filter((item) => !(item.id === entry.refId && item.deletedAt)));
+  }
+  if (entry.entity === 'worker' && entry.action === 'purge') {
+    const labour = raw.labour || {};
+    const attendance = Object.fromEntries(Object.entries(labour.attendance || {})
+      .map(([date, marks]) => [date, Object.fromEntries(Object.entries(marks).filter(([workerId]) => workerId !== entry.refId))])
+      .filter(([, marks]) => Object.keys(marks).length));
+    return setIn(raw, ['labour'], {
+      ...labour,
+      workers: (labour.workers || []).filter((item) => item.id !== entry.refId),
+      payments: (labour.payments || []).filter((item) => item.workerId !== entry.refId),
+      attendance
+    });
+  }
+  return raw;
 }
 
 /**
