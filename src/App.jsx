@@ -63,7 +63,7 @@ const PAGES = {
   [VIEWS.labour]: LabourPage
 };
 
-/** Screens available while signed out: Labour (phone signed in before) or only Settings to sign in. */
+/** Screens while signed out: Labour (phone signed in before) or only Settings to sign in. */
 const LIMITED_VIEWS = { labour: [VIEWS.labour, VIEWS.settings], signin: [VIEWS.settings] };
 
 function AppShell({ view: chosenView, setView }) {

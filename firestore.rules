@@ -8,8 +8,9 @@ rules_version = '2';
 // - workspaces/{wid}/members/{uid}: who is in the workspace and their role:
 //     admin       everything, including members, permanent deletes,
 //                 unlocking closed months and firm/bank details
-//     contractor  all daily work (bills, rates, quotation, attendance,
-//                 payments, undo, restore, closing a month)
+//     contractor  daily work: bills, quotation, attendance, closing a month; he
+//                 can ADD rates, workers and payments but only the admin edits
+//                 or deletes them (he may mark a worker left / working)
 // - workspaces/{wid}/invites/{email}: an admin invites a Google account; that
 //   person becomes a member the first time they sign in.
 //
@@ -112,6 +113,10 @@ service cloud.firestore {
     }
     function writerRecorded(wid) {
       return byMe('updatedBy') || (resource == null && isAuthor(wid, 'updatedBy'));
+    }
+    // A contractor may change a worker only by marking them left / working.
+    function onlyActiveChanged() {
+      return data().diff(resource.data).affectedKeys().hasOnly(['active', 'updatedAt', 'version', 'updatedBy', 'syncedAt']);
     }
     function inRecycleBin() {
       return resource.data.deletedAt != null;
@@ -282,9 +287,11 @@ service cloud.firestore {
         allow create, update: if canWork(wid) && validBill(id) && versionGoesUp() && writerRecorded(wid);
         allow delete: if isAdmin(wid) && inRecycleBin();
       }
+      // Rates, workers and labour payments: the contractor can add; only the admin edits or deletes.
       match /rates/{id} {
         allow read: if isMember(wid);
-        allow create, update: if canWork(wid) && validRate(id) && versionGoesUp() && writerRecorded(wid);
+        allow create: if canWork(wid) && validRate(id) && versionGoesUp() && writerRecorded(wid);
+        allow update: if isAdmin(wid) && validRate(id) && versionGoesUp() && writerRecorded(wid);
         allow delete: if isAdmin(wid) && inRecycleBin();
       }
       match /clients/{id} {
@@ -299,12 +306,15 @@ service cloud.firestore {
       }
       match /workers/{id} {
         allow read: if isMember(wid);
-        allow create, update: if canWork(wid) && validWorker(id) && versionGoesUp() && writerRecorded(wid);
+        allow create: if canWork(wid) && validWorker(id) && versionGoesUp() && writerRecorded(wid);
+        allow update: if (isAdmin(wid) || (canWork(wid) && onlyActiveChanged()))
+          && validWorker(id) && versionGoesUp() && writerRecorded(wid);
         allow delete: if isAdmin(wid) && inRecycleBin();
       }
       match /labourPayments/{id} {
         allow read: if isMember(wid);
-        allow create, update: if canWork(wid) && validLabourPayment(id) && versionGoesUp() && writerRecorded(wid);
+        allow create: if canWork(wid) && validLabourPayment(id) && versionGoesUp() && writerRecorded(wid);
+        allow update: if isAdmin(wid) && validLabourPayment(id) && versionGoesUp() && writerRecorded(wid);
         allow delete: if isAdmin(wid) && inRecycleBin();
       }
       // Marks are changed field by field (marks.DD.workerId), so two phones don't overwrite each other.

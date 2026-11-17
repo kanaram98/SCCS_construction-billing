@@ -26,8 +26,9 @@ async function init() {
     localCache: fs.persistentLocalCache({ tabManager: fs.persistentMultipleTabManager() })
   });
   if (cloudConfig.useEmulators) {
-    authFns.connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
-    fs.connectFirestoreEmulator(db, '127.0.0.1', 8080);
+    const ports = cloudConfig.emulatorPorts;
+    authFns.connectAuthEmulator(auth, `http://127.0.0.1:${ports.auth}`, { disableWarnings: true });
+    fs.connectFirestoreEmulator(db, '127.0.0.1', ports.firestore);
   }
   return { app, auth, db, fs, authFns };
 }

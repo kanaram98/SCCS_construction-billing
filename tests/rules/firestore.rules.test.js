@@ -16,7 +16,7 @@ let env;
 beforeAll(async () => {
   env = await initializeTestEnvironment({
     projectId: 'demo-sccs',
-    firestore: { rules: fs.readFileSync('firestore.rules', 'utf8'), host: '127.0.0.1', port: 8080 }
+    firestore: { rules: fs.readFileSync('firestore.rules', 'utf8'), host: '127.0.0.1', port: 8180 } // test-only emulator (firebase.e2e.json)
   });
 });
 
@@ -123,6 +123,30 @@ describe('what the contractor (your father) can and cannot do', () => {
     await assertSucceeds(put(as(ADMIN), firm, { ...firm.data, version: firm.data.version + 1, name: 'Changed' }));
     await assertSucceeds(deleteDoc(doc(as(ADMIN), docPath(WS, 'bills', deleted.id))));
     await assertSucceeds(deleteDoc(doc(as(ADMIN), docPath(WS, 'closedMonths', find(docs, 'closedMonths').id))));
+  });
+
+  it('can add rates, workers and payments but not change or delete them', async () => {
+    const docs = sampleDocs(FATHER);
+    const father = as(FATHER);
+    const rate = find(docs, 'rates');
+    const worker = find(docs, 'workers');
+    const payment = find(docs, 'labourPayments');
+    for (const entry of [rate, worker, payment]) await assertSucceeds(put(father, entry));
+    // …but cannot edit them (new version), delete them (move to the recycle bin), or change a wage.
+    await assertFails(put(father, rate, { ...rate.data, version: rate.data.version + 1, rate: 999 }));
+    await assertFails(put(father, rate, { ...rate.data, version: rate.data.version + 1, deletedAt: NOW }));
+    await assertFails(put(father, worker, { ...worker.data, version: worker.data.version + 1, dailyWage: 9999 }));
+    await assertFails(put(father, worker, { ...worker.data, version: worker.data.version + 1, deletedAt: NOW }));
+    await assertFails(put(father, payment, { ...payment.data, version: payment.data.version + 1, amount: 1 }));
+    await assertFails(put(father, payment, { ...payment.data, version: payment.data.version + 1, deletedAt: NOW }));
+    // He may mark a worker as left (and back).
+    await assertSucceeds(put(father, worker, { ...worker.data, version: worker.data.version + 1, active: false }));
+    await assertSucceeds(put(father, worker, { ...worker.data, version: worker.data.version + 2, active: true }));
+    // The admin can do all of it.
+    const admin = as(ADMIN);
+    await assertSucceeds(put(admin, rate, { ...rate.data, version: rate.data.version + 1, updatedBy: ADMIN.uid, rate: 999 }));
+    await assertSucceeds(put(admin, worker, { ...worker.data, version: worker.data.version + 3, updatedBy: ADMIN.uid, dailyWage: 800 }));
+    await assertSucceeds(put(admin, payment, { ...payment.data, version: payment.data.version + 1, updatedBy: ADMIN.uid, amount: 1500 }));
   });
 
   it('can move things to the recycle bin and restore them (both are edits)', async () => {

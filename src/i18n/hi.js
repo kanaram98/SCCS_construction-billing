@@ -786,7 +786,6 @@ export default {
   'Remove {name}?': '{name} को हटाएँ?',
   'Role': 'भूमिका',
   'Sign in with Google': 'Google से साइन इन करें',
-  'Sign in with Google to keep your bills safe in the cloud and use them on another phone.': 'बिल क्लाउड में सुरक्षित रखने और दूसरे फ़ोन पर इस्तेमाल करने के लिए Google से साइन इन करें।',
   'Sign out': 'साइन आउट',
   'Sign-in failed: {reason}': 'साइन इन नहीं हुआ: {reason}',
   'Sync problem. Changes are kept on this device; try again later.': 'सिंक में समस्या। बदलाव इस फ़ोन में सुरक्षित हैं; बाद में फिर कोशिश करें।',
@@ -804,7 +803,6 @@ export default {
   'Continue anyway': 'फिर भी आगे बढ़ें',
   'Continue as {email}?': '{email} के रूप में आगे बढ़ें?',
   'Sign in': 'साइन इन',
-  'Sign in with Google to open the app.': 'ऐप खोलने के लिए Google से साइन इन करें।',
   'Sign out anyway': 'फिर भी साइन आउट करें',
   'Signed out, only Labour can be used on this phone; entries upload at the next sign-in.': 'साइन आउट होने पर इस फ़ोन में सिर्फ़ लेबर चलेगा; एंट्री अगली बार साइन इन करने पर अपलोड होंगी।',
   'Signed out. Only Labour is available on this phone. Sign in as {email} to open bills and upload labour entries.': 'साइन आउट है। इस फ़ोन में सिर्फ़ लेबर उपलब्ध है। बिल खोलने और लेबर एंट्री अपलोड करने के लिए {email} से साइन इन करें।',
@@ -818,5 +816,11 @@ export default {
   '{count} change has not reached the cloud yet (no internet?). If you sign out it stays on this phone and uploads when you sign in again with this account.': '{count} बदलाव अभी क्लाउड में नहीं पहुँचा (इंटरनेट नहीं?)। साइन आउट करने पर यह इस फ़ोन में रहेगा और इसी खाते से दोबारा साइन इन करने पर अपलोड होगा।',
   '{count} changes have not reached the cloud yet (no internet?). If you sign out they stay on this phone and upload when you sign in again with this account.': '{count} बदलाव अभी क्लाउड में नहीं पहुँचे (इंटरनेट नहीं?)। साइन आउट करने पर ये इस फ़ोन में रहेंगे और इसी खाते से दोबारा साइन इन करने पर अपलोड होंगे।',
   'Synced with the cloud. Export a PDF to share or archive a copy.': 'क्लाउड से सिंक है। शेयर करने या रिकॉर्ड रखने के लिए PDF बनाएँ।',
-  'Your data is synced to the cloud. A backup file is an extra copy you keep yourself (WhatsApp, Drive or email).': 'आपका डेटा क्लाउड से सिंक है। बैकअप फ़ाइल एक अतिरिक्त कॉपी है जिसे आप खुद रखते हैं (WhatsApp, Drive या ईमेल)।'
+  'Your data is synced to the cloud. A backup file is an extra copy you keep yourself (WhatsApp, Drive or email).': 'आपका डेटा क्लाउड से सिंक है। बैकअप फ़ाइल एक अतिरिक्त कॉपी है जिसे आप खुद रखते हैं (WhatsApp, Drive या ईमेल)।',
+  'Sign in with Google to open the app.': 'ऐप खोलने के लिए Google से साइन इन करें।',
+  'Sign in with Google to keep your bills safe in the cloud and use them on another phone.': 'बिल क्लाउड में सुरक्षित रखने और दूसरे फ़ोन पर इस्तेमाल करने के लिए Google से साइन इन करें।',
+  'Admin only': 'सिर्फ़ एडमिन',
+  'This day is more than {days} days old. Only the admin can change it.': 'यह दिन {days} दिन से पुराना है। इसे सिर्फ़ एडमिन बदल सकते हैं।',
+  'You can add rates. Only the admin can change or delete them.': 'आप दरें जोड़ सकते हैं। बदलना या हटाना सिर्फ़ एडमिन कर सकते हैं।',
+  'You can add workers and mark them as left. Only the admin can change wages or details, or delete a worker.': 'आप मज़दूर जोड़ सकते हैं और उन्हें "काम छोड़ा" मार्क कर सकते हैं। मज़दूरी या जानकारी बदलना और मज़दूर हटाना सिर्फ़ एडमिन कर सकते हैं।'
 };

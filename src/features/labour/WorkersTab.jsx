@@ -12,6 +12,7 @@ import AddIcon from '@mui/icons-material/Add';
 import EngineeringIcon from '@mui/icons-material/EngineeringOutlined';
 import { ActionMenu, EmptyState, useConfirm, useNotify } from '../../components/ui';
 import { useLabour } from './useLabour.js';
+import { useCloud } from '../account/CloudProvider.jsx';
 import { workerBalance } from '../../domain/labour.js';
 import { formatCurrency } from '../../domain/formatters.js';
 import { tr as t } from '../../i18n/translate.js';
@@ -29,6 +30,7 @@ export default function WorkersTab() {
   const { labour, actions } = useLabour();
   const confirm = useConfirm();
   const notify = useNotify();
+  const canEditWorker = useCloud().can('editWorker');
   const [editing, setEditing] = useState(null); // a worker, 'new' or null
   const [paying, setPaying] = useState(null);
   const workers = [...labour.workers].sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name));
@@ -64,6 +66,11 @@ export default function WorkersTab() {
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => setEditing('new')}>{t('Add worker')}</Button>
       </Stack>
 
+      {!canEditWorker && (
+        <Typography variant="caption" color="text.secondary" component="p" sx={{ mb: 1 }}>
+          {t('You can add workers and mark them as left. Only the admin can change wages or details, or delete a worker.')}
+        </Typography>
+      )}
       {!workers.length ? (
         <EmptyState icon={<EngineeringIcon fontSize="large" />} title={t('No workers yet')} description={t('Add your workers with their daily wage, then mark attendance every day.')} />
       ) : (
@@ -79,14 +86,14 @@ export default function WorkersTab() {
                     label={t('Actions for {name}', { name: worker.name })}
                     items={[
                       { label: t('Pay / advance'), onClick: () => setPaying(worker) },
-                      { label: t('Edit'), onClick: () => setEditing(worker) },
+                      { label: t('Edit'), onClick: () => setEditing(worker), hidden: !canEditWorker },
                       { label: worker.active ? t('Mark as left') : t('Mark as working'), onClick: () => actions.updateWorker(worker.id, { active: !worker.active }) },
-                      { label: t('Delete'), danger: true, onClick: () => remove(worker) }
+                      { label: t('Delete'), danger: true, onClick: () => remove(worker), hidden: !canEditWorker }
                     ]}
                   />
                 )}
               >
-                <ListItemButton onClick={() => setEditing(worker)} sx={{ opacity: worker.active ? 1 : 0.6 }}>
+                <ListItemButton onClick={canEditWorker ? () => setEditing(worker) : undefined} disableRipple={!canEditWorker} sx={{ opacity: worker.active ? 1 : 0.6, cursor: canEditWorker ? 'pointer' : 'default' }}>
                   <ListItemText
                     primary={(
                       <Stack direction="row" spacing={1} component="span" sx={{ alignItems: 'center' }}>

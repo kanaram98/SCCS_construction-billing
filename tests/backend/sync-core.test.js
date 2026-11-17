@@ -236,3 +236,29 @@ test('a permanent delete and a month unlock reach the other phone through Histor
   assert.equal(father.raw.bills.some((bill) => bill.id === binned.id), false);
   assert.deepEqual(father.raw.labour.closedMonths, {});
 });
+
+test('joining a workspace keeps what this phone already had (labour entries, bills) and uploads it', () => {
+  const cloud = createCloud();
+  const admin = device(buildSampleState(), 'admin');
+  sync(admin, cloud);
+  // Father used the phone before signing in: a worker, attendance, and a real bill.
+  let local = createInitialState();
+  const own = { id: 'w9', name: 'Mohan', dailyWage: 500, role: '', phone: '', active: true, createdAt: '', updatedAt: '', deletedAt: null, version: 1 };
+  local = { ...local, labour: ops.addWorker(local.labour, own, at(1)) };
+  local = { ...local, labour: ops.markAttendance(local.labour, '2026-11-21', [{ worker: own, units: 1 }], at(2)) };
+  local = { ...local, bills: [...local.bills, { ...local.bills[0], id: 'own-bill', projectName: 'Gupta shop' }] };
+  const adopted = adoptCloud(cloud.changedSince(0), local, at(10));
+  assert.ok(adopted.raw.labour.workers.some((worker) => worker.id === 'w9'));
+  assert.equal(adopted.raw.labour.attendance['2026-11-21'].w9.units, 1);
+  assert.ok(adopted.raw.bills.some((bill) => bill.id === 'own-bill'));
+  assert.equal(adopted.raw.bills.some((bill) => bill.id === local.bills[0].id), false, 'the empty starter bill is not added');
+  assert.ok(adopted.raw.bills.some((bill) => bill.id === 'bill-1'), 'the cloud data is there');
+  const father = device(adopted.raw, 'father');
+  father.sync = adopted.syncState;
+  father.seen = cloud.clock;
+  sync(father, cloud);
+  sync(admin, cloud);
+  assert.ok(admin.raw.labour.workers.some((worker) => worker.id === 'w9'));
+  assert.equal(admin.raw.labour.attendance['2026-11-21'].w9.units, 1);
+  assert.ok(admin.raw.bills.some((bill) => bill.id === 'own-bill'));
+});

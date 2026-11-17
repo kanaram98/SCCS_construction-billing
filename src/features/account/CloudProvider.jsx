@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useBilling } from '../../state/BillingContext.jsx';
 import { useNotify } from '../../components/ui';
 import { cloudConfig, isCloudConfigured } from '../../backend/config.js';
-import { can as roleCan } from '../../domain/permissions.js';
+import { can as roleCan, canEditAttendanceDate, canRestore, canUndo } from '../../domain/permissions.js';
 import { tr as t, trn } from '../../i18n/translate.js';
 
 /**
@@ -12,11 +12,11 @@ import { tr as t, trn } from '../../i18n/translate.js';
  * taps "Sign in", so device-only use stays light. Without cloud settings
  * (see backend/config.js) everything here is inert and every action is allowed.
  *
- * What a signed-out phone may open (`access`):
- *   'full'    signed in (or no cloud set up): everything, by role
- *   'labour'  signed out on a phone that was signed in before: Labour only;
- *             entries upload at the next sign-in with the same account
- *   'signin'  never signed in here, or the account has no access: sign in first
+ * What the phone may open (`access`):
+ *   'full'    signed in as a workspace member (or no cloud set up): everything, by role
+ *   'labour'  signed out on a phone where someone signed in before: Labour only
+ *             (that person's timesheets); entries upload at their next sign-in
+ *   'signin'  never signed in on this phone (or no access yet): sign in first
  *
  *   const cloud = useCloud();
  *   cloud.status   'off' | 'signed-out' | 'connecting' | 'no-access' | 'switch-blocked' | 'syncing' | 'synced' | 'offline' | 'error'
@@ -44,6 +44,9 @@ const LOCAL_ONLY = Object.freeze({
   members: [],
   switchInfo: null,
   can: () => true,
+  canEditDate: () => true,
+  canUndo: () => true,
+  canRestore: () => true,
   signIn: async () => {},
   signOut: async () => {},
   pendingChanges: async () => 0,
@@ -205,9 +208,10 @@ function ConnectedCloud({ children }) {
   }, [connect]);
   useEffect(() => () => stopEngine(), []);
 
-  // Send local changes shortly after they happen.
+  // Send local changes shortly after they happen (and don't claim 'Synced' meanwhile).
   useEffect(() => {
     if (!engineRef.current) return undefined;
+    setStatus((current) => (current === 'synced' ? 'syncing' : current));
     const timer = setTimeout(() => engineRef.current?.push(), 1200);
     return () => clearTimeout(timer);
   }, [raw]);
@@ -272,6 +276,10 @@ function ConnectedCloud({ children }) {
     members,
     switchInfo,
     can: (action) => (effectiveRole ? roleCan(effectiveRole, action) : true),
+    /** Timesheet day: contractors only today and the 2 days before. */
+    canEditDate: (date) => (effectiveRole ? canEditAttendanceDate(effectiveRole, date) : true),
+    canUndo: (entry) => (effectiveRole ? canUndo(effectiveRole, entry) : true),
+    canRestore: (entity) => (effectiveRole ? canRestore(effectiveRole, entity) : true),
     signIn,
     signOut,
     pendingChanges,

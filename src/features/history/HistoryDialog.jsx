@@ -32,6 +32,7 @@ function Activity({ filter }) {
   const { raw, actions } = useBilling();
   const cloud = useCloud();
   const names = new Map(cloud.members.map((member) => [member.uid, member.name]));
+  const allowedUndo = (entry) => cloud.canUndo(entry);
   const confirm = useConfirm();
   const notify = useNotify();
   const [shown, setShown] = useState(PAGE);
@@ -62,7 +63,8 @@ function Activity({ filter }) {
                 {info.lines.map((line, index) => <Typography key={index} variant="body2" color="text.secondary">{line}</Typography>)}
                 {entry.revertOf && <Chip size="small" label={t('Undo of an earlier change')} sx={{ mt: 0.5 }} />}
               </Box>
-              {blocker === '' && <Button size="small" startIcon={<UndoIcon />} onClick={() => undo(entry, info)} sx={{ flexShrink: 0 }}>{t('Undo')}</Button>}
+              {blocker === '' && !allowedUndo(entry) && <Chip size="small" variant="outlined" label={t('Admin only')} sx={{ flexShrink: 0 }} />}
+              {blocker === '' && allowedUndo(entry) && <Button size="small" startIcon={<UndoIcon />} onClick={() => undo(entry, info)} sx={{ flexShrink: 0 }}>{t('Undo')}</Button>}
               {BLOCKER_TEXT[blocker] && <Chip size="small" variant="outlined" label={t(BLOCKER_TEXT[blocker])} sx={{ flexShrink: 0 }} />}
             </Stack>
           </Box>
@@ -75,7 +77,8 @@ function Activity({ filter }) {
 
 function RecycleBin({ filter }) {
   const { raw, actions } = useBilling();
-  const canPurge = useCloud().can('deleteForever');
+  const cloud = useCloud();
+  const canPurge = cloud.can('deleteForever');
   const confirm = useConfirm();
   const notify = useNotify();
   const items = recycleBin(raw).filter((item) => matchesFilter(item.entity, filter));
@@ -107,6 +110,7 @@ function RecycleBin({ filter }) {
                 size="small"
                 variant="outlined"
                 startIcon={<RestoreIcon />}
+                disabled={!cloud.canRestore(item.entity)}
                 onClick={() => { actions.history.restore(item.entity, item.id); notify(t('Restored.'), 'success'); }}
               >
                 {t('Restore')}

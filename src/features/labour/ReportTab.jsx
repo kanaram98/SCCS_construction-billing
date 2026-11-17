@@ -27,6 +27,7 @@ import MarkCounts from './MarkCounts.jsx';
 import MonthBar from './MonthBar.jsx';
 import ClosedMonthNotice from './ClosedMonthNotice.jsx';
 import { useLabour, useMonthLock } from './useLabour.js';
+import { useCloud } from '../account/CloudProvider.jsx';
 import WorkerSheetDocument from './WorkerSheetDocument.jsx';
 
 /** Small attendance calendar for one worker's month. */
@@ -160,6 +161,7 @@ export default function ReportTab({ month, onMonthChange, onOpenSheet, onOpenHis
   const confirm = useConfirm();
   const lock = useMonthLock();
   const closed = lock.isClosed(month);
+  const canEditPayments = useCloud().can('editPayment');
   const sheetsRef = useRef(null);
   const [paying, setPaying] = useState(null); // { row, payment? }
   const [busyId, setBusyId] = useState('');
@@ -257,7 +259,7 @@ export default function ReportTab({ month, onMonthChange, onOpenSheet, onOpenHis
               key={row.workerId}
               row={row}
               busy={busyId === row.workerId}
-              locked={closed}
+              locked={closed || !canEditPayments}
               onHistory={() => onOpenHistory(row.workerId)}
               onPay={() => setPaying({ row })}
               onPdf={() => exportPdf(row)}

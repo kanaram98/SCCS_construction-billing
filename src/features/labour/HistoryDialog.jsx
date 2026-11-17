@@ -30,6 +30,7 @@ const BLOCKER_TEXT = {
 function ActivityItem({ entry, info, blocker, onUndo }) {
   const cloud = useCloud();
   const by = cloud.members.find((member) => member.uid === entry.by)?.name;
+  const mayUndo = blocker === '' && cloud.canUndo(entry);
   return (
     <Box sx={{ py: 1.25, borderBottom: 1, borderColor: 'divider' }}>
       <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}>
@@ -39,7 +40,8 @@ function ActivityItem({ entry, info, blocker, onUndo }) {
           {info.lines.map((line, index) => <Typography key={index} variant="body2" color="text.secondary">{line}</Typography>)}
           {entry.revertOf && <Chip size="small" label={t('Undo of an earlier change')} sx={{ mt: 0.5 }} />}
         </Box>
-        {blocker === '' && <Button size="small" startIcon={<UndoIcon />} onClick={onUndo} sx={{ flexShrink: 0 }}>{t('Undo')}</Button>}
+        {blocker === '' && !mayUndo && <Chip size="small" variant="outlined" label={t('Admin only')} sx={{ flexShrink: 0 }} />}
+        {mayUndo && <Button size="small" startIcon={<UndoIcon />} onClick={onUndo} sx={{ flexShrink: 0 }}>{t('Undo')}</Button>}
         {BLOCKER_TEXT[blocker] && <Chip size="small" variant="outlined" label={t(BLOCKER_TEXT[blocker])} sx={{ flexShrink: 0 }} />}
       </Stack>
     </Box>
@@ -82,7 +84,8 @@ function Activity({ workerId }) {
 
 function RecycleBin({ workerId }) {
   const { raw, actions } = useLabour();
-  const canPurge = useCloud().can('deleteForever');
+  const cloud = useCloud();
+  const canPurge = cloud.can('deleteForever');
   const confirm = useConfirm();
   const notify = useNotify();
   const deletedWorkers = new Set(raw.workers.filter((worker) => worker.deletedAt).map((worker) => worker.id));
@@ -128,7 +131,7 @@ function RecycleBin({ workerId }) {
                 size="small"
                 variant="outlined"
                 startIcon={<RestoreIcon />}
-                disabled={Boolean(blocked)}
+                disabled={Boolean(blocked) || !cloud.canRestore(isWorker ? 'worker' : 'payment')}
                 onClick={() => {
                   (isWorker ? actions.restoreWorker : actions.restorePayment)(item.id);
                   notify(t('Restored.'), 'success');

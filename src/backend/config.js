@@ -13,6 +13,7 @@ export const cloudConfig = Object.freeze({
     appId: env.VITE_FIREBASE_APP_ID
   },
   useEmulators: env.VITE_USE_EMULATORS === 'true',
+  emulatorPorts: { auth: Number(env.VITE_AUTH_EMULATOR_PORT) || 9099, firestore: Number(env.VITE_FIRESTORE_EMULATOR_PORT) || 8080 },
   workspaceId: env.VITE_WORKSPACE_ID || 'sccs'
 });
 

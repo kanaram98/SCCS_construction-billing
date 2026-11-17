@@ -28,6 +28,9 @@ import { getLanguage, tr as t } from '../../i18n/translate.js';
 import MonthBar from './MonthBar.jsx';
 import ClosedMonthNotice from './ClosedMonthNotice.jsx';
 import { useLabour, useMonthLock, useOldDateGuard } from './useLabour.js';
+import { useCloud } from '../account/CloudProvider.jsx';
+import { CONTRACTOR_TIMESHEET_DAYS } from '../../domain/permissions.js';
+import { Notice } from '../../components/ui';
 
 const UNIT_LABELS = { 0: 'A', 0.5: '½P', 1: '1P', 1.5: '1½P', 2: '2P' };
 const unitLabel = (units) => UNIT_LABELS[units] ?? formatUnits(units);
@@ -135,7 +138,9 @@ function DaySheet({ date, month, onDateChange, onClose }) {
   const { labour, actions } = useLabour();
   const undoable = useUndoable();
   const allowOld = useOldDateGuard();
-  const closed = Boolean(date) && isDateClosed(labour, date);
+  const cloud = useCloud();
+  const tooOld = Boolean(date) && !cloud.canEditDate(date);
+  const closed = Boolean(date) && (isDateClosed(labour, date) || tooOld);
   const change = (apply) => async () => { if (await allowOld(date)) apply(); };
   const today = localToday();
   const workers = date ? workersOn(labour, date) : [];
@@ -158,6 +163,7 @@ function DaySheet({ date, month, onDateChange, onClose }) {
             <IconButton aria-label={t('Next day')} disabled={monthOf(next) !== month || next > today} onClick={() => onDateChange(next)}><ChevronRightIcon /></IconButton>
           </Stack>
           <ClosedMonthNotice month={month} />
+          {tooOld && <Notice tone="info">{t('This day is more than {days} days old. Only the admin can change it.', { days: CONTRACTOR_TIMESHEET_DAYS })}</Notice>}
           <Stack direction="row" spacing={1} sx={{ justifyContent: 'center', mb: 1, display: closed ? 'none' : 'flex' }}>
             {unmarked.length > 0 && (
               <Button size="small" variant="outlined" startIcon={<DoneAllIcon />} onClick={change(() => actions.markAll(date, unmarked, 1))}>
@@ -190,6 +196,7 @@ export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
   const { labour, actions } = useLabour();
   const allowOld = useOldDateGuard();
   const closed = useMonthLock().isClosed(month);
+  const cloud = useCloud();
   const today = localToday();
   const [workerId, setWorkerId] = useState('all');
   const [openDate, setOpenDate] = useState(null);
@@ -237,7 +244,7 @@ export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
         tone={tone}
         value={mark ? unitLabel(mark.units) : ''}
         ariaLabel={`${dayLabel(date, getLanguage())}: ${mark ? formatUnits(mark.units) : t('Not marked')}`}
-        onClick={(event) => (closed ? setOpenDate(date) : setPicker({ anchor: event.currentTarget, date }))}
+        onClick={(event) => (closed || !cloud.canEditDate(date) ? setOpenDate(date) : setPicker({ anchor: event.currentTarget, date }))}
       />
     );
   }

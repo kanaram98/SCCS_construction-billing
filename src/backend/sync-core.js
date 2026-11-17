@@ -320,17 +320,20 @@ function mergeAttendanceMonth(raw, month, cloudMarks, state) {
 // ── First sync on a phone joining an existing workspace ───────────────
 
 /**
- * Takes the cloud copy as this device's data (keeping its own language,
- * open bill and onboarding) and records everything as already synced.
- * Returns null when the cloud has no bills yet (then this device uploads instead).
+ * Takes the cloud copy as this device's data (keeping its own language and
+ * open bill) and records the cloud's documents as already synced. Anything
+ * this phone has that the cloud doesn't (e.g. labour entries made before the
+ * first sign-in) is kept and will be uploaded. Returns null when the cloud
+ * has no bills yet (then this device uploads everything instead).
  */
 export function adoptCloud(docs, localRaw, now = new Date()) {
   const withoutSyncedAt = ({ syncedAt: _synced, ...rest }) => rest;
   const present = docs.filter((doc) => doc.exists !== false).map((doc) => ({ ...doc, data: withoutSyncedAt(doc.data) }));
   // The workspace already has data, so this phone skips the first-bill welcome screen.
   const local = { ...localRaw, meta: { ...localRaw?.meta, onboarded: true } };
-  const raw = fromDocuments(present, { local }, now);
-  if (!raw) return null;
+  const cloudRaw = fromDocuments(present, { local }, now);
+  if (!cloudRaw) return null;
+  const raw = keepLocalExtras(cloudRaw, localRaw);
   const syncState = createSyncState();
   for (const doc of present) {
     if (doc.collection === 'attendance') {
@@ -342,4 +345,42 @@ export function adoptCloud(docs, localRaw, now = new Date()) {
     }
   }
   return { raw, syncState };
+}
+
+/** A bill nobody has written anything in (the starter bill of a new phone). */
+function isBlankBill(bill) {
+  return !(bill.sections || []).length && !(bill.payments || []).length
+    && !String(bill.projectName || '').trim() && !String(bill.client || '').trim();
+}
+
+/** Adds this phone's records, history and attendance marks that the cloud doesn't have. */
+function keepLocalExtras(cloudRaw, localRaw) {
+  if (!localRaw) return cloudRaw;
+  const extras = (cloudList = [], localList = [], skip = () => false) => {
+    const known = new Set(cloudList.map((item) => item.id));
+    return [...cloudList, ...localList.filter((item) => item?.id && !known.has(item.id) && !skip(item))];
+  };
+  const byTime = (a, b) => String(a.at).localeCompare(String(b.at));
+  const next = {
+    ...cloudRaw,
+    bills: extras(cloudRaw.bills, localRaw.bills, isBlankBill),
+    rates: extras(cloudRaw.rates, localRaw.rates),
+    clients: extras(cloudRaw.clients, localRaw.clients),
+    templates: extras(cloudRaw.templates, localRaw.templates),
+    log: extras(cloudRaw.log, localRaw.log).sort(byTime)
+  };
+  const cloudLabour = cloudRaw.labour || {};
+  const localLabour = localRaw.labour || {};
+  const attendance = { ...(cloudLabour.attendance || {}) };
+  for (const [date, marks] of Object.entries(localLabour.attendance || {})) {
+    attendance[date] = { ...marks, ...(attendance[date] || {}) }; // the cloud's mark wins for the same worker and day
+  }
+  next.labour = {
+    ...cloudLabour,
+    workers: extras(cloudLabour.workers, localLabour.workers),
+    payments: extras(cloudLabour.payments, localLabour.payments),
+    attendance,
+    log: extras(cloudLabour.log, localLabour.log).sort(byTime)
+  };
+  return next;
 }

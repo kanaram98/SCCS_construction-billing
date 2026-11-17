@@ -23,7 +23,7 @@ const engines = [];
 beforeAll(async () => {
   env = await initializeTestEnvironment({
     projectId: 'demo-sccs',
-    firestore: { rules: fs.readFileSync('firestore.rules', 'utf8'), host: '127.0.0.1', port: 8080 }
+    firestore: { rules: fs.readFileSync('firestore.rules', 'utf8'), host: '127.0.0.1', port: 8180 } // test-only emulator (firebase.e2e.json)
   });
 });
 afterAll(async () => { await env?.cleanup(); });
@@ -146,6 +146,18 @@ describe('sync between two phones', () => {
     expect(father.refused).toEqual([{ collection: 'settings', id: 'firm' }]);
     expect(father.status).toBe('synced');
     expect(admin.raw.firm.name).toBe('SCCS');
+  });
+
+  it('puts back a rate or worker change the contractor is not allowed to make', async () => {
+    const { admin, father } = await setUpBoth();
+    const rate = father.raw.rates[0];
+    await father.edit((live) => ({ ...live, rates: live.rates.map((item) => (item.id === rate.id ? { ...item, rate: 999 } : item)) }));
+    expect(father.raw.rates.find((item) => item.id === rate.id).rate).toBe(rate.rate);
+    expect(father.refused).toEqual([{ collection: 'rates', id: rate.id }]);
+    expect(admin.raw.rates.find((item) => item.id === rate.id).rate).toBe(rate.rate);
+    // Adding a rate is fine and reaches the admin.
+    await father.edit((live) => ({ ...live, rates: [...live.rates, { id: 'new-rate', name: 'Plaster', unit: 'sqft', type: 'area', rate: 40 }] }));
+    await waitFor(() => admin.raw.rates.some((item) => item.id === 'new-rate'));
   });
 
   it('keeps out an account that was never invited', async () => {

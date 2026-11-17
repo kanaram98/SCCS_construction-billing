@@ -18,6 +18,7 @@ import { getLanguage, makeTranslator, tr as t } from '../../i18n/translate.js';
 import FitToWidth from '../print/preview/FitToWidth.jsx';
 import RatesTable from './RatesTable.jsx';
 import RateFormDialog from './RateFormDialog.jsx';
+import { useCloud } from '../account/CloudProvider.jsx';
 import QuotationDocument from './QuotationDocument.jsx';
 
 const PAPER_WIDTH_PX = 794; // A4 at 96 dpi
@@ -34,6 +35,7 @@ export default function RatesPage() {
   const previewRef = useRef(null);
   /** null = closed, 'new' = adding, otherwise the rate being edited. */
   const [editing, setEditing] = useState(null);
+  const canEditRates = useCloud().can('editRate');
   const language = resolveBillLanguage(data.printSettings, getLanguage());
   const docT = useMemo(() => makeTranslator(language), [language]);
   const update = actions.quotation.update;
@@ -105,9 +107,11 @@ export default function RatesPage() {
           </Button>
         </Stack>
 
-        <RatesTable rates={rates} onEdit={setEditing} onRemove={removeRate} />
+        <RatesTable rates={rates} onEdit={canEditRates ? setEditing : undefined} onRemove={removeRate} />
         <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 1, mb: 2 }}>
-          {t('Tap a row to edit. Changing a rate updates the amounts of entries that use it.')}
+          {canEditRates
+            ? t('Tap a row to edit. Changing a rate updates the amounts of entries that use it.')
+            : t('You can add rates. Only the admin can change or delete them.')}
         </Typography>
 
         <Card title={t('Quotation details')}>

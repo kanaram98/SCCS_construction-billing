@@ -3,7 +3,7 @@ import Button from '@mui/material/Button';
 import { tr as t } from '../../i18n/translate.js';
 import { useCloud } from './CloudProvider.jsx';
 
-/** Explains why only Labour (or only sign-in) is available while signed out. */
+/** Explains what is available while signed out. */
 export default function SignedOutBanner({ onOpenSettings }) {
   const cloud = useCloud();
   if (cloud.access === 'full') return null;

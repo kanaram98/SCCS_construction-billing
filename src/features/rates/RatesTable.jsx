@@ -15,6 +15,7 @@ import { tr as t } from '../../i18n/translate.js';
 
 /** Read-only list of work items; tap a row to edit it. */
 export default function RatesTable({ rates, onEdit, onRemove }) {
+  const readOnly = !onEdit; // the contractor can add rates but not change them
   return (
     <TableContainer component={Paper} variant="outlined">
       <Table size="small" aria-label={t('Work item rates')}>
@@ -28,7 +29,7 @@ export default function RatesTable({ rates, onEdit, onRemove }) {
         </TableHead>
         <TableBody>
           {rates.map((rate) => (
-            <TableRow key={rate.id} hover onClick={() => onEdit(rate)} sx={{ cursor: 'pointer', '&:last-child td': { border: 0 } }}>
+            <TableRow key={rate.id} hover={!readOnly} onClick={readOnly ? undefined : () => onEdit(rate)} sx={{ cursor: readOnly ? 'default' : 'pointer', '&:last-child td': { border: 0 } }}>
               <TableCell sx={{ py: 1.25 }}>
                 <Typography variant="body2" sx={{ fontWeight: 600 }}>{rate.name || t('Untitled')}</Typography>
                 <Typography variant="caption" color="text.secondary">{t(measurementTypeLabel(rate.type))}</Typography>
@@ -36,14 +37,14 @@ export default function RatesTable({ rates, onEdit, onRemove }) {
               <TableCell>{rate.unit}</TableCell>
               <TableCell align="right" sx={{ whiteSpace: 'nowrap', fontWeight: 600 }}>{formatCurrency(rate.rate)}</TableCell>
               <TableCell padding="none" onClick={(event) => event.stopPropagation()}>
-                <ActionMenu
+                {!readOnly && <ActionMenu
                   size="small"
                   label={t('Actions for {name}', { name: rate.name })}
                   items={[
                     { label: t('Edit'), icon: <EditIcon fontSize="small" />, onClick: () => onEdit(rate) },
                     { label: t('Delete'), icon: <DeleteIcon fontSize="small" />, onClick: () => onRemove(rate), danger: true, disabled: rates.length < 2 }
                   ]}
-                />
+                />}
               </TableCell>
             </TableRow>
           ))}
