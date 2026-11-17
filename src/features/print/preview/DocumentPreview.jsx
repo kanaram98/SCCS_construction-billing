@@ -7,6 +7,11 @@ import SignatureFooter from './SignatureFooter.jsx';
 
 const MM_TO_PX = 3.7795;
 
+/** On-screen width of the paper in CSS pixels for the chosen paper size and orientation. */
+export function getPaperWidthPx(printSettings) {
+  return Math.round(getPageWidthMm(printSettings) * MM_TO_PX);
+}
+
 const ROW_CLASSES = {
   section: 'section-band',
   area: 'area-band',
@@ -38,7 +43,7 @@ export default function DocumentPreview({
   const header = <PaperHeader bill={bill} firm={firm} documentType={documentType} />;
   const footerLines = getFooterLines(bill.footer);
   const pageStyle = {
-    maxWidth: `${getPageWidthMm(printSettings) * MM_TO_PX}px`,
+    maxWidth: `${getPaperWidthPx(printSettings)}px`,
     '--paper-margin': `${printSettings.margin}mm`,
     '--print-font-size': `${printSettings.fontSize}pt`
   };

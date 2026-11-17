@@ -7,11 +7,11 @@ export default function AppNotices({ storageError, isInstalled, installMessage }
     <>
       <Notice tone="error" className="no-print">{storageError}</Notice>
       {!isInstalled && isIosDevice() && (
-        <div className="notice install-tip no-print">
+        <Notice className="no-print">
           To install on iPhone or iPad, open this page in Safari, tap Share, then choose “Add to Home Screen”.
-        </div>
+        </Notice>
       )}
-      <Notice className="no-print">{installMessage}</Notice>
+      <Notice tone="success" className="no-print">{installMessage}</Notice>
     </>
   );
 }

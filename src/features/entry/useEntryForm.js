@@ -36,7 +36,8 @@ export function useEntryForm({ rates, items, onAdd, onUpdate }) {
   const liveErrors = validateEntry(entry, selectedRate);
   const visibleErrors = submitErrors.length ? submitErrors : hasTouched ? liveErrors : [];
 
-  function reset(rateId = entry.rateId) {
+  /** Clears the form for a new entry, keeping the last work item selected. */
+  function reset(rateId = entry.rateId || rates[0]?.id || '') {
     setEntry(emptyEntry(rateId));
     setEditingId(null);
     setHasTouched(false);
@@ -56,11 +57,11 @@ export function useEntryForm({ rates, items, onAdd, onUpdate }) {
     setSubmitErrors([]);
   }
 
-  function submit(event) {
-    event.preventDefault();
+  /** Saves the entry. @returns {boolean} whether it was saved */
+  function submit() {
     if (liveErrors.length) {
       setSubmitErrors(liveErrors);
-      return;
+      return false;
     }
     const values = {
       ...entry,
@@ -73,9 +74,10 @@ export function useEntryForm({ rates, items, onAdd, onUpdate }) {
       onUpdate(editingId, values);
     } else if (!onAdd(entry.rateId, values)) {
       setSubmitErrors(['This work item is no longer available. Select another work item.']);
-      return;
+      return false;
     }
     reset(entry.rateId);
+    return true;
   }
 
   /** Clears the form if the deleted item was being edited. */
@@ -86,6 +88,8 @@ export function useEntryForm({ rates, items, onAdd, onUpdate }) {
   return {
     entry,
     isEditing: Boolean(editingId),
+    /** Whether field errors should be shown (after the first edit, or when editing). */
+    showFieldErrors: hasTouched,
     availableRates,
     selectedRate,
     canSubmit: liveErrors.length === 0,

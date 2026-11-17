@@ -1,6 +1,6 @@
 # Construction Billing
 
-A React app for construction measurements in feet and inches, work-item rates, bill totals, and PDF export. It runs in a browser and can be installed as a Progressive Web App (PWA) on phones and desktops. The Windows `.exe` build is also available.
+A mobile-first React app (Material UI) for construction measurements in feet and inches, work-item rates, bill totals, and PDF export. It runs in a browser and can be installed as a Progressive Web App (PWA) on phones and desktops. The Windows `.exe` build is also available.
 
 Bills and reusable section/area templates are stored locally. The dashboard can filter by project or bill search, client, date range, and payment status (derived from the bill's advance amount; it is not a payment ledger). PDF / Print includes document selection and ordering, paper size and orientation, margins, text size, headers, page breaks, row numbering, summary detail, page numbers, footer lines, and signature placement.
 
@@ -67,10 +67,12 @@ src/
   state/         App store (useBillingStore), actions, and BillingContext
   hooks/         Reusable React hooks (PWA install prompt)
   components/
-    ui/          Reusable primitives: Button, TextField, SelectField, Card, Notice…
-    layout/      App header, navigation, notices
+    ui/          Reusable MUI-based building blocks: TextField, SelectField, Card,
+                 ResponsiveDialog, ActionMenu, BottomActionBar, toasts/confirm dialogs…
+    layout/      App bar, navigation (bottom tabs on mobile, sidebar on desktop)
   features/      One folder per screen: dashboard, entry, rates, project, print
-  styles/        CSS split by concern, imported through styles/index.css
+  theme.js       MUI theme (colours, typography, component defaults)
+  styles/        print.css: paper preview and browser-print output only
   config/        App constants (storage keys, navigation, upload limits)
 tests/           node:test suites for domain/ and documents/
 ```

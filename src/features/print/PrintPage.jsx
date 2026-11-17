@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
+import Typography from '@mui/material/Typography';
 import { useBilling } from '../../state/BillingContext.jsx';
-import { Card, EmptyState, SelectField } from '../../components/ui';
+import { Card, EmptyState, PageHeading, SelectField } from '../../components/ui';
 import { getExportErrors } from '../../domain/validation.js';
 import { getPrintDocument, getSelectedDocuments, isSignatureVisible } from '../../domain/print-settings.js';
 import { usePdfExport } from './usePdfExport.js';
@@ -9,7 +10,8 @@ import ExportPanel from './ExportPanel.jsx';
 import DocumentSelection from './DocumentSelection.jsx';
 import { LayoutSettings, PageSetupSettings } from './PageSettings.jsx';
 import SignatureSettings from './SignatureSettings.jsx';
-import DocumentPreview from './preview/DocumentPreview.jsx';
+import DocumentPreview, { getPaperWidthPx } from './preview/DocumentPreview.jsx';
+import FitToWidth from './preview/FitToWidth.jsx';
 
 export default function PrintPage() {
   const { data, bill, actions } = useBilling();
@@ -28,9 +30,11 @@ export default function PrintPage() {
   const previewProps = { bill, firm, rates, printSettings };
 
   return (
-    <section>
+    <section className="print-page">
       <PrintPageStyle settings={printSettings} />
-      <h1>PDF export and print</h1>
+      <div className="no-print">
+        <PageHeading title="PDF / Print" description="Choose documents, adjust the layout and export." />
+      </div>
       <ExportPanel documentCount={selectedDocuments.length} exportErrors={exportErrors} exporter={exporter} />
       <DocumentSelection
         settings={printSettings}
@@ -53,37 +57,37 @@ export default function PrintPage() {
         onResetPlacement={print.resetSignatureLayout}
       />
 
-      <Card className="no-print">
-        <SelectField
-          label="Preview"
-          value={selectedDocuments.length ? previewDocument : ''}
-          disabled={!selectedDocuments.length}
-          placeholder={selectedDocuments.length ? undefined : 'No documents selected'}
-          options={selectedDocuments.map((id) => ({ value: id, label: getPrintDocument(id).label }))}
-          onChange={(value) => print.update({ previewDocument: value })}
-        />
-        {printSettings.signatureMode !== 'off' && firm.signature && (
-          <div className="signature-placement-help">
-            <span>Position and size changes are saved on this device.</span>
-          </div>
-        )}
-      </Card>
-
       {selectedDocuments.length ? (
         <>
-          {/* Interactive on-screen preview of one document (hidden when printing). */}
-          <DocumentPreview
-            {...previewProps}
-            className="print-preview"
-            documentType={previewDocument}
-            signatureVisible={isSignatureVisible(
-              printSettings,
-              selectedDocuments.indexOf(previewDocument),
-              selectedDocuments.length
+          <Card className="no-print" title="Preview">
+            <SelectField
+              label="Document"
+              value={previewDocument}
+              options={selectedDocuments.map((id) => ({ value: id, label: getPrintDocument(id).label }))}
+              onChange={(value) => print.update({ previewDocument: value })}
+              sx={{ mb: 2 }}
+            />
+            {/* Interactive preview of one document, scaled to fit the screen (hidden when printing). */}
+            <FitToWidth contentWidth={getPaperWidthPx(printSettings)}>
+              <DocumentPreview
+                {...previewProps}
+                className="print-preview"
+                documentType={previewDocument}
+                signatureVisible={isSignatureVisible(
+                  printSettings,
+                  selectedDocuments.indexOf(previewDocument),
+                  selectedDocuments.length
+                )}
+                editableSignature
+                onSignatureLayoutChange={print.setSignatureLayout}
+              />
+            </FitToWidth>
+            {printSettings.signatureMode !== 'off' && firm.signature && (
+              <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 1 }}>
+                Signature position and size are saved on this device.
+              </Typography>
             )}
-            editableSignature
-            onSignatureLayoutChange={print.setSignatureLayout}
-          />
+          </Card>
           {/* Every selected document, shown only when printing. */}
           <div className="print-batch">
             {selectedDocuments.map((documentType, index) => (

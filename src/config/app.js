@@ -30,8 +30,5 @@ export const NAVIGATION = Object.freeze([
   { id: VIEWS.entry, label: 'Entry' },
   { id: VIEWS.rates, label: 'Rates' },
   { id: VIEWS.project, label: 'Project' },
-  { id: VIEWS.print, label: 'PDF / Print' }
+  { id: VIEWS.print, label: 'PDF / Print', shortLabel: 'PDF' }
 ]);
-
-/** Below this width the entry screen defaults to the one-section picker. */
-export const COMPACT_LAYOUT_QUERY = '(max-width: 640px)';

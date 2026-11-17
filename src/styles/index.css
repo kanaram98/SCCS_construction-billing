@@ -1,8 +1,5 @@
-/* Import order matters: base → layout → shared components → features → print. */
-@import './base.css';
-@import './layout.css';
-@import './components.css';
-@import './dashboard.css';
-@import './settings.css';
-@import './entry.css';
+/*
+ * UI styling comes from MUI (see src/theme.js). The only hand-written CSS left
+ * is the paper preview and browser-print output, which must be plain CSS.
+ */
 @import './print.css';

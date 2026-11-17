@@ -1,50 +1,79 @@
-import { Button, SelectField, TextField } from '../../components/ui';
+import { useState } from 'react';
+import Badge from '@mui/material/Badge';
+import Button from '@mui/material/Button';
+import Collapse from '@mui/material/Collapse';
+import Grid from '@mui/material/Grid';
+import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
+import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
+import SearchIcon from '@mui/icons-material/Search';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import { SelectField, TextField } from '../../components/ui';
 import { PAYMENT_STATUSES } from '../../domain/calculations.js';
 
+/** Search box with a collapsible panel for client, date and status filters. */
 export default function BillFilters({ filters, clientNames, resultCount, totalCount, onChange, onClear }) {
+  const [expanded, setExpanded] = useState(false);
+  const activeCount = ['client', 'dateFrom', 'dateTo', 'payment'].filter((key) => filters[key]).length;
+
   return (
-    <div className="card dashboard-filters">
-      <div className="dashboard-filter-grid">
+    <>
+      <Stack direction="row" spacing={1} sx={{ mb: 1, alignItems: 'center' }}>
         <TextField
-          label="Search bills"
           type="search"
           value={filters.search}
-          placeholder="Bill no., project, or client"
+          placeholder="Search bill no., project or client"
+          aria-label="Search bills"
           onChange={(value) => onChange('search', value)}
+          slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> } }}
+          sx={{ bgcolor: 'background.paper' }}
         />
-        <SelectField
-          label="Client"
-          value={filters.client}
-          placeholder="All clients"
-          options={clientNames.map((name) => ({ value: name, label: name }))}
-          onChange={(value) => onChange('client', value)}
-        />
-        <TextField
-          label="From date"
-          type="date"
-          value={filters.dateFrom}
-          max={filters.dateTo || undefined}
-          onChange={(value) => onChange('dateFrom', value)}
-        />
-        <TextField
-          label="To date"
-          type="date"
-          value={filters.dateTo}
-          min={filters.dateFrom || undefined}
-          onChange={(value) => onChange('dateTo', value)}
-        />
-        <SelectField
-          label="Payment status"
-          value={filters.payment}
-          placeholder="All statuses"
-          options={PAYMENT_STATUSES.map(({ id, label }) => ({ value: id, label }))}
-          onChange={(value) => onChange('payment', value)}
-        />
-      </div>
-      <div className="filter-results">
-        <span>{resultCount} of {totalCount} bills · Status is derived from each bill's advance amount.</span>
-        <Button variant="subtle" onClick={onClear}>Clear filters</Button>
-      </div>
-    </div>
+        <IconButton
+          aria-label={expanded ? 'Hide filters' : 'Show filters'}
+          aria-expanded={expanded}
+          onClick={() => setExpanded((open) => !open)}
+          color={expanded || activeCount ? 'primary' : 'default'}
+        >
+          <Badge badgeContent={activeCount} color="secondary"><FilterListIcon /></Badge>
+        </IconButton>
+      </Stack>
+
+      <Collapse in={expanded}>
+        <Grid container spacing={1.5} sx={{ pt: 1, pb: 1 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <SelectField
+              label="Client"
+              value={filters.client}
+              placeholder="All clients"
+              options={clientNames.map((name) => ({ value: name, label: name }))}
+              onChange={(value) => onChange('client', value)}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <SelectField
+              label="Payment status"
+              value={filters.payment}
+              placeholder="All statuses"
+              options={PAYMENT_STATUSES.map(({ id, label }) => ({ value: id, label }))}
+              onChange={(value) => onChange('payment', value)}
+            />
+          </Grid>
+          <Grid size={6}>
+            <TextField label="From date" type="date" value={filters.dateFrom} max={filters.dateTo || undefined} onChange={(value) => onChange('dateFrom', value)} />
+          </Grid>
+          <Grid size={6}>
+            <TextField label="To date" type="date" value={filters.dateTo} min={filters.dateFrom || undefined} onChange={(value) => onChange('dateTo', value)} />
+          </Grid>
+        </Grid>
+      </Collapse>
+
+      <Stack direction="row" sx={{ mb: 1.5, alignItems: 'center', justifyContent: 'space-between' }}>
+        <Typography variant="caption" color="text.secondary">
+          {resultCount} of {totalCount} bills · status is based on the advance received
+        </Typography>
+        <Button size="small" onClick={onClear}>Clear</Button>
+      </Stack>
+    </>
   );
 }

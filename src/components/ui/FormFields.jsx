@@ -1,78 +1,91 @@
+import MuiTextField from '@mui/material/TextField';
+import MenuItem from '@mui/material/MenuItem';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Switch from '@mui/material/Switch';
+
 /**
- * Labelled form controls. Each wraps its control in a `<label>` and shows an
- * optional inline error, marking the control `aria-invalid` when present.
+ * Text input bound to a string value. `onChange` receives the new value.
+ * `error` (string) marks the field invalid and is shown as helper text.
+ * Number inputs open the decimal keypad on phones.
  */
-
-function FieldError({ error }) {
-  return error ? <small className="invalid">{error}</small> : null;
-}
-
 export function TextField({
-  label,
   value,
   onChange,
   error = '',
   invalid = Boolean(error),
-  className,
-  children,
-  ...inputProps
+  helperText,
+  type = 'text',
+  min,
+  max,
+  step,
+  inputMode,
+  slotProps,
+  ...props
 }) {
   return (
-    <label className={className}>{label}
-      <input
-        type="text"
-        {...inputProps}
-        aria-invalid={invalid || undefined}
-        value={value ?? ''}
-        onChange={(event) => onChange(event.target.value)}
-      />
-      <FieldError error={error} />
-      {children}
-    </label>
-  );
-}
-
-/**
- * @param {{ options: Array<{ value: string|number, label: string }> | Record<string, string>, placeholder?: string }} props
- *   `options` may be an array or a `{ value: label }` map; `placeholder` adds an empty first option.
- */
-export function SelectField({ label, value, onChange, options, placeholder, error = '', className, ...selectProps }) {
-  const entries = Array.isArray(options)
-    ? options
-    : Object.entries(options).map(([optionValue, optionLabel]) => ({ value: optionValue, label: optionLabel }));
-  return (
-    <label className={className}>{label}
-      <select
-        {...selectProps}
-        aria-invalid={Boolean(error) || undefined}
-        value={value ?? ''}
-        onChange={(event) => onChange(event.target.value)}
-      >
-        {placeholder !== undefined && <option value="">{placeholder}</option>}
-        {entries.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-      </select>
-      <FieldError error={error} />
-    </label>
-  );
-}
-
-/** On/off setting rendered as a two-option select. */
-export function ToggleSelectField({ label, value, onChange, onLabel, offLabel, offFirst = false }) {
-  const options = [{ value: 'on', label: onLabel }, { value: 'off', label: offLabel }];
-  return (
-    <SelectField
-      label={label}
-      value={value ? 'on' : 'off'}
-      options={offFirst ? options.reverse() : options}
-      onChange={(next) => onChange(next === 'on')}
+    <MuiTextField
+      {...props}
+      type={type}
+      value={value ?? ''}
+      error={invalid}
+      helperText={error || helperText}
+      onChange={(event) => onChange(event.target.value)}
+      slotProps={{
+        ...slotProps,
+        inputLabel: { shrink: type === 'date' ? true : undefined, ...slotProps?.inputLabel },
+        htmlInput: {
+          min,
+          max,
+          step,
+          inputMode: inputMode || (type === 'number' ? 'decimal' : undefined),
+          ...slotProps?.htmlInput
+        }
+      }}
     />
   );
 }
 
-export function TextAreaField({ label, value, onChange, className, ...props }) {
+/**
+ * Select input.
+ * @param {{ options: Array<{ value: string|number, label: string }> | Record<string, string>, placeholder?: string }} props
+ *   `options` may be an array or a `{ value: label }` map; `placeholder` adds an empty first option.
+ */
+export function SelectField({ value, onChange, options, placeholder, error = '', helperText, slotProps, ...props }) {
+  const entries = Array.isArray(options)
+    ? options
+    : Object.entries(options).map(([optionValue, label]) => ({ value: optionValue, label }));
   return (
-    <label className={className}>{label}
-      <textarea {...props} value={value ?? ''} onChange={(event) => onChange(event.target.value)} />
-    </label>
+    <MuiTextField
+      {...props}
+      select
+      value={value ?? ''}
+      error={Boolean(error)}
+      helperText={error || helperText}
+      onChange={(event) => onChange(event.target.value)}
+      slotProps={{
+        ...slotProps,
+        select: { displayEmpty: placeholder !== undefined, ...slotProps?.select },
+        inputLabel: { shrink: placeholder !== undefined ? true : undefined, ...slotProps?.inputLabel }
+      }}
+    >
+      {placeholder !== undefined && <MenuItem value=""><em>{placeholder}</em></MenuItem>}
+      {entries.map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
+    </MuiTextField>
+  );
+}
+
+export function TextAreaField({ value, onChange, rows = 3, ...props }) {
+  return (
+    <MuiTextField {...props} multiline minRows={rows} value={value ?? ''} onChange={(event) => onChange(event.target.value)} />
+  );
+}
+
+/** Labelled on/off switch. */
+export function SwitchField({ label, checked, onChange }) {
+  return (
+    <FormControlLabel
+      label={label}
+      control={<Switch checked={Boolean(checked)} onChange={(event) => onChange(event.target.checked)} />}
+    />
   );
 }

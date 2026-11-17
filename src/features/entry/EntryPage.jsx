@@ -1,30 +1,46 @@
 import { useMemo, useState } from 'react';
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
+import Collapse from '@mui/material/Collapse';
+import IconButton from '@mui/material/IconButton';
+import Stack from '@mui/material/Stack';
+import Tooltip from '@mui/material/Tooltip';
+import Typography from '@mui/material/Typography';
+import AddIcon from '@mui/icons-material/Add';
+import BookmarksIcon from '@mui/icons-material/BookmarksOutlined';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdfOutlined';
+import StraightenIcon from '@mui/icons-material/Straighten';
+import UnfoldLessIcon from '@mui/icons-material/UnfoldLess';
+import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
 import { useBilling } from '../../state/BillingContext.jsx';
-import { Button, EmptyState } from '../../components/ui';
+import { BottomActionBar, EmptyState, MessageList, PageHeading, SelectField, useNotify } from '../../components/ui';
 import { countBillContents, getBillTotals } from '../../domain/calculations.js';
 import { getBillValidation } from '../../domain/validation.js';
 import { formatCurrency, pluralize } from '../../domain/formatters.js';
 import { VIEWS } from '../../config/app.js';
 import { useEntryDisclosure } from './useEntryDisclosure.js';
-import SectionNavigation from './SectionNavigation.jsx';
-import TemplateLibrary from './TemplateLibrary.jsx';
 import SectionPanel from './SectionPanel.jsx';
+import TemplatesDialog from './TemplatesDialog.jsx';
 
 export default function EntryPage({ onNavigate }) {
   const { data, bill, actions } = useBilling();
+  const notify = useNotify();
   const sections = bill.sections || [];
   const disclosure = useEntryDisclosure(sections);
-  const [copyMessage, setCopyMessage] = useState('');
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [showIssues, setShowIssues] = useState(false);
 
   const totals = useMemo(() => getBillTotals(bill, data.rates), [bill, data.rates]);
   const errors = useMemo(() => getBillValidation(bill, data.rates), [bill, data.rates]);
   const counts = countBillContents(bill);
-  const countsLabel = `${counts.sections} sections · ${counts.areas} areas · ${counts.items} entries`;
+  const sectionLabel = bill.firstLevelName || 'Section';
 
   /** Shows the result of a copy or template action and expands what it created. */
   function showResult(result) {
     disclosure.reveal(result.sectionId, result.areaIds);
-    setCopyMessage(result.message);
+    notify(result.message);
   }
 
   function addSection() {
@@ -38,82 +54,87 @@ export default function EntryPage({ onNavigate }) {
   }
 
   return (
-    <section className="entry-page">
-      <header className="entry-page-header">
-        <div>
-          <span className="entry-eyebrow">Bill {bill.number || '—'}{bill.projectName ? ` · ${bill.projectName}` : ''}</span>
-          <h1>Measurements</h1>
-        </div>
-        <div className="entry-total-chip">
-          <span>Current total</span>
-          <strong>{formatCurrency(totals.total)}</strong>
-        </div>
-      </header>
+    <section>
+      <PageHeading
+        eyebrow={`Bill ${bill.number || '—'}${bill.projectName ? ` · ${bill.projectName}` : ''}`}
+        title="Measurements"
+        action={<Chip color="primary" variant="outlined" label={formatCurrency(totals.total)} sx={{ fontWeight: 700 }} />}
+      />
 
-      <div className="entry-toolbar">
-        <span>{countsLabel}</span>
-        <div>
-          {sections.length > 0 && (
-            <Button variant="subtle" onClick={disclosure.toggleAllSections}>
-              {disclosure.anySectionOpen ? 'Collapse sections' : 'Expand sections'}
-            </Button>
-          )}
-          <Button variant="primary" size="compact" onClick={addSection}>+ Section</Button>
-        </div>
-      </div>
+      <Stack direction="row" spacing={1} sx={{ mb: 1.5, alignItems: 'center' }}>
+        <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
+          {counts.sections} {pluralize(counts.sections, 'section')} · {counts.areas} {pluralize(counts.areas, 'area')} · {counts.items} {pluralize(counts.items, 'entry', 'entries')}
+        </Typography>
+        <Tooltip title="Templates">
+          <IconButton aria-label="Templates" onClick={() => setTemplatesOpen(true)}><BookmarksIcon /></IconButton>
+        </Tooltip>
+        {sections.length > 0 && (
+          <Tooltip title={disclosure.anySectionOpen ? 'Collapse all' : 'Expand all'}>
+            <IconButton aria-label={disclosure.anySectionOpen ? 'Collapse all' : 'Expand all'} onClick={disclosure.toggleAllSections}>
+              {disclosure.anySectionOpen ? <UnfoldLessIcon /> : <UnfoldMoreIcon />}
+            </IconButton>
+          </Tooltip>
+        )}
+        <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={addSection}>{sectionLabel}</Button>
+      </Stack>
 
       {sections.length > 1 && (
-        <SectionNavigation
-          sections={sections}
-          activeSection={disclosure.activeSection}
-          mode={disclosure.navigationMode}
-          onModeChange={disclosure.changeNavigationMode}
-          onSelectSection={(sectionId) => disclosure.reveal(sectionId)}
+        <SelectField
+          label={`Go to ${sectionLabel.toLowerCase()}`}
+          value=""
+          placeholder={`Jump to a ${sectionLabel.toLowerCase()}…`}
+          options={sections.map((section) => ({ value: section.id, label: section.name }))}
+          onChange={(sectionId) => sectionId && disclosure.reveal(sectionId)}
+          sx={{ mb: 1.5, bgcolor: 'background.paper' }}
         />
       )}
 
-      <TemplateLibrary activeSection={disclosure.activeSection} onApplied={showResult} />
-      {copyMessage && <p className="entry-copy-status" role="status">{copyMessage}</p>}
-
       {errors.length > 0 && counts.items > 0 && (
-        <details className="entry-validation">
-          <summary>{errors.length} validation {pluralize(errors.length, 'issue')} to fix</summary>
-          <ul>{errors.map((error, index) => <li key={`${error}-${index}`}>{error}</li>)}</ul>
-        </details>
+        <Alert
+          severity="warning"
+          sx={{ mb: 1.5 }}
+          action={<Button color="inherit" size="small" onClick={() => setShowIssues((shown) => !shown)}>{showIssues ? 'Hide' : 'Show'}</Button>}
+        >
+          {errors.length} {pluralize(errors.length, 'issue')} to fix before export
+          <Collapse in={showIssues}><Box sx={{ mt: 1 }}><MessageList messages={errors} /></Box></Collapse>
+        </Alert>
       )}
 
       {sections.length === 0 && (
         <EmptyState
-          className="entry-empty"
-          title="Start with a section"
-          description="Add a section, then an area and record entries with the shared form."
-          action={<Button variant="primary" onClick={addSection}>+ Add first section</Button>}
+          icon={<StraightenIcon />}
+          title={`Start with a ${sectionLabel.toLowerCase()}`}
+          description={`Add a ${sectionLabel.toLowerCase()} (e.g. a floor), then ${(bill.secondLevelName || 'area').toLowerCase()}s and their measurements.`}
+          action={<Button variant="contained" startIcon={<AddIcon />} onClick={addSection}>Add first {sectionLabel.toLowerCase()}</Button>}
         />
       )}
 
-      <div className="entry-groups">
-        {disclosure.visibleSections.map((section, index) => (
+      <Stack spacing={1.25}>
+        {sections.map((section, index) => (
           <SectionPanel
             key={section.id}
             section={section}
             sections={sections}
             open={disclosure.isSectionOpen(section.id, index)}
             disclosure={disclosure}
+            levelName={bill.secondLevelName}
             onAddArea={addArea}
             onCopied={showResult}
           />
         ))}
-      </div>
+      </Stack>
 
       {sections.length > 0 && (
-        <div className="entry-total-dock">
-          <div className="dock-detail">
-            <span>{countsLabel}</span>
-            <strong>Grand total · {formatCurrency(totals.total)}</strong>
-          </div>
-          <Button variant="primary" onClick={() => onNavigate(VIEWS.print)}>Review PDF</Button>
-        </div>
+        <BottomActionBar>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="caption" color="text.secondary" component="div" noWrap>Grand total</Typography>
+            <Typography variant="h6" color="primary" noWrap>{formatCurrency(totals.total)}</Typography>
+          </Box>
+          <Button variant="contained" startIcon={<PictureAsPdfIcon />} onClick={() => onNavigate(VIEWS.print)}>Review PDF</Button>
+        </BottomActionBar>
       )}
+
+      <TemplatesDialog open={templatesOpen} onClose={() => setTemplatesOpen(false)} onApplied={showResult} />
     </section>
   );
 }

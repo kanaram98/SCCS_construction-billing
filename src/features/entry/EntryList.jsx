@@ -1,0 +1,55 @@
+import Box from '@mui/material/Box';
+import CardActionArea from '@mui/material/CardActionArea';
+import Paper from '@mui/material/Paper';
+import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
+import EditIcon from '@mui/icons-material/EditOutlined';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import DeleteIcon from '@mui/icons-material/DeleteOutlined';
+import { ActionMenu } from '../../components/ui';
+import { formatCurrency } from '../../domain/formatters.js';
+import { getItemQuantity, getLineAmount } from '../../domain/calculations.js';
+import { describeMeasurement, resolveRate } from '../../domain/rates.js';
+
+/** Entries in one area as tappable cards (tap to edit). */
+export default function EntryList({ items, rates, canCopy, onEdit, onDelete, onCopy }) {
+  return (
+    <Stack spacing={1}>
+      {items.map((item) => {
+        const rate = resolveRate(item, rates);
+        return (
+          <Paper key={item.id} variant="outlined" sx={{ display: 'flex', alignItems: 'stretch' }}>
+            <CardActionArea onClick={() => onEdit(item)} sx={{ p: 1.25, flex: 1, minWidth: 0, borderRadius: 3 }}>
+              <Stack direction="row" spacing={1} sx={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <Typography variant="subtitle2" noWrap>{rate.name}</Typography>
+                <Typography variant="subtitle2" color="primary" sx={{ whiteSpace: 'nowrap' }}>
+                  {formatCurrency(getLineAmount(item, rate))}
+                </Typography>
+              </Stack>
+              {item.note && <Typography variant="caption" color="text.secondary" noWrap component="div">{item.note}</Typography>}
+              <Box
+                sx={{ mt: 0.75, display: 'inline-block', px: 1, py: 0.25, borderRadius: 1.5, bgcolor: '#f3f6f9', fontSize: 13, fontWeight: 600 }}
+              >
+                {describeMeasurement(item, rate)}
+              </Box>
+              <Typography variant="caption" color="text.secondary" component="div" sx={{ mt: 0.5 }}>
+                {getItemQuantity(item, rate)} {rate.unit} × {formatCurrency(rate.rate)}
+              </Typography>
+            </CardActionArea>
+            <Box sx={{ pt: 0.25 }}>
+              <ActionMenu
+                size="small"
+                label={`Actions for ${rate.name}`}
+                items={[
+                  { label: 'Edit', icon: <EditIcon fontSize="small" />, onClick: () => onEdit(item) },
+                  { label: 'Copy to section…', icon: <ContentCopyIcon fontSize="small" />, onClick: () => onCopy(item.id), disabled: !canCopy },
+                  { label: 'Delete', icon: <DeleteIcon fontSize="small" />, onClick: () => onDelete(item), danger: true }
+                ]}
+              />
+            </Box>
+          </Paper>
+        );
+      })}
+    </Stack>
+  );
+}

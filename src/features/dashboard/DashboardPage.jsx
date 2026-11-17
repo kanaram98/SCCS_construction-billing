@@ -1,8 +1,13 @@
 import { useMemo } from 'react';
+import Button from '@mui/material/Button';
+import Grid from '@mui/material/Grid';
+import Typography from '@mui/material/Typography';
+import AddIcon from '@mui/icons-material/Add';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import { useBilling } from '../../state/BillingContext.jsx';
 import { summarizeBill } from '../../domain/calculations.js';
 import { formatCurrency } from '../../domain/formatters.js';
-import { Button, EmptyState, PageHeading, StatCard } from '../../components/ui';
+import { EmptyState, PageHeading, StatCard, useConfirm, useNotify } from '../../components/ui';
 import { VIEWS } from '../../config/app.js';
 import { useBillFilters } from './useBillFilters.js';
 import BillFilters from './BillFilters.jsx';
@@ -10,6 +15,8 @@ import BillCard from './BillCard.jsx';
 
 export default function DashboardPage({ onNavigate }) {
   const { data, bill: activeBill, actions } = useBilling();
+  const confirm = useConfirm();
+  const notify = useNotify();
   const { bills, rates } = data;
 
   const summaries = useMemo(
@@ -38,28 +45,38 @@ export default function DashboardPage({ onNavigate }) {
 
   function duplicateBill(bill) {
     actions.bills.duplicate(bill);
+    notify(`Bill ${bill.number} duplicated.`);
     onNavigate(VIEWS.entry);
   }
 
-  function deleteBill(bill) {
-    if (window.confirm(`Delete bill ${bill.number}? This cannot be undone.`)) actions.bills.remove(bill.id);
+  async function deleteBill(bill) {
+    const confirmed = await confirm({
+      title: `Delete bill ${bill.number}?`,
+      message: 'This cannot be undone.',
+      confirmLabel: 'Delete',
+      danger: true
+    });
+    if (!confirmed) return;
+    actions.bills.remove(bill.id);
+    notify(`Bill ${bill.number} deleted.`, 'info');
   }
 
   return (
     <section>
       <PageHeading
-        title="Billing workspace"
-        description="Manage your construction bills on this device."
-        action={<Button variant="primary" onClick={createBill}>+ New bill</Button>}
+        title="Bills"
+        description="Your construction bills on this device."
+        action={<Button variant="contained" startIcon={<AddIcon />} onClick={createBill}>New bill</Button>}
       />
-      <div className="dashboard-stats">
-        <StatCard label="Saved bills" value={bills.length} />
-        <StatCard label="Total billed" value={formatCurrency(stats.billed)} />
-        <StatCard label="Outstanding" value={formatCurrency(stats.outstanding)} />
-        <StatCard label="Current bill" value={formatCurrency(summaries.get(activeBill.id).totals.total)} />
-      </div>
 
-      <div className="bill-list-heading"><h2>Your bills</h2></div>
+      <Grid container spacing={1.25} sx={{ mb: 2.5 }}>
+        <Grid size={{ xs: 6, sm: 3 }}><StatCard label="Saved bills" value={bills.length} /></Grid>
+        <Grid size={{ xs: 6, sm: 3 }}><StatCard label="Total billed" value={formatCurrency(stats.billed)} /></Grid>
+        <Grid size={{ xs: 6, sm: 3 }}><StatCard label="Outstanding" value={formatCurrency(stats.outstanding)} /></Grid>
+        <Grid size={{ xs: 6, sm: 3 }}><StatCard label="Current bill" value={formatCurrency(summaries.get(activeBill.id).totals.total)} /></Grid>
+      </Grid>
+
+      <Typography variant="h6" component="h2" sx={{ mb: 1 }}>Your bills</Typography>
       <BillFilters
         filters={filters}
         clientNames={clientNames}
@@ -86,13 +103,14 @@ export default function DashboardPage({ onNavigate }) {
           <EmptyState
             title="No matching bills"
             description="Adjust or clear the search and filters to see more bills."
-            action={<Button variant="primary" onClick={clearFilters}>Clear filters</Button>}
+            action={<Button variant="outlined" onClick={clearFilters}>Clear filters</Button>}
           />
         ) : (
           <EmptyState
+            icon={<ReceiptLongIcon />}
             title="Start a bill"
             description="Create your first bill to begin entering measurements."
-            action={<Button variant="primary" onClick={createBill}>Create first bill</Button>}
+            action={<Button variant="contained" startIcon={<AddIcon />} onClick={createBill}>Create first bill</Button>}
           />
         )
       )}

@@ -1,29 +1,49 @@
-import { Button, CollapsibleCard } from '../../components/ui';
+import Checkbox from '@mui/material/Checkbox';
+import IconButton from '@mui/material/IconButton';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemButton from '@mui/material/ListItemButton';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import Stack from '@mui/material/Stack';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import { CollapsibleCard } from '../../components/ui';
 import { getPrintDocument } from '../../domain/print-settings.js';
 
 /** Choose which documents to export and reorder them. */
 export default function DocumentSelection({ settings, selectedCount, onToggle, onMove }) {
   const { documentOrder } = settings;
   return (
-    <CollapsibleCard className="no-print print-settings-group" title="Documents in the PDF" meta={`${selectedCount} selected`} defaultOpen>
-      <p>Use the arrows to choose the order of documents in your export.</p>
-      <div className="print-document-list">
+    <CollapsibleCard className="no-print" title="Documents" meta={`${selectedCount} selected`} defaultOpen>
+      <List disablePadding>
         {documentOrder.map((documentId, index) => {
           const { label } = getPrintDocument(documentId);
           return (
-            <div className="print-document-option" key={documentId}>
-              <label className="check-option">
-                <input type="checkbox" checked={settings.documents[documentId]} onChange={() => onToggle(documentId)} />
-                {label}
-              </label>
-              <div>
-                <Button size="compact" aria-label={`Move ${label} up`} disabled={index === 0} onClick={() => onMove(documentId, -1)}>↑</Button>
-                <Button size="compact" aria-label={`Move ${label} down`} disabled={index === documentOrder.length - 1} onClick={() => onMove(documentId, 1)}>↓</Button>
-              </div>
-            </div>
+            <ListItem
+              key={documentId}
+              disablePadding
+              secondaryAction={(
+                <Stack direction="row">
+                  <IconButton aria-label={`Move ${label} up`} disabled={index === 0} onClick={() => onMove(documentId, -1)}>
+                    <ArrowUpwardIcon fontSize="small" />
+                  </IconButton>
+                  <IconButton aria-label={`Move ${label} down`} disabled={index === documentOrder.length - 1} onClick={() => onMove(documentId, 1)}>
+                    <ArrowDownwardIcon fontSize="small" />
+                  </IconButton>
+                </Stack>
+              )}
+            >
+              <ListItemButton onClick={() => onToggle(documentId)} sx={{ pr: 12 }}>
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  <Checkbox edge="start" checked={settings.documents[documentId]} tabIndex={-1} disableRipple slotProps={{ input: { 'aria-label': label } }} />
+                </ListItemIcon>
+                <ListItemText primary={label} />
+              </ListItemButton>
+            </ListItem>
           );
         })}
-      </div>
+      </List>
     </CollapsibleCard>
   );
 }

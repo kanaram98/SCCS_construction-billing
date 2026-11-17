@@ -1,16 +1,14 @@
-/* PDF / print settings and the paper preview (src/features/print). */
-.print-settings-group { padding: 12px; }
-.print-settings-grid { margin-top: 10px; }
-.print-document-list { display: grid; gap: 7px; margin-top: 10px; }
-.print-document-option { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px; border: 1px solid var(--border); border-radius: 9px; background: #fbfcfe; }
-.print-document-option > div { display: flex; gap: 5px; }
-.print-document-option .button { min-height: 32px; width: 36px; padding: 4px; }
-.signature-placement-help { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; color: var(--muted); font-size: 12px; }
-.signature-placement-help .button { min-height: 36px; white-space: nowrap; }
+/* Paper preview (src/features/print/preview) and browser print output. */
+:root {
+  --paper-border: #dde2e9;
+  --paper-accent: #f5a800;
+  --paper-primary: #1f3a5f;
+}
+
 .print-batch { display: none; }
 
-/* Paper preview */
-.paper { --paper-padding-mm: 5.3mm; max-width: 794px; margin: 0 auto; padding: 20px; border: 1px solid var(--border); border-radius: 8px; background: white; color: #111; box-shadow: var(--shadow); }
+/* Paper */
+.paper { --paper-padding-mm: 5.3mm; max-width: 794px; margin: 0 auto; padding: 20px; border: 1px solid var(--paper-border); border-radius: 8px; background: white; color: #111; font-family: Inter, "Segoe UI", system-ui, sans-serif; }
 .paper-header { margin-bottom: 12px; padding-bottom: 10px; border-bottom: 2px solid #222; font-size: var(--print-font-size, 9pt); }
 .paper-header-content { font-size: var(--print-font-size, 9pt); }
 .paper-header-content h2 { margin: 0; color: #111; font-size: calc(var(--print-font-size, 9pt) + 6pt); }
@@ -35,35 +33,25 @@
 .paper-signature-caption { position: absolute; top: 19mm; left: 14mm; font-size: var(--print-font-size, 9pt); }
 .signature-static-image { position: absolute; z-index: 1; display: block; object-fit: contain; }
 .signature-placement-stamp { position: absolute; z-index: 1; display: block; border: 1px dashed #58789c; border-radius: 2px; background: rgba(255,255,255,.55); cursor: move; touch-action: none; user-select: none; }
-.signature-placement-stamp:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.signature-placement-stamp:focus-visible { outline: 2px solid var(--paper-accent); outline-offset: 2px; }
 .signature-placement-stamp img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; min-width: 0; min-height: 0; object-fit: contain; pointer-events: none; }
-.signature-resize-handle { position: absolute; right: -9px; bottom: -9px; display: grid; width: 20px; min-height: 20px; place-items: center; padding: 0; border: 1px solid white; border-radius: 5px; background: var(--primary); color: white; cursor: nwse-resize; font-size: 12px; line-height: 1; touch-action: none; }
-
-@media (max-width: 640px) {
-  .paper { --paper-padding-mm: 2.65mm; padding: 10px; overflow-x: auto; }
-  .paper table { min-width: 560px; }
-  .signature-placement-help { align-items: stretch; flex-direction: column; }
-  .signature-placement-help .button { align-self: flex-start; }
-}
+.signature-resize-handle { position: absolute; right: -9px; bottom: -9px; display: grid; width: 20px; height: 20px; place-items: center; padding: 0; border: 1px solid white; border-radius: 5px; background: var(--paper-primary); color: white; cursor: nwse-resize; font-size: 12px; line-height: 1; touch-action: none; }
 
 /* Browser printing: hide the app and print every selected document. */
 @media print {
-  body, .app-shell { min-height: 0; background: white; }
-  .no-print, .topbar, .tabs, .app-footer { display: none !important; }
-  .content { display: block; width: auto; max-width: none; margin: 0; padding: 0; }
-  .content > section > *:not(.print-document):not(.print-batch) { display: none !important; }
-  .print-preview { display: none !important; }
+  body, .app-shell { min-height: 0 !important; background: white !important; }
+  .no-print { display: none !important; }
+  .content { margin: 0 !important; padding: 0 !important; }
+  .content .MuiContainer-root { max-width: none; padding: 0; }
+  .print-page > *:not(.print-batch) { display: none !important; }
   .print-batch { display: block; }
-  .print-document { display: block; width: 100%; max-width: none !important; margin: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none; }
+  .print-document { display: block; width: 100%; max-width: none !important; margin: 0; padding: 0; border: 0; border-radius: 0; }
   .print-batch .print-document:not(:last-child) { break-after: page; page-break-after: always; }
   .paper-header-repeat > .paper-header { display: none; }
-  .paper table { min-width: 0; }
   .paper table thead { display: table-header-group; }
   .paper .print-repeat-header { display: table-row !important; }
   .paper .print-repeat-header > th { padding: 0; border: 0; background: white; }
   .paper .print-repeat-header .paper-header-content { padding-bottom: 5px; border-bottom: 1px solid #222; }
   .paper tr { break-inside: avoid; }
   .paper .entry-break-before { break-before: page; page-break-before: always; }
-  .signature-placement-stamp { border: 0; background: transparent; cursor: auto; }
-  .signature-resize-handle { display: none; }
 }
