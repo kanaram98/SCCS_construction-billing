@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import Box from '@mui/material/Box';
+import LinearProgress from '@mui/material/LinearProgress';
 import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
 import { BillingProvider, useBilling } from './state/BillingContext.jsx';
@@ -11,10 +12,33 @@ import AppHeader from './components/layout/AppHeader.jsx';
 import MainNav from './components/layout/MainNav.jsx';
 import AppNotices from './components/layout/AppNotices.jsx';
 import DashboardPage from './features/dashboard/DashboardPage.jsx';
-import EntryPage from './features/entry/EntryPage.jsx';
-import RatesPage from './features/rates/RatesPage.jsx';
-import ProjectPage from './features/project/ProjectPage.jsx';
-import PrintPage from './features/print/PrintPage.jsx';
+
+/**
+ * The Bills screen ships in the main bundle; the others load on demand.
+ * They are prefetched once the app is idle so they are cached for offline use.
+ */
+const loaders = {
+  entry: () => import('./features/entry/EntryPage.jsx'),
+  rates: () => import('./features/rates/RatesPage.jsx'),
+  project: () => import('./features/project/ProjectPage.jsx'),
+  print: () => import('./features/print/PrintPage.jsx')
+};
+const EntryPage = lazy(loaders.entry);
+const RatesPage = lazy(loaders.rates);
+const ProjectPage = lazy(loaders.project);
+const PrintPage = lazy(loaders.print);
+
+function usePrefetchPages() {
+  useEffect(() => {
+    const prefetch = () => Object.values(loaders).forEach((load) => load().catch(() => {}));
+    if ('requestIdleCallback' in window) {
+      const id = window.requestIdleCallback(prefetch, { timeout: 4000 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const id = window.setTimeout(prefetch, 2000);
+    return () => window.clearTimeout(id);
+  }, []);
+}
 
 const PAGES = {
   [VIEWS.bills]: DashboardPage,
@@ -29,6 +53,7 @@ function AppShell() {
   const installer = useInstallPrompt();
   const [view, setView] = useState(VIEWS.bills);
   const Page = PAGES[view];
+  usePrefetchPages();
 
   function navigate(nextView) {
     setView(nextView);
@@ -55,7 +80,9 @@ function AppShell() {
       >
         <Container maxWidth="md" sx={{ px: { xs: 1.5, sm: 3 } }}>
           <AppNotices storageError={storageError} isInstalled={installer.isInstalled} installMessage={installer.message} />
-          <Page onNavigate={navigate} />
+          <Suspense fallback={<LinearProgress sx={{ my: 2 }} aria-label="Loading" />}>
+            <Page onNavigate={navigate} />
+          </Suspense>
           <Typography className="no-print" variant="caption" color="text.secondary" component="footer" sx={{ display: 'block', textAlign: 'center', mt: 3 }}>
             Bills are stored on this device. Export a PDF to share or archive a copy.
           </Typography>
