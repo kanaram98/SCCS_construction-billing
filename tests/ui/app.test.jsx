@@ -209,8 +209,15 @@ describe('Labour screen', () => {
     // Single-worker view: the calendar shows the worker's mark.
     await user.click(screen.getByRole('button', { name: 'Ramesh' }));
     expect(screen.getByRole('button', { name: /: 1.5P$/ })).toBeTruthy();
-    await user.click(screen.getByRole('tab', { name: 'Monthly report' }));
+    await user.click(screen.getByRole('tab', { name: 'Report' }));
     expect(await screen.findByText('1.5P · 1 days · 0 absent')).toBeTruthy();
     expect(screen.getAllByText('₹900').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('1½P × 1').length).toBeGreaterThan(0);
+
+    // Attendance sheet with the firm header.
+    await user.click(screen.getByRole('tab', { name: 'Sheet / PDF' }));
+    expect((await screen.findAllByText('Labour attendance register')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Acme Interiors').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'WhatsApp' })).toBeTruthy();
   });
 });

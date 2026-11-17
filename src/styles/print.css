@@ -80,9 +80,17 @@
   .paper .entry-break-before { break-before: page; page-break-before: always; }
 }
 
-/* Labour attendance register */
+/* Labour attendance register (A4 landscape) */
+.paper.labour-document { max-width: 1123px; border: 0; border-radius: 0; }
 .labour-register { table-layout: fixed; font-size: 0.85em; }
 .labour-register th, .labour-register td { padding: 2px 1px; text-align: center; }
 .labour-register th:first-child, .labour-register td:first-child { width: 22%; text-align: left; padding-left: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .labour-heading { margin: 14px 0 6px; font-size: 1.1em; }
 .labour-legend { margin-top: 8px; font-size: 0.85em; color: #555; }
+.paper td.cell-absent, .paper th.cell-absent { background: #e53935 !important; color: #fff !important; font-weight: 700; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.labour-summary th, .labour-summary td { text-align: center; }
+.labour-summary th:first-child, .labour-summary td:first-child { text-align: left; }
+.labour-total td { font-weight: 700; background: #f3f5f8; }
+.labour-sign { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 28px; }
+.labour-sign-box { display: flex; flex-direction: column; align-items: center; min-width: 180px; border-top: 1px solid #222; padding-top: 4px; position: relative; }
+.labour-sign-box img { position: absolute; bottom: 100%; max-height: 44px; max-width: 160px; }

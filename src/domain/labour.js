@@ -59,6 +59,14 @@ export function formatUnits(units) {
   return value === 0 ? 'A' : `${roundTo2(value)}P`;
 }
 
+/** Short mark for screens: "A", "½P", "1P", "1½P", "2P". */
+export function markLabel(units) {
+  const value = Number(units) || 0;
+  if (value === 0) return 'A';
+  const whole = Math.floor(value);
+  return value - whole === 0.5 ? `${whole || ''}½P` : `${roundTo2(value)}P`;
+}
+
 /** Register cell: "" (not marked), "A", "1", "1.5", "2". */
 export function registerCell(mark) {
   if (!mark) return '';
@@ -188,13 +196,16 @@ export function workerMonth(labour, workerId, month) {
   const current = earnedWhere(labour, workerId, (date) => inMonth(date, month));
   const opening = roundTo2(earnedWhere(labour, workerId, (date) => before(date, month)).earned - paidWhere(labour, workerId, (date) => before(date, month)));
   const paid = paidWhere(labour, workerId, (date) => inMonth(date, month));
-  const absent = Object.entries(labour.attendance)
-    .filter(([date, marks]) => inMonth(date, month) && marks[workerId]?.units === 0).length;
+  const counts = countMarks(Object.entries(labour.attendance)
+    .filter(([date, marks]) => inMonth(date, month) && marks[workerId])
+    .map(([, marks]) => marks[workerId].units));
+  const absent = counts[0] || 0;
   return {
     workerId,
     month,
     days: current.days,
     absent,
+    counts,
     units: current.units,
     earned: current.earned,
     opening,
@@ -204,6 +215,19 @@ export function workerMonth(labour, workerId, month) {
     payments: labour.payments.filter((payment) => payment.workerId === workerId && inMonth(payment.date, month))
       .sort((a, b) => a.date.localeCompare(b.date))
   };
+}
+
+/** How many times each mark was given, keyed by units: { 0: 2, 1: 20, 2: 3 } (A ×2, 1P ×20, 2P ×3). */
+export function countMarks(unitsList) {
+  const counts = {};
+  unitsList.forEach((units) => { counts[units] = (counts[units] || 0) + 1; });
+  return counts;
+}
+
+/** Marks to list in a count summary: the standard ones, plus any unusual value that was used. */
+export function countedUnits(counts) {
+  const extra = Object.keys(counts).map(Number).filter((units) => !ATTENDANCE_UNITS.includes(units)).sort((a, b) => a - b);
+  return [...ATTENDANCE_UNITS, ...extra];
 }
 
 /** Workers to show in a month: active ones plus anyone with attendance or payments that month. */
@@ -217,7 +241,9 @@ export function workersForMonth(labour, month) {
 export function monthReport(labour, month) {
   const rows = workersForMonth(labour, month).map((worker) => ({ worker, ...workerMonth(labour, worker.id, month) }));
   const sum = (field) => roundTo2(rows.reduce((total, row) => total + row[field], 0));
-  return { month, rows, totals: { units: sum('units'), earned: sum('earned'), paid: sum('paid'), balance: sum('balance') } };
+  const counts = {};
+  rows.forEach((row) => Object.entries(row.counts).forEach(([units, count]) => { counts[units] = (counts[units] || 0) + count; }));
+  return { month, rows, totals: { units: sum('units'), earned: sum('earned'), paid: sum('paid'), balance: sum('balance'), days: sum('days'), counts } };
 }
 
 /** What each worker is owed today, across all months. */
@@ -250,6 +276,7 @@ export function workerMonthMessage({ worker, summary, firm, t, language }) {
   return [
     `${worker.name} · ${monthLabel(summary.month, language)}`,
     t('Attendance: {units} ({days} days)', { units: formatUnits(summary.units), days: summary.days }),
+    countedUnits(summary.counts || {}).filter((units) => summary.counts[units]).map((units) => `${markLabel(units)} × ${summary.counts[units]}`).join(', '),
     t('Wages: {amount}', { amount: formatCurrency(summary.earned) }),
     summary.opening !== 0 && t('Previous balance: {amount}', { amount: formatCurrency(summary.opening) }),
     t('Paid / advance: {amount}', { amount: formatCurrency(summary.paid) }),

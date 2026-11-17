@@ -206,7 +206,7 @@ export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
   function allTile(date) {
     const workers = workersOn(labour, date);
     const summary = daySummary(labour, date);
-    const tone = !summary.marked ? 'empty' : summary.marked >= workers.length ? 'full' : 'partial';
+    const tone = !summary.marked ? 'empty' : summary.present === 0 ? 'absent' : summary.marked >= workers.length ? 'full' : 'partial';
     return (
       <DayTile
         key={date}
@@ -282,7 +282,7 @@ export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
       <Typography variant="caption" color="text.secondary" component="p">
         {worker
           ? t('Tap a day to choose A, ½P, 1P, 1½P or 2P.')
-          : t('Tap a day to fill attendance. Green = everyone marked, yellow = some marked.')}
+          : t('Tap a day to fill attendance. Green = everyone marked, yellow = some marked, red = all absent.')}
       </Typography>
 
       <DaySheet date={openDate} month={month} onDateChange={setOpenDate} onClose={() => setOpenDate(null)} />

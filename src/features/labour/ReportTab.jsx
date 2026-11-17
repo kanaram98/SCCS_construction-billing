@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
@@ -15,13 +15,12 @@ import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import { EmptyState, StatCard, useNotify } from '../../components/ui';
 import { useBilling } from '../../state/BillingContext.jsx';
 import { useUndoable } from '../../hooks/useUndoable.js';
-import { daysOfMonth, monthReport, registerCell, workerBalance, workerMonthMessage } from '../../domain/labour.js';
+import { daysOfMonth, formatUnits, monthReport, registerCell, workerBalance, workerMonthMessage } from '../../domain/labour.js';
 import { formatCurrency } from '../../domain/formatters.js';
 import { whatsappNumber, whatsappUrl } from '../../domain/whatsapp.js';
-import { isShareCancelled } from '../../services/files.js';
 import { getLanguage, makeTranslator, tr as t } from '../../i18n/translate.js';
 import LabourPaymentDialog from './LabourPaymentDialog.jsx';
-import LabourReportDocument from './LabourReportDocument.jsx';
+import MarkCounts from './MarkCounts.jsx';
 import MonthBar from './MonthBar.jsx';
 
 /** Small attendance calendar for one worker's month. */
@@ -36,8 +35,8 @@ function MonthGrid({ month, marks }) {
             key={date}
             sx={{
               border: 1, borderColor: 'divider', borderRadius: 1, textAlign: 'center', py: 0.25,
-              bgcolor: cell === 'A' ? 'error.light' : cell ? 'success.light' : 'transparent',
-              color: cell ? 'common.black' : 'text.secondary'
+              bgcolor: cell === 'A' ? 'error.main' : cell ? 'success.light' : 'transparent',
+              color: cell === 'A' ? 'error.contrastText' : cell ? 'common.black' : 'text.secondary'
             }}
           >
             <Typography variant="caption" component="div" sx={{ lineHeight: 1.2, opacity: 0.7 }}>{index + 1}</Typography>
@@ -75,6 +74,7 @@ function WorkerCard({ row, onPay, onShare, onDeletePayment }) {
             <ExpandMoreIcon />
           </IconButton>
         </Stack>
+        <MarkCounts counts={row.counts} sx={{ mt: 1 }} />
         <Grid container spacing={1} sx={{ mt: 0.5 }}>
           <Grid size={3}><Amount label={t('Wages')} value={formatCurrency(row.earned)} /></Grid>
           <Grid size={3}><Amount label={t('Previous')} value={formatCurrency(row.opening)} /></Grid>
@@ -105,13 +105,11 @@ function WorkerCard({ row, onPay, onShare, onDeletePayment }) {
 }
 
 /** Month summary for every worker: attendance, wages, payments and balance. */
-export default function ReportTab({ month, onMonthChange }) {
+export default function ReportTab({ month, onMonthChange, onOpenSheet }) {
   const { data, actions } = useBilling();
   const notify = useNotify();
   const undoable = useUndoable();
-  const documentRef = useRef(null);
   const [paying, setPaying] = useState(null);
-  const [exporting, setExporting] = useState(false);
   const { labour, firm } = data;
   const language = getLanguage();
   const report = useMemo(() => monthReport(labour, month), [labour, month]);
@@ -120,18 +118,6 @@ export default function ReportTab({ month, onMonthChange }) {
     const message = workerMonthMessage({ worker: row.worker, summary: row, firm, t: makeTranslator(language), language });
     window.open(whatsappUrl(row.worker.phone, message), '_blank', 'noopener');
     if (!whatsappNumber(row.worker.phone)) notify(t('Add the worker’s mobile number to open their chat directly.'), 'info');
-  }
-
-  async function exportPdf() {
-    setExporting(true);
-    try {
-      const { exportLabourPdf } = await import('../../documents/labour-pdf.js');
-      await exportLabourPdf({ report, firm, language, rendered: documentRef.current?.querySelector('.labour-document') });
-    } catch (error) {
-      if (!isShareCancelled(error)) notify(t('PDF export failed: {reason}', { reason: error.message || t('Unknown error') }), 'error');
-    } finally {
-      setExporting(false);
-    }
   }
 
   return (
@@ -146,9 +132,16 @@ export default function ReportTab({ month, onMonthChange }) {
             <Grid size={4}><StatCard label={t('Amount paid')} value={formatCurrency(report.totals.paid)} /></Grid>
             <Grid size={4}><StatCard label={t('Balance')} value={formatCurrency(report.totals.balance)} /></Grid>
           </Grid>
-          <Button fullWidth variant="contained" startIcon={<PictureAsPdfIcon />} onClick={exportPdf} disabled={exporting} sx={{ mb: 2 }}>
-            {exporting ? t('Preparing PDF…') : t('Attendance register PDF')}
-          </Button>
+          <Card sx={{ mb: 2 }}>
+            <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+              <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                <Typography variant="subtitle2">{t('Attendance count')}</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 700 }}>{t('Total {units}', { units: formatUnits(report.totals.units) })}</Typography>
+              </Stack>
+              <MarkCounts counts={report.totals.counts} showZero />
+              <Button size="small" startIcon={<PictureAsPdfIcon />} onClick={onOpenSheet} sx={{ mt: 1 }}>{t('Attendance sheet / PDF')}</Button>
+            </CardContent>
+          </Card>
           {report.rows.map((row) => (
             <WorkerCard
               key={row.workerId}
@@ -158,9 +151,6 @@ export default function ReportTab({ month, onMonthChange }) {
               onDeletePayment={(payment) => undoable(t('Payment deleted.'), () => actions.labour.removePayment(payment.id))}
             />
           ))}
-          <Box ref={documentRef} sx={{ display: 'none' }} aria-hidden>
-            <LabourReportDocument report={report} firm={firm} t={makeTranslator(language)} language={language} />
-          </Box>
         </>
       )}
       <LabourPaymentDialog

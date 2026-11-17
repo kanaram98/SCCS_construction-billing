@@ -103,3 +103,11 @@ test('saved labour data is normalised and old saves get an empty labour book', (
   const state = hydrateState({ bills: [{ id: 'b1', sections: [] }] });
   assert.deepEqual(state.labour, createLabourState());
 });
+
+test('month summary counts each kind of mark', () => {
+  const month = workerMonth(sample(), 'w1', '2026-11');
+  assert.deepEqual(month.counts, { 0: 1, 0.5: 1, 1.5: 1, 2: 1 });
+  const report = monthReport(sample(), '2026-11');
+  assert.deepEqual(report.totals.counts, { 0: 1, 0.5: 1, 1: 1, 1.5: 1, 2: 1 });
+  assert.equal(report.totals.days, 4);
+});

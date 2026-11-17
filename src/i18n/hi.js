@@ -657,5 +657,15 @@ export default {
   'All workers': 'सभी मज़दूर',
   'Mark today’s attendance': 'आज की हाज़िरी लगाएँ',
   'Tap a day to choose A, ½P, 1P, 1½P or 2P.': 'A, ½P, 1P, 1½P या 2P चुनने के लिए दिन पर दबाएँ।',
-  'Tap a day to fill attendance. Green = everyone marked, yellow = some marked.': 'हाज़िरी भरने के लिए दिन पर दबाएँ। हरा = सबकी लगी, पीला = कुछ की लगी।'
+  'Tap a day to fill attendance. Green = everyone marked, yellow = some marked.': 'हाज़िरी भरने के लिए दिन पर दबाएँ। हरा = सबकी लगी, पीला = कुछ की लगी।',
+  'Report': 'रिपोर्ट',
+  'Sheet / PDF': 'शीट / PDF',
+  'Attendance count': 'हाज़िरी गिनती',
+  'Total {units}': 'कुल {units}',
+  'Attendance sheet / PDF': 'हाज़िरी शीट / PDF',
+  'Attendance summary and wages': 'हाज़िरी सारांश और मज़दूरी',
+  'Total P': 'कुल P',
+  'Landscape A4. Pinch or turn your phone to read the preview.': 'A4 आड़ा पेज। प्रीव्यू पढ़ने के लिए ज़ूम करें या फ़ोन घुमाएँ।',
+  'Choose WhatsApp in the share menu.': 'शेयर मेनू में WhatsApp चुनें।',
+  'Tap a day to fill attendance. Green = everyone marked, yellow = some marked, red = all absent.': 'हाज़िरी भरने के लिए दिन पर दबाएँ। हरा = सबकी लगी, पीला = कुछ की लगी, लाल = सब ग़ैरहाज़िर।'
 };
