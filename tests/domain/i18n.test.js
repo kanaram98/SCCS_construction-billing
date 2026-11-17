@@ -13,6 +13,7 @@ import { NAVIGATION } from '../../src/config/app.js';
 import { DOCUMENT_COLUMNS } from '../../src/documents/document-model.js';
 import { LOG_TITLES } from '../../src/domain/labour-log.js';
 import { FIELD_LABELS, HISTORY_FILTERS, HISTORY_TITLES } from '../../src/domain/history-log.js';
+import { ROLES } from '../../src/domain/permissions.js';
 
 /** Codes and examples that read the same in Hindi. */
 const SAME_IN_HINDI = new Set(['PDF', 'UPI', 'UPI ID', 'IFSC', 'GSTIN', 'sqft', 'name@okbank', 'SBIN0001234', 'English', 'हिंदी', 'Language']);
@@ -50,7 +51,9 @@ function listLabels() {
     ...NAVIGATION.flatMap((entry) => [entry.label, entry.shortLabel].filter(Boolean)),
     ...Object.values(DOCUMENT_COLUMNS).flat(),
     ...Object.values(LOG_TITLES), 'Month closed', 'Undone', 'Deleted forever',
-    ...Object.values(HISTORY_TITLES), ...Object.values(FIELD_LABELS), ...Object.values(HISTORY_FILTERS),
+    ...Object.values(HISTORY_TITLES), ...Object.values(FIELD_LABELS), ...Object.values(HISTORY_FILTERS), ...Object.values(ROLES),
+    'Not signed in. Bills are only on this device.', 'Connecting…', 'Syncing…', 'Synced. Your data is safe in the cloud.',
+    'Offline. Changes are saved here and sync when you are back online.', 'Sync problem. Changes are kept on this device; try again later.', 'No access',
     'Bill', 'Rate', 'Client', 'Template', 'Restore it first', 'Too old to undo', 'Other details', 'Change',
     'Length', 'Width', 'Height', 'Section', 'Area', 'Floor', 'Room', 'Saving…', 'Saved on this device', 'Save failed'
   ];

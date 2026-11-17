@@ -12,7 +12,7 @@ A mobile-first React app (Material UI) for construction measurements, bills, rat
 - **Labour**: daily attendance (A, ½P, 1P, 1½P, 2P) on a month calendar, advances and payments (with mode and description), a monthly report, an all-workers register PDF and a PDF sheet for each worker.
 - **Safety**: undo for deletes; for labour, a full activity log with undo, a 30-day recycle bin and closed (locked) months. Backup files can be saved and restored.
 
-All data is stored in the browser on each device. A free Firebase backend (login and cloud sync) is being built and currently runs only on the local emulators.
+All data is stored on each device. With cloud sync (Firebase, free plan) the admin and a contractor share one workspace: sign in with Google in Settings. Cloud sync currently runs on the local emulators (`npm run dev` with `npm run emulators`); going live is Phase B3.
 
 ## Run locally
 
@@ -38,7 +38,8 @@ The database layout, validators and security rules are described in [docs/backen
 ## Testing
 
 - `npm test` runs `test:unit` (domain, document and backend mapping logic, with Node's test runner) and `test:ui` (screens rendered at phone size with Vitest + Testing Library).
-- `npm run test:rules` tests the Firestore security rules on the emulator (needs Java 21).
+- `npm run test:rules` tests the Firestore security rules and the sync engine (two simulated phones) on the emulator (needs Java 21).
+- `npm run test:e2e` runs the app in a real browser (Playwright) as admin and contractor on two "phones", against running emulators (`npm run emulators`). It wipes the emulators' data first. One-time setup: `npx playwright install chromium`.
 - `npm run verify` runs the tests and the production build. Netlify runs it on every deploy, so a failing test stops a broken update from going live.
 - GitHub Actions (`.github/workflows/ci.yml`) runs the same checks on every push.
 

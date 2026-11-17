@@ -10,6 +10,9 @@ import CloudOffIcon from '@mui/icons-material/CloudOff';
 import InstallMobileIcon from '@mui/icons-material/InstallMobile';
 import { APP_NAME } from '../../config/app.js';
 import { SAVE_STATUS } from '../../state/useBillingStore.js';
+import CloudSyncIcon from '@mui/icons-material/CloudSyncOutlined';
+import { useCloud } from '../../features/account/CloudProvider.jsx';
+import { CLOUD_STATUS_TEXT } from '../../features/account/AccountCard.jsx';
 import { DRAWER_WIDTH } from '../../theme.js';
 import IconButton from '@mui/material/IconButton';
 import SettingsIcon from '@mui/icons-material/SettingsOutlined';
@@ -17,6 +20,13 @@ import { tr as t } from '../../i18n/translate.js';
 
 export default function AppHeader({ subtitle, saveStatus, canInstall, onInstall, onOpenSettings }) {
   const saveFailed = saveStatus === SAVE_STATUS.failed;
+  const cloud = useCloud();
+  const cloudActive = cloud.configured && cloud.user && cloud.status !== 'no-access';
+  const statusText = cloudActive ? CLOUD_STATUS_TEXT[cloud.status] || cloud.status : saveStatus;
+  const color = saveFailed || cloud.status === 'error' ? 'error.main' : cloudActive && cloud.status === 'offline' ? 'text.disabled' : 'success.main';
+  const icon = saveFailed || (cloudActive && (cloud.status === 'error' || cloud.status === 'offline'))
+    ? <CloudOffIcon />
+    : cloudActive && (cloud.status === 'syncing' || cloud.status === 'connecting') ? <CloudSyncIcon /> : <CloudDoneIcon />;
   return (
     <AppBar
       position="sticky"
@@ -36,9 +46,9 @@ export default function AppHeader({ subtitle, saveStatus, canInstall, onInstall,
         {canInstall && (
           <Button size="small" variant="contained" startIcon={<InstallMobileIcon />} onClick={onInstall}>{t('Install')}</Button>
         )}
-        <Tooltip title={t(saveStatus)}>
-          <Box role="status" aria-label={t(saveStatus)} sx={{ display: 'flex', color: saveFailed ? 'error.main' : 'success.main' }}>
-            {saveFailed ? <CloudOffIcon /> : <CloudDoneIcon />}
+        <Tooltip title={t(statusText)}>
+          <Box role="status" aria-label={t(statusText)} sx={{ display: 'flex', color }}>
+            {icon}
           </Box>
         </Tooltip>
         <Tooltip title={t('App settings')}>

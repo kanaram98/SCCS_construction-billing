@@ -149,9 +149,11 @@ function conflictEntry(collection, local, now, by) {
 /**
  * Merges documents from the cloud into the raw state.
  * `docs`: [{ collection, id, exists, data }] — `exists: false` means deleted in the cloud.
+ * `force`: take the cloud copy even over changes made here (used when the
+ * server refused a change this person isn't allowed to make).
  * @returns {{ raw, syncState, conflicts: Array }}
  */
-export function applyIncoming(raw, docs, syncState, now = new Date(), { by = '' } = {}) {
+export function applyIncoming(raw, docs, syncState, now = new Date(), { by = '', force = false } = {}) {
   let next = raw;
   const state = { sent: { ...syncState.sent }, marks: structuredClone(syncState.marks || {}), pulledAt: syncState.pulledAt };
   const conflicts = [];
@@ -174,7 +176,9 @@ export function applyIncoming(raw, docs, syncState, now = new Date(), { by = '' 
       const base = baseVersion(state, key);
       const changedHere = local && Number(local.version) > base;
       const changedThere = data.version > base;
-      if (local && changedHere && changedThere) {
+      if (force) {
+        // Refused change: the cloud copy is put back.
+      } else if (local && changedHere && changedThere) {
         conflicts.push(conflictEntry(doc.collection, local, now, by));
       } else if (local && data.version <= local.version) {
         continue; // this device is already as new (its change will be uploaded)
@@ -205,13 +209,14 @@ export function applyIncoming(raw, docs, syncState, now = new Date(), { by = '' 
       if (VERSIONED_SETTINGS.includes(name)) {
         const base = baseVersion(state, key);
         const changedHere = local && Number(local.version || 1) > base;
-        if (local && changedHere && data.version > base) conflicts.push(conflictEntry(name, { ...local, id: name }, now, by));
+        if (force) { /* refused change: the cloud copy is put back */ }
+        else if (local && changedHere && data.version > base) conflicts.push(conflictEntry(name, { ...local, id: name }, now, by));
         else if (local && data.version <= Number(local.version || 1)) continue;
         next = { ...next, [name]: value };
         state.sent[key] = `v${data.version}`;
       } else if (name === 'printSettings') {
         const pendingHere = stable({ ...local, id: name }) !== syncState.sent[key] && syncState.sent[key] !== undefined;
-        if (!pendingHere) {
+        if (force || !pendingHere) {
           next = { ...next, printSettings: value };
           state.sent[key] = stable(data);
         }

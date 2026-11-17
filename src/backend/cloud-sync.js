@@ -28,10 +28,16 @@ export const SYNC_STATUS = Object.freeze({
   error: 'error'
 });
 
+/** The version this device last synced for a document (0 if never). */
+function baseOf(state, doc) {
+  const sent = state.sent[keyOf(doc.collection, doc.id)];
+  return sent && sent.startsWith('v') ? Number(sent.slice(1)) : 0;
+}
+
 /** Firestore Timestamp | ISO string → ISO string. */
 const toIso = (value) => (value?.toDate ? value.toDate().toISOString() : value || null);
 
-export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState, saveState, onStatus = () => {} }) {
+export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState, saveState, onStatus = () => {}, onRefused = () => {} }) {
   let syncState = loadState() || createSyncState();
   let unsubscribers = [];
   let pushing = null;
@@ -45,10 +51,10 @@ export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState
     return { collection, id: snap.id, exists: snap.exists(), data: snap.exists() ? snap.data() : null };
   }
 
-  function receive(docs) {
+  function receive(docs, { force = false } = {}) {
     if (!docs.length) return;
     const newest = docs.map((doc) => toIso(doc.data?.syncedAt)).filter(Boolean).sort().at(-1);
-    const merged = applyIncoming(getRaw(), docs, syncState, new Date(), { by: uid });
+    const merged = applyIncoming(getRaw(), docs, syncState, new Date(), { by: uid, force });
     syncState = { ...merged.syncState, pulledAt: newest && (!syncState.pulledAt || newest > syncState.pulledAt) ? newest : syncState.pulledAt };
     persist();
     applyRaw(merged.raw, merged.conflicts);
@@ -95,11 +101,18 @@ export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState
     });
     persist();
     if (rejected.length) {
-      // Usually: another device saved a newer version. Fetch the cloud copies and merge (conflict rules).
-      const fresh = await Promise.all(rejected.map(({ op }) => fs.getDocFromServer(fs.doc(db, docPath(wid, op.collection, op.id)))
-        .then((snap) => snapshotDoc(op.collection, snap)).catch(() => null)));
-      receive(fresh.filter(Boolean));
-      const unresolved = rejected.filter(({ op }) => !fresh.some((doc) => doc && doc.collection === op.collection && doc.id === op.id && doc.exists));
+      // Fetch the cloud copies. A newer version there is a conflict (merge rules);
+      // otherwise this person may not make that change: the cloud copy is put back.
+      const fresh = (await Promise.all(rejected.map(({ op }) => fs.getDocFromServer(fs.doc(db, docPath(wid, op.collection, op.id)))
+        .then((snap) => snapshotDoc(op.collection, snap)).catch(() => null)))).filter((doc) => doc?.exists);
+      const newer = fresh.filter((doc) => doc.data.version === undefined || doc.data.version > baseOf(previous, doc));
+      const refused = fresh.filter((doc) => !newer.includes(doc));
+      receive(newer);
+      if (refused.length) {
+        receive(refused, { force: true });
+        onRefused(refused.map((doc) => ({ collection: doc.collection, id: doc.id })));
+      }
+      const unresolved = rejected.filter(({ op }) => !fresh.some((doc) => doc.collection === op.collection && doc.id === op.id));
       if (unresolved.length) {
         console.error('Sync: some changes were refused.', unresolved);
         status(SYNC_STATUS.error, unresolved[0].error?.code || 'refused');

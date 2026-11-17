@@ -46,7 +46,8 @@ function phone(person, raw, syncState = null) {
     applyRaw: (raw, conflicts = []) => { device.raw = raw; device.conflicts.push(...conflicts); },
     loadState: () => device.syncState,
     saveState: (state) => { device.syncState = state; },
-    onStatus: (status) => { device.status = status; }
+    onStatus: (status) => { device.status = status; },
+    onRefused: (items) => { device.refused = items; }
   });
   engines.push(device.engine);
   device.edit = (change) => {
@@ -136,6 +137,15 @@ describe('sync between two phones', () => {
     expect(father.status).toBe('error');
     await new Promise((resolve) => setTimeout(resolve, 500));
     expect(bill(admin, 'bill-1').client).not.toBe('After removal');
+  });
+
+  it('puts back a change the contractor is not allowed to make (firm details)', async () => {
+    const { admin, father } = await setUpBoth();
+    await father.edit((live) => ({ ...live, firm: { ...live.firm, name: 'Papa Builders' } }));
+    expect(father.raw.firm.name).toBe('SCCS');
+    expect(father.refused).toEqual([{ collection: 'settings', id: 'firm' }]);
+    expect(father.status).toBe('synced');
+    expect(admin.raw.firm.name).toBe('SCCS');
   });
 
   it('keeps out an account that was never invited', async () => {

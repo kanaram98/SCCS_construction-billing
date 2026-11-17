@@ -18,6 +18,8 @@ import { LayoutSettings, PageSetupSettings } from './PageSettings.jsx';
 import SignatureSettings from './SignatureSettings.jsx';
 import DocumentPreview from './preview/DocumentPreview.jsx';
 import { tr as t } from '../../i18n/translate.js';
+import { useNotify } from '../../components/ui';
+import { useCloud } from '../account/CloudProvider.jsx';
 
 const TABS = { preview: 'preview', settings: 'settings' };
 
@@ -25,6 +27,11 @@ const TABS = { preview: 'preview', settings: 'settings' };
 export default function PrintPage() {
   const { data, bill, actions } = useBilling();
   const { firm, rates, printSettings } = data;
+  const cloud = useCloud();
+  const notify = useNotify();
+  const firmEditable = cloud.can('editFirm');
+  /** Signature size and position belong to the firm details: admin only. */
+  const firmOnly = (change) => (firmEditable ? change : () => notify(t('Only the admin can change the signature.'), 'info'));
   const print = actions.print;
   const [tab, setTab] = useState(TABS.preview);
 
@@ -64,7 +71,7 @@ export default function PrintPage() {
               exporter={exporter}
               onPreviewChange={(value) => print.update({ previewDocument: value })}
               onBillLanguageChange={(billLanguage) => print.update({ billLanguage })}
-              onSignatureLayoutChange={print.setSignatureLayout}
+              onSignatureLayoutChange={firmOnly(print.setSignatureLayout)}
               runningAccount={runningAccount}
             />
           ) : (
@@ -96,8 +103,8 @@ export default function PrintPage() {
             settings={printSettings}
             hasSignature={Boolean(firm.signature)}
             onChange={print.update}
-            onWidthChange={print.setSignatureWidth}
-            onResetPlacement={print.resetSignatureLayout}
+            onWidthChange={firmOnly(print.setSignatureWidth)}
+            onResetPlacement={firmOnly(print.resetSignatureLayout)}
           />
           <Button fullWidth variant="contained" startIcon={<VisibilityIcon />} onClick={() => setTab(TABS.preview)}>
             {t('Back to preview')}

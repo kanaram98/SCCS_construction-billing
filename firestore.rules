@@ -28,8 +28,11 @@ service cloud.firestore {
     function signedIn() {
       return request.auth != null;
     }
+    // Google sign-in emails are verified by Google; other sign-in methods need the verified flag.
     function verifiedEmail() {
-      return signedIn() && request.auth.token.email_verified == true;
+      return signedIn() && request.auth.token.get('email', '') != ''
+        && (request.auth.token.get('email_verified', false) == true
+          || request.auth.token.firebase.sign_in_provider == 'google.com');
     }
     function memberPath(wid) {
       return /databases/$(database)/documents/workspaces/$(wid)/members/$(request.auth.uid);

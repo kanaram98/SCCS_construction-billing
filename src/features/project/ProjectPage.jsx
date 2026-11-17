@@ -2,6 +2,7 @@ import { PageHeading } from '../../components/ui';
 import { tr as t } from '../../i18n/translate.js';
 import BillDetailsCard from './BillDetailsCard.jsx';
 import FirmCard from './FirmCard.jsx';
+import AdminOnly from '../account/AdminOnly.jsx';
 
 /** Who the bill is for and who it is from: bill & client details, and your firm. */
 export default function ProjectPage() {
@@ -9,7 +10,7 @@ export default function ProjectPage() {
     <section>
       <PageHeading title={t('Project')} description={t('Client and firm details.')} />
       <BillDetailsCard />
-      <FirmCard />
+      <AdminOnly><FirmCard /></AdminOnly>
     </section>
   );
 }

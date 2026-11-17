@@ -4,6 +4,7 @@ import LinearProgress from '@mui/material/LinearProgress';
 import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
 import { BillingProvider, useBilling } from './state/BillingContext.jsx';
+import { CloudProvider } from './features/account/CloudProvider.jsx';
 import { FeedbackProvider } from './components/ui';
 import { useInstallPrompt } from './hooks/useInstallPrompt.js';
 import { VIEWS } from './config/app.js';
@@ -122,7 +123,9 @@ export default function App() {
   return (
     <FeedbackProvider>
       <BillingProvider>
-        <LocalizedApp />
+        <CloudProvider>
+          <LocalizedApp />
+        </CloudProvider>
       </BillingProvider>
     </FeedbackProvider>
   );

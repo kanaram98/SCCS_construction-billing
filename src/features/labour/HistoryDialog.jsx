@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
@@ -16,6 +16,7 @@ import { formatCurrency } from '../../domain/formatters.js';
 import { PAYMENT_MODES } from '../../domain/payments.js';
 import { getLanguage, tr as t } from '../../i18n/translate.js';
 import { useLabour } from './useLabour.js';
+import { useCloud } from '../account/CloudProvider.jsx';
 
 const PAGE = 50;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -27,11 +28,13 @@ const BLOCKER_TEXT = {
 };
 
 function ActivityItem({ entry, info, blocker, onUndo }) {
+  const cloud = useCloud();
+  const by = cloud.members.find((member) => member.uid === entry.by)?.name;
   return (
     <Box sx={{ py: 1.25, borderBottom: 1, borderColor: 'divider' }}>
       <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}>
         <Box sx={{ minWidth: 0 }}>
-          <Typography variant="caption" color="text.secondary">{formatLogTime(entry.at, getLanguage())}</Typography>
+          <Typography variant="caption" color="text.secondary">{formatLogTime(entry.at, getLanguage())}{by ? ` · ${by}` : ''}</Typography>
           <Typography variant="subtitle2">{info.title}</Typography>
           {info.lines.map((line, index) => <Typography key={index} variant="body2" color="text.secondary">{line}</Typography>)}
           {entry.revertOf && <Chip size="small" label={t('Undo of an earlier change')} sx={{ mt: 0.5 }} />}
@@ -79,6 +82,7 @@ function Activity({ workerId }) {
 
 function RecycleBin({ workerId }) {
   const { raw, actions } = useLabour();
+  const canPurge = useCloud().can('deleteForever');
   const confirm = useConfirm();
   const notify = useNotify();
   const deletedWorkers = new Set(raw.workers.filter((worker) => worker.deletedAt).map((worker) => worker.id));
@@ -132,7 +136,7 @@ function RecycleBin({ workerId }) {
               >
                 {t('Restore')}
               </Button>
-              <Button size="small" color="error" onClick={() => purge(item, label)}>{t('Delete forever')}</Button>
+              {canPurge && <Button size="small" color="error" onClick={() => purge(item, label)}>{t('Delete forever')}</Button>}
               {blocked && <Typography variant="caption" color="text.secondary">{blocked}</Typography>}
             </Stack>
           </Box>
@@ -152,6 +156,8 @@ export default function HistoryDialog({ open, workerId: initialWorkerId = '', on
 }
 
 function HistoryBody({ initialWorkerId }) {
+  const { refreshMembers } = useCloud();
+  useEffect(() => { refreshMembers?.(); }, [refreshMembers]); // names of people who joined since sign-in
   const { raw } = useLabour();
   const [tab, setTab] = useState('activity');
   const [workerId, setWorkerId] = useState(initialWorkerId || 'all');

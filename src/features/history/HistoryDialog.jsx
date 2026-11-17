@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
@@ -14,6 +14,7 @@ import { RECYCLE_DAYS, recycleBin, undoBlocker } from '../../domain/history.js';
 import { HISTORY_FILTERS, describeHistoryEntry, matchesFilter, recordName } from '../../domain/history-log.js';
 import { formatLogTime } from '../../domain/labour-log.js';
 import { getLanguage, tr as t } from '../../i18n/translate.js';
+import { useCloud } from '../account/CloudProvider.jsx';
 
 const PAGE = 50;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -29,6 +30,8 @@ const ENTITY_NAMES = { bills: 'Bill', rates: 'Rate', clients: 'Client', template
 
 function Activity({ filter }) {
   const { raw, actions } = useBilling();
+  const cloud = useCloud();
+  const names = new Map(cloud.members.map((member) => [member.uid, member.name]));
   const confirm = useConfirm();
   const notify = useNotify();
   const [shown, setShown] = useState(PAGE);
@@ -52,7 +55,9 @@ function Activity({ filter }) {
           <Box key={entry.id} sx={{ py: 1.25, borderBottom: 1, borderColor: 'divider' }}>
             <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}>
               <Box sx={{ minWidth: 0 }}>
-                <Typography variant="caption" color="text.secondary">{formatLogTime(entry.at, getLanguage())}</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {formatLogTime(entry.at, getLanguage())}{names.get(entry.by) ? ` · ${names.get(entry.by)}` : ''}
+                </Typography>
                 <Typography variant="subtitle2">{info.title}</Typography>
                 {info.lines.map((line, index) => <Typography key={index} variant="body2" color="text.secondary">{line}</Typography>)}
                 {entry.revertOf && <Chip size="small" label={t('Undo of an earlier change')} sx={{ mt: 0.5 }} />}
@@ -70,6 +75,7 @@ function Activity({ filter }) {
 
 function RecycleBin({ filter }) {
   const { raw, actions } = useBilling();
+  const canPurge = useCloud().can('deleteForever');
   const confirm = useConfirm();
   const notify = useNotify();
   const items = recycleBin(raw).filter((item) => matchesFilter(item.entity, filter));
@@ -105,7 +111,7 @@ function RecycleBin({ filter }) {
               >
                 {t('Restore')}
               </Button>
-              <Button size="small" color="error" onClick={() => purge(item, name)}>{t('Delete forever')}</Button>
+              {canPurge && <Button size="small" color="error" onClick={() => purge(item, name)}>{t('Delete forever')}</Button>}
             </Stack>
           </Box>
         );
@@ -124,6 +130,8 @@ export default function HistoryDialog({ open, filter: initialFilter = 'all', onC
 }
 
 function HistoryBody({ initialFilter }) {
+  const { refreshMembers } = useCloud();
+  useEffect(() => { refreshMembers?.(); }, [refreshMembers]); // names of people who joined since sign-in
   const [tab, setTab] = useState('activity');
   const [filter, setFilter] = useState(initialFilter);
   return (
