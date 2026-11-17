@@ -31,7 +31,7 @@ export default function PreviewTab({ bill, firm, rates, printSettings, selectedD
 
       <IssuesAlert issues={exportErrors} severity="error" suffix="to fix before export" />
 
-      <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, bgcolor: '#e9edf2' }}>
+      <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, bgcolor: 'action.selected' }}>
         <FitToWidth contentWidth={getPaperWidthPx(printSettings)}>
           <DocumentPreview
             bill={bill}

@@ -18,7 +18,7 @@ export default function RatesTable({ rates, onEdit, onRemove }) {
     <TableContainer component={Paper} variant="outlined">
       <Table size="small" aria-label="Work item rates">
         <TableHead>
-          <TableRow sx={{ '& th': { fontWeight: 700, color: 'text.secondary', bgcolor: '#f5f7f9' } }}>
+          <TableRow sx={{ '& th': { fontWeight: 700, color: 'text.secondary', bgcolor: 'action.hover' } }}>
             <TableCell>Work item</TableCell>
             <TableCell>Unit</TableCell>
             <TableCell align="right">Rate</TableCell>

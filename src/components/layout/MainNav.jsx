@@ -59,7 +59,7 @@ export default function MainNav({ activeView, onNavigate }) {
             key={id}
             selected={activeView === id}
             onClick={() => onNavigate(id)}
-            sx={{ mb: 0.5, '&.Mui-selected': { bgcolor: '#fff1ca' }, '&.Mui-selected:hover': { bgcolor: '#ffe9b0' } }}
+            sx={{ mb: 0.5, '&.Mui-selected': { bgcolor: 'rgba(245, 168, 0, 0.2)' }, '&.Mui-selected:hover': { bgcolor: 'rgba(245, 168, 0, 0.3)' } }}
           >
             <ListItemIcon sx={{ minWidth: 40 }}>{ICONS[id]}</ListItemIcon>
             <ListItemText primary={label} />

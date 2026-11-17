@@ -79,7 +79,7 @@ export default function AreaPanel({ section, area, index, sections, open, visibl
   }
 
   return (
-    <Accordion expanded={open} onChange={onToggle} sx={{ bgcolor: '#fbfcfe' }}>
+    <Accordion expanded={open} onChange={onToggle} sx={{ bgcolor: 'background.default' }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <GroupSummary
           variant="area"

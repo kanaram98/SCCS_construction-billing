@@ -30,7 +30,7 @@ export default function EntryList({ items, rates, canCopy, canMove = true, onEdi
               </Stack>
               {item.note && <Typography variant="caption" color="text.secondary" noWrap component="div">{item.note}</Typography>}
               <Box
-                sx={{ mt: 0.75, display: 'inline-block', px: 1, py: 0.25, borderRadius: 1.5, bgcolor: '#f3f6f9', fontSize: 13, fontWeight: 600 }}
+                sx={{ mt: 0.75, display: 'inline-block', px: 1, py: 0.25, borderRadius: 1.5, bgcolor: 'action.hover', fontSize: 13, fontWeight: 600 }}
               >
                 {describeMeasurement(item, rate)}
               </Box>

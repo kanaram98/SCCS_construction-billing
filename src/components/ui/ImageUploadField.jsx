@@ -13,7 +13,7 @@ import { IMAGE_UPLOAD } from '../../config/app.js';
  */
 export default function ImageUploadField({ label, value, onSelect, onRemove, variant = 'default' }) {
   return (
-    <Paper variant="outlined" sx={{ p: 1.5, bgcolor: '#fbfcfe' }}>
+    <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'action.hover' }}>
       <Stack direction="row" sx={{ mb: 1, alignItems: 'baseline', justifyContent: 'space-between', gap: 1 }}>
         <Typography variant="subtitle2">{label}</Typography>
         <Typography variant="caption" color="text.secondary">PNG or JPG · up to 5 MB</Typography>
@@ -28,6 +28,7 @@ export default function ImageUploadField({ label, value, onSelect, onRemove, var
           border: '1px dashed',
           borderColor: 'divider',
           borderRadius: 2,
+          // Always white: previews how the image looks on paper.
           bgcolor: 'white',
           color: 'text.secondary',
           ...(variant === 'signature' && value
