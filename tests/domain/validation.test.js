@@ -41,7 +41,8 @@ test('amount errors are keyed by field', () => {
   assert.deepEqual(getAmountErrors(bill, [tileRate]), {
     discount: 'Discount cannot exceed the subtotal.',
     taxRate: 'GST must be between 0 and 100%.',
-    advance: 'Advance must be zero or greater.'
+    advance: 'Advance must be zero or greater.',
+    payments: ''
   });
 });
 

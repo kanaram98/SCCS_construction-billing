@@ -1,6 +1,7 @@
 import { parseFeetInches } from './measurements.js';
 import { resolveRate } from './rates.js';
 import { roundTo2 } from './formatters.js';
+import { sumPayments } from './payments.js';
 
 function nonNegativeNumber(value) {
   const number = Number(value);
@@ -46,7 +47,9 @@ export function getBillTotals(bill, rates) {
   const tax = Math.round(Math.max(0, subtotal - discount) * taxRate / 100);
   const total = Math.max(0, subtotal - discount + tax);
   const advance = nonNegativeNumber(bill.advance);
-  return { subtotal, discount, tax, total, advance, balance: total - advance };
+  const received = sumPayments(bill);
+  const paid = advance + received;
+  return { subtotal, discount, tax, total, advance, received, paid, balance: total - paid };
 }
 
 /** How GST is shown: split into CGST + SGST within a state, or IGST between states. */
@@ -82,12 +85,12 @@ export function paymentStatusLabel(status) {
   return PAYMENT_STATUSES.find((entry) => entry.id === status)?.label || 'Unpaid';
 }
 
-/** Payment status derived from the advance amount (this is not a payment ledger). */
+/** Payment status from the advance plus recorded payments. */
 export function getPaymentStatus(bill, rates, totals = getBillTotals(bill, rates)) {
-  const { total, advance } = totals;
+  const { total, paid } = totals;
   if (total <= 0) return 'unpaid';
-  if (advance >= total) return 'paid';
-  if (advance > 0) return 'partial';
+  if (paid >= total) return 'paid';
+  if (paid > 0) return 'partial';
   return 'unpaid';
 }
 

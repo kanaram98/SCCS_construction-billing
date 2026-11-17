@@ -111,6 +111,8 @@ test('calculates bill totals with discount, tax, and advance', () => {
     tax: 190,
     total: 2090,
     advance: 250,
+    received: 0,
+    paid: 250,
     balance: 1840
   });
 });

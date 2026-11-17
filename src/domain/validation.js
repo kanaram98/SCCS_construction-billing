@@ -76,7 +76,7 @@ function describeBillItemIssue(issue, name) {
 
 /** Field-level errors for the bill's discount, GST and advance amounts. */
 export function getAmountErrors(bill, rates, totals = getBillTotals(bill, rates)) {
-  const errors = { discount: '', taxRate: '', advance: '' };
+  const errors = { discount: '', taxRate: '', advance: '', payments: '' };
   const discount = Number(bill.discount);
   const taxRate = Number(bill.taxRate);
   const advance = Number(bill.advance);
@@ -93,6 +93,8 @@ export function getAmountErrors(bill, rates, totals = getBillTotals(bill, rates)
     errors.advance = 'Advance must be zero or greater.';
   } else if (advance > totals.total) {
     errors.advance = 'Advance cannot exceed the bill total.';
+  } else if (totals.paid > totals.total) {
+    errors.payments = 'Payments received exceed the bill total.';
   }
   return errors;
 }

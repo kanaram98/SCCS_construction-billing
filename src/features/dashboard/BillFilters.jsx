@@ -70,7 +70,7 @@ export default function BillFilters({ filters, clientNames, resultCount, totalCo
 
       <Stack direction="row" sx={{ mb: 1.5, alignItems: 'center', justifyContent: 'space-between' }}>
         <Typography variant="caption" color="text.secondary">
-          {resultCount} of {totalCount} bills · status is based on the advance received
+          {resultCount} of {totalCount} bills · status is based on payments received
         </Typography>
         <Button size="small" onClick={onClear}>Clear</Button>
       </Stack>

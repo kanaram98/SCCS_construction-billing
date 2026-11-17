@@ -19,6 +19,7 @@ import { createRate } from '../domain/rates.js';
 import { newId } from '../domain/ids.js';
 import { clientDetailsPatch, clientFromBill, getClientSaveError, getClientProfileState } from '../domain/clients.js';
 import { createTemplate } from '../domain/templates.js';
+import { createPayment } from '../domain/payments.js';
 import { DEFAULT_SIGNATURE_LAYOUT, normalizeSignatureLayout } from '../domain/signature-layout.js';
 import { moveDocument, normalizePrintSettings, toggleDocument } from '../domain/print-settings.js';
 
@@ -270,6 +271,28 @@ function createPrintActions({ setData }) {
   };
 }
 
+/** Payments recorded against the active bill. */
+function createPaymentActions({ setData }) {
+  const updatePayments = (updater) => setData((current) => updateActiveBill(current, (bill) => ({
+    ...bill,
+    payments: updater(Array.isArray(bill.payments) ? bill.payments : [])
+  })));
+  return {
+    add(values) {
+      const payment = createPayment(values);
+      updatePayments((payments) => [...payments, payment]);
+      return payment;
+    },
+    update(paymentId, values) {
+      updatePayments((payments) => payments.map((payment) =>
+        payment.id === paymentId ? { ...createPayment(values), id: paymentId } : payment));
+    },
+    remove(paymentId) {
+      updatePayments((payments) => payments.filter((payment) => payment.id !== paymentId));
+    }
+  };
+}
+
 function createDataActions({ setData }) {
   return {
     /** Replaces everything with restored backup data. */
@@ -289,6 +312,7 @@ function createDataActions({ setData }) {
 export function createActions(context) {
   return {
     data: createDataActions(context),
+    payments: createPaymentActions(context),
     bills: createBillActions(context),
     entry: createEntryActions(context),
     templates: createTemplateActions(context),

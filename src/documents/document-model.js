@@ -116,12 +116,9 @@ function billTotalRows(bill, context) {
     ...getTaxLines(bill, totals).map((line) => amountRow('normal', line.label, money(line.amount))),
     amountRow('grandTotal', 'Total', money(totals.total)),
     wordsRow(totals.total),
-    ...(totals.advance
-      ? [
-          amountRow('normal', 'Advance received', `- ${money(totals.advance)}`),
-          amountRow('grandTotal', 'Balance due', money(totals.balance))
-        ]
-      : [])
+    ...(totals.advance ? [amountRow('normal', 'Advance received', `- ${money(totals.advance)}`)] : []),
+    ...(totals.received ? [amountRow('normal', 'Payments received', `- ${money(totals.received)}`)] : []),
+    ...(totals.paid ? [amountRow('grandTotal', 'Balance due', money(totals.balance))] : [])
   ];
 }
 

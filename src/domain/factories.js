@@ -18,6 +18,7 @@ export function createBill(number = '1') {
     taxRate: '',
     gstType: 'intra',
     advance: '',
+    payments: [],
     footer: '',
     sections: []
   };
@@ -76,6 +77,7 @@ export function duplicateBill(source, number) {
     id: newId(),
     number,
     projectName: `${source.projectName || 'Untitled'} (copy)`,
+    payments: [],
     sections: cloneSections(copy.sections)
   };
 }
