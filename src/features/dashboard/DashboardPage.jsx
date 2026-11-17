@@ -9,6 +9,7 @@ import { summarizeBill } from '../../domain/calculations.js';
 import { formatCurrency } from '../../domain/formatters.js';
 import { EmptyState, PageHeading, StatCard, useConfirm, useNotify } from '../../components/ui';
 import { useUndoable } from '../../hooks/useUndoable.js';
+import { useWhatsAppReminder } from '../../hooks/useWhatsAppReminder.js';
 import { VIEWS } from '../../config/app.js';
 import { useBillFilters } from './useBillFilters.js';
 import BillFilters from './BillFilters.jsx';
@@ -21,6 +22,7 @@ export default function DashboardPage({ onNavigate }) {
   const confirm = useConfirm();
   const notify = useNotify();
   const undoable = useUndoable();
+  const reminder = useWhatsAppReminder();
   const { bills, rates } = data;
 
   const summaries = useMemo(
@@ -102,6 +104,7 @@ export default function DashboardPage({ onNavigate }) {
           onOpen={() => openBill(bill.id)}
           onDuplicate={() => duplicateBill(bill)}
           onDelete={() => deleteBill(bill)}
+          onRemind={() => reminder.remind(bill)}
         />
       ))}
 

@@ -1,11 +1,11 @@
 /**
  * Hands a file to the user: the native share sheet on phones (WhatsApp, Drive,
- * Files…), otherwise a normal download.
+ * Files…), otherwise a normal download. `text` is sent along as the message.
  * @returns {Promise<'shared'|'downloaded'>}
  */
-export async function deliverFile(file) {
+export async function deliverFile(file, { text } = {}) {
   if (navigator.canShare?.({ files: [file] }) && navigator.share) {
-    await navigator.share({ title: file.name, files: [file] });
+    await navigator.share({ title: file.name, files: [file], ...(text ? { text } : {}) });
     return 'shared';
   }
   const url = URL.createObjectURL(file);
@@ -31,4 +31,13 @@ export function readFileAsText(file) {
     reader.onload = () => resolve(String(reader.result));
     reader.readAsText(file);
   });
+}
+
+/** Whether this device can share a PDF through the native share sheet (phones). */
+export function canSharePdfFiles() {
+  try {
+    return Boolean(navigator.share && navigator.canShare?.({ files: [new File([''], 'bill.pdf', { type: 'application/pdf' })] }));
+  } catch {
+    return false;
+  }
 }

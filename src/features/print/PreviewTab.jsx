@@ -4,6 +4,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import DownloadIcon from '@mui/icons-material/Download';
 import PrintIcon from '@mui/icons-material/Print';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import { IssuesAlert, SelectField } from '../../components/ui';
 import { getPrintDocument, isSignatureVisible } from '../../domain/print-settings.js';
 import DocumentPreview, { getPaperWidthPx } from './preview/DocumentPreview.jsx';
@@ -29,6 +30,16 @@ export default function PreviewTab({ bill, firm, rates, printSettings, selectedD
           {t('Print')}
         </Button>
       </Stack>
+      <Button
+        fullWidth
+        variant="contained"
+        startIcon={<WhatsAppIcon />}
+        onClick={exporter.shareOnWhatsApp}
+        disabled={!exporter.canExport}
+        sx={{ mb: 1.5, py: 1, ...{ bgcolor: '#25D366', color: '#0b3d1f', '&:hover': { bgcolor: '#1ebe5a' } } }}
+      >
+        {t('Send on WhatsApp')}
+      </Button>
 
       <IssuesAlert issues={exportErrors} severity="error" suffix={t('to fix before export')} />
 

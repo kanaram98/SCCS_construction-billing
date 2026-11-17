@@ -5,7 +5,7 @@ export function pdfFilename(bill) {
   return `Bill-${bill.number || '1'}-${bill.projectName || 'Construction'}`.replace(/[^\w.-]/g, '_') + '.pdf';
 }
 
-/** Hands a finished jsPDF document to the share sheet, or downloads it. */
-export function deliverPdf(doc, bill) {
-  return deliverFile(new File([doc.output('blob')], pdfFilename(bill), { type: 'application/pdf' }));
+/** Hands a finished jsPDF document to the share sheet (with an optional message), or downloads it. */
+export function deliverPdf(doc, bill, { shareText } = {}) {
+  return deliverFile(new File([doc.output('blob')], pdfFilename(bill), { type: 'application/pdf' }), { text: shareText });
 }

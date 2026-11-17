@@ -464,6 +464,21 @@ export default {
   'Enter a client name in Project details.': 'प्रोजेक्ट में ग्राहक का नाम लिखें।',
   'Enter your firm name in Project details.': 'प्रोजेक्ट में अपनी फर्म का नाम लिखें।',
 
+  // ── WhatsApp ─────────────────────────────────────────────────────
+  'Send on WhatsApp': 'WhatsApp पर भेजें',
+  'Payment reminder': 'भुगतान याद दिलाएँ',
+  'Remind on WhatsApp': 'WhatsApp पर याद दिलाएँ',
+  'Choose WhatsApp in the share menu, then the client.': 'शेयर मेनू में WhatsApp चुनें, फिर ग्राहक।',
+  'Add the client’s phone number in Project to open their chat directly.': 'सीधे ग्राहक की चैट खोलने के लिए प्रोजेक्ट में उनका फ़ोन नंबर डालें।',
+  'Total: {amount}': 'कुल: {amount}',
+  'Paid: {amount}': 'भुगतान हुआ: {amount}',
+  'Balance due: {amount}': 'बकाया: {amount}',
+  'Pay by UPI: {upi}': 'UPI से भुगतान करें: {upi}',
+  'Namaste {client},': 'नमस्ते {client},',
+  'Sir/Madam': 'जी',
+  'This is a gentle reminder that {amount} is pending for Bill {number}{project}.': 'आपको याद दिलाना था कि बिल {number}{project} के {amount} बाकी हैं।',
+  'Thank you.': 'धन्यवाद।',
+
   // ── Printed bill (document text) ─────────────────────────────────
   'Item': 'काम',
   'Qty': 'मात्रा',

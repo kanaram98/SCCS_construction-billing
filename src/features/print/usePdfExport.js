@@ -1,16 +1,20 @@
 import { useNotify } from '../../components/ui';
-import { getLanguage, tr as t } from '../../i18n/translate.js';
+import { getLanguage, makeTranslator, tr as t } from '../../i18n/translate.js';
 import { resolveBillLanguage } from '../../domain/print-settings.js';
+import { getBillTotals } from '../../domain/calculations.js';
+import { billShareMessage, whatsappNumber, whatsappUrl } from '../../domain/whatsapp.js';
+import { canSharePdfFiles, isShareCancelled } from '../../services/files.js';
 
 /** Rendered documents in the hidden print batch (used for Hindi image PDFs). */
 const renderedDocuments = () => [...document.querySelectorAll('.print-batch .print-document')];
 
 /**
- * PDF download and browser print, guarded by export validation.
- * jsPDF is imported lazily so it only loads when the user exports.
+ * PDF download, WhatsApp sharing and browser print, guarded by export validation.
+ * The PDF libraries are imported lazily so they only load when the user exports.
  */
 export function usePdfExport({ bill, rates, firm, printSettings, exportErrors, selectedDocuments }) {
   const notify = useNotify();
+  const billLanguage = resolveBillLanguage(printSettings, getLanguage());
 
   function blockedReason(action) {
     const printing = action === 'printing';
@@ -19,28 +23,57 @@ export function usePdfExport({ bill, rates, firm, printSettings, exportErrors, s
     return '';
   }
 
+  /** Builds the PDF in the bill's language and shares or downloads it. */
+  async function createPdf(options = {}) {
+    if (billLanguage === 'hi') {
+      // jsPDF cannot shape Hindi text, so Hindi bills are exported from the rendered preview.
+      const { exportImagePdf } = await import('../../documents/pdf-image-export.js');
+      await exportImagePdf(bill, renderedDocuments(), printSettings, options);
+    } else {
+      const { exportBillPdf } = await import('../../documents/pdf-export.js');
+      await exportBillPdf(bill, rates, firm, printSettings, options);
+    }
+  }
+
+  async function run(task, successMessage) {
+    try {
+      notify(t('Preparing PDF…'), 'info');
+      await task();
+      if (successMessage) notify(successMessage);
+    } catch (error) {
+      if (isShareCancelled(error)) return;
+      console.error('Could not export PDF.', error);
+      notify(t('PDF export failed: {reason}', { reason: error.message || t('Unknown error') }), 'error');
+    }
+  }
+
   async function downloadPdf() {
     const reason = blockedReason('exporting the PDF');
     if (reason) {
       notify(reason, 'warning');
       return;
     }
-    try {
-      notify(t('Preparing PDF…'), 'info');
-      if (resolveBillLanguage(printSettings, getLanguage()) === 'hi') {
-        // jsPDF cannot shape Hindi text, so Hindi bills are exported from the rendered preview.
-        const { exportImagePdf } = await import('../../documents/pdf-image-export.js');
-        await exportImagePdf(bill, renderedDocuments(), printSettings);
-      } else {
-        const { exportBillPdf } = await import('../../documents/pdf-export.js');
-        await exportBillPdf(bill, rates, firm, printSettings);
-      }
-      notify(t('PDF ready to save or share.'));
-    } catch (error) {
-      if (error?.name === 'AbortError') return; // user closed the share sheet
-      console.error('Could not export PDF.', error);
-      notify(t('PDF export failed: {reason}', { reason: error.message || t('Unknown error') }), 'error');
+    await run(() => createPdf(), t('PDF ready to save or share.'));
+  }
+
+  /**
+   * Phones: share the PDF with a summary message (the user picks WhatsApp and the client).
+   * Computers: open WhatsApp with the message, addressed to the client when their number is known.
+   */
+  async function shareOnWhatsApp() {
+    const reason = blockedReason('exporting the PDF');
+    if (reason) {
+      notify(reason, 'warning');
+      return;
     }
+    const message = billShareMessage({ bill, firm, totals: getBillTotals(bill, rates), t: makeTranslator(billLanguage) });
+    if (canSharePdfFiles()) {
+      notify(t('Choose WhatsApp in the share menu, then the client.'), 'info');
+      await run(() => createPdf({ shareText: message }));
+      return;
+    }
+    window.open(whatsappUrl(bill.clientPhone, message), '_blank', 'noopener');
+    if (!whatsappNumber(bill.clientPhone)) notify(t('Add the client’s phone number in Project to open their chat directly.'), 'info');
   }
 
   function print() {
@@ -52,5 +85,5 @@ export function usePdfExport({ bill, rates, firm, printSettings, exportErrors, s
     window.print();
   }
 
-  return { downloadPdf, print, canExport: !exportErrors.length && selectedDocuments.length > 0 };
+  return { downloadPdf, shareOnWhatsApp, print, canExport: !exportErrors.length && selectedDocuments.length > 0 };
 }

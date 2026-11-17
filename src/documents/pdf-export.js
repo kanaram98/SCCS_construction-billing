@@ -223,7 +223,7 @@ function renderDocument(doc, documentType, { bill, rates, firm, settings, includ
   drawClosing(doc, { bill, rates, firm, settings, documentType, includeSignature, drawPageHeader });
 }
 
-export async function exportBillPdf(bill, rates, firm, printSettings) {
+export async function exportBillPdf(bill, rates, firm, printSettings, { shareText } = {}) {
   const settings = normalizePrintSettings(printSettings);
   const documents = getSelectedDocuments(settings);
   if (!documents.length) throw new Error('Select at least one document to export.');
@@ -241,5 +241,5 @@ export async function exportBillPdf(bill, rates, firm, printSettings) {
   });
 
   if (settings.pageNumbers) drawPageNumbers(doc, settings);
-  await deliverPdf(doc, bill);
+  await deliverPdf(doc, bill, { shareText });
 }

@@ -10,6 +10,8 @@ import Typography from '@mui/material/Typography';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/EditOutlined';
 import DeleteIcon from '@mui/icons-material/DeleteOutlined';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
+import { useWhatsAppReminder } from '../../hooks/useWhatsAppReminder.js';
 import { useBilling } from '../../state/BillingContext.jsx';
 import { useUndoable } from '../../hooks/useUndoable.js';
 import { ActionMenu, Card, useNotify } from '../../components/ui';
@@ -36,6 +38,7 @@ export default function PaymentsCard() {
   const { data, bill, actions } = useBilling();
   const notify = useNotify();
   const undoable = useUndoable();
+  const reminder = useWhatsAppReminder();
   /** null = closed, 'new' = adding, otherwise the payment being edited. */
   const [editing, setEditing] = useState(null);
   const totals = getBillTotals(bill, data.rates);
@@ -100,6 +103,11 @@ export default function PaymentsCard() {
       )}
 
       <Button fullWidth variant="outlined" startIcon={<AddIcon />} onClick={() => setEditing('new')}>{t('Record payment')}</Button>
+      {totals.balance > 0 && (
+        <Button fullWidth startIcon={<WhatsAppIcon />} onClick={() => reminder.remind(bill)} sx={{ mt: 1, color: '#128C7E' }}>
+          {t('Remind on WhatsApp')}
+        </Button>
+      )}
       <PaymentDialog
         open={Boolean(editing)}
         payment={editing === 'new' ? null : editing}

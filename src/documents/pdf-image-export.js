@@ -96,6 +96,6 @@ export async function createImagePdf(documents, settings) {
 }
 
 /** Builds the image PDF from the rendered documents and shares or downloads it. */
-export async function exportImagePdf(bill, documents, settings) {
-  await deliverPdf(await createImagePdf(documents, settings), bill);
+export async function exportImagePdf(bill, documents, settings, { shareText } = {}) {
+  await deliverPdf(await createImagePdf(documents, settings), bill, { shareText });
 }
