@@ -4,3 +4,9 @@ release/
 .DS_Store
 Thumbs.db
 _pre-refactor-backup/
+
+# Firebase emulators
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+.firebase/

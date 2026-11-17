@@ -14,7 +14,8 @@
     "test:watch": "vitest",
     "verify": "npm test && npm run build",
     "desktop": "npm run build && electron electron.cjs",
-    "dist:win": "npm run build && electron-builder --win nsis portable --x64"
+    "dist:win": "npm run build && electron-builder --win nsis portable --x64",
+    "emulators": "firebase emulators:start --project demo-sccs"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
@@ -35,6 +36,7 @@
     "@vitejs/plugin-react": "6.3.0",
     "electron": "45.3.3",
     "electron-builder": "26.18.0",
+    "firebase-tools": "15.36.0",
     "jsdom": "30.1.3",
     "vite": "8.3.8",
     "vitest": "5.1.0"
