@@ -3,6 +3,7 @@ import { createBill } from './factories.js';
 import { DEFAULT_SIGNATURE_LAYOUT, normalizeSignatureLayout } from './signature-layout.js';
 import { createDefaultPrintSettings, normalizePrintSettings } from './print-settings.js';
 import { createDefaultQuotation, normalizeQuotation } from './quotation.js';
+import { createLabourState, normalizeLabour } from './labour.js';
 
 /**
  * Shape of the persisted application state.
@@ -63,7 +64,8 @@ export function createInitialState() {
     printSettings: createDefaultPrintSettings(),
     meta: { lastBackupAt: '', onboarded: false },
     preferences: { language: 'en', textSize: 'normal' },
-    quotation: createDefaultQuotation()
+    quotation: createDefaultQuotation(),
+    labour: createLabourState()
   };
 }
 
@@ -112,6 +114,7 @@ export function hydrateState(saved, { isLegacy = false } = {}) {
     printSettings: normalizePrintSettings(saved.printSettings, saved.pdfDocuments, firm.signatureLayout),
     meta: { ...defaults.meta, ...savedMeta, onboarded },
     quotation: normalizeQuotation(saved.quotation),
+    labour: normalizeLabour(saved.labour),
     preferences: { ...defaults.preferences, ...(saved.preferences && typeof saved.preferences === 'object' ? saved.preferences : {}) },
     activeBillId: activeExists ? saved.activeBillId : saved.bills[0].id
   };

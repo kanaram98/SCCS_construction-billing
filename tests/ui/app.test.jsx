@@ -180,3 +180,30 @@ describe('First use', () => {
     expect(await screen.findByText('Getting started')).toBeTruthy();
   });
 });
+
+describe('Labour screen', () => {
+  it('adds a worker, marks 2P / 1.5P attendance and shows the monthly wages', async () => {
+    const { user } = renderApp(SAMPLE_STATE);
+    await user.click(nav('Labour'));
+    await screen.findByRole('heading', { name: 'Labour' });
+
+    await user.click(screen.getByRole('button', { name: 'Add worker' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.type(within(dialog).getByLabelText(/Name/), 'Ramesh');
+    await user.type(within(dialog).getByLabelText(/Daily wage/), '600');
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(screen.getByText('Ramesh')).toBeTruthy();
+
+    await user.click(screen.getByRole('tab', { name: 'Attendance' }));
+    await user.click(await screen.findByRole('button', { name: 'Ramesh 2P' }));
+    expect(await screen.findByText('1 present')).toBeTruthy();
+    const today = Object.keys(savedState().labour.attendance)[0];
+    expect(savedState().labour.attendance[today]).toEqual({ [savedState().labour.workers[0].id]: { units: 2, wage: 600 } });
+
+    await user.click(screen.getByRole('button', { name: 'Ramesh 1.5P' }));
+    await user.click(screen.getByRole('tab', { name: 'Monthly report' }));
+    expect(await screen.findByText('1.5P · 1 days · 0 absent')).toBeTruthy();
+    expect(screen.getAllByText('₹900').length).toBeGreaterThan(0);
+  });
+});

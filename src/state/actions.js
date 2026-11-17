@@ -21,6 +21,7 @@ import { createTemplate } from '../domain/templates.js';
 import { createPayment } from '../domain/payments.js';
 import { createSampleBill } from '../domain/sample-bill.js';
 import { relabelGeneratedNames } from '../domain/relabel.js';
+import { createWorker, removeWorker, setMark } from '../domain/labour.js';
 import { convertEstimateToBill, createNextRunningBill, nextNumberFor } from '../domain/bill-kinds.js';
 import { DEFAULT_SIGNATURE_LAYOUT, normalizeSignatureLayout } from '../domain/signature-layout.js';
 import { moveDocument, normalizePrintSettings, toggleDocument } from '../domain/print-settings.js';
@@ -349,6 +350,50 @@ function createQuotationActions({ setData }) {
   };
 }
 
+/** Labour: workers, daily attendance, advances and wage payments. */
+function createLabourActions({ setData }) {
+  const setLabour = (updater) => setData((current) => ({ ...current, labour: updater(current.labour) }));
+  return {
+    /** Adds a worker. Returns the new worker. */
+    addWorker(values) {
+      const worker = createWorker(values);
+      setLabour((labour) => ({ ...labour, workers: [...labour.workers, worker] }));
+      return worker;
+    },
+    updateWorker(workerId, patch) {
+      setLabour((labour) => ({ ...labour, workers: labour.workers.map((worker) => worker.id === workerId ? { ...worker, ...patch } : worker) }));
+    },
+    removeWorker(workerId) {
+      setLabour((labour) => removeWorker(labour, workerId));
+    },
+    /** Sets a worker's attendance for a day in P units; `null` clears it. */
+    mark(date, worker, units) {
+      setLabour((labour) => ({ ...labour, attendance: setMark(labour.attendance, date, worker, units) }));
+    },
+    /** Marks every listed worker for a day. */
+    markAll(date, workers, units) {
+      setLabour((labour) => ({
+        ...labour,
+        attendance: workers.reduce((attendance, worker) => setMark(attendance, date, worker, units), labour.attendance)
+      }));
+    },
+    addPayment(values) {
+      const payment = { id: newId(), note: '', ...values, amount: Number(values.amount) || 0 };
+      setLabour((labour) => ({ ...labour, payments: [...labour.payments, payment] }));
+      return payment;
+    },
+    updatePayment(paymentId, values) {
+      setLabour((labour) => ({
+        ...labour,
+        payments: labour.payments.map((payment) => payment.id === paymentId ? { ...payment, ...values, amount: Number(values.amount) || 0 } : payment)
+      }));
+    },
+    removePayment(paymentId) {
+      setLabour((labour) => ({ ...labour, payments: labour.payments.filter((payment) => payment.id !== paymentId) }));
+    }
+  };
+}
+
 function createDataActions({ setData }) {
   return {
     /** Replaces everything with restored backup data. */
@@ -373,6 +418,7 @@ export function createActions(context) {
   return {
     data: createDataActions(context),
     quotation: createQuotationActions(context),
+    labour: createLabourActions(context),
     preferences: createPreferenceActions(context),
     payments: createPaymentActions(context),
     bills: createBillActions(context),

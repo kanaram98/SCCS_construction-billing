@@ -14,6 +14,7 @@ import SellIcon from '@mui/icons-material/SellOutlined';
 import SettingsIcon from '@mui/icons-material/SettingsOutlined';
 import BusinessIcon from '@mui/icons-material/BusinessOutlined';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdfOutlined';
+import EngineeringIcon from '@mui/icons-material/EngineeringOutlined';
 import { NAVIGATION, VIEWS } from '../../config/app.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { BOTTOM_NAV_HEIGHT, DRAWER_WIDTH } from '../../theme.js';
@@ -26,7 +27,8 @@ const ICONS = {
   [VIEWS.rates]: <SellIcon />,
   [VIEWS.settings]: <SettingsIcon />,
   [VIEWS.project]: <BusinessIcon />,
-  [VIEWS.print]: <PictureAsPdfIcon />
+  [VIEWS.print]: <PictureAsPdfIcon />,
+  [VIEWS.labour]: <EngineeringIcon />
 };
 
 /** Bottom tab bar on phones/tablets, permanent sidebar on desktop. */
@@ -44,7 +46,7 @@ export default function MainNav({ activeView, onNavigate }) {
       >
         <BottomNavigation showLabels value={activeView} onChange={(_event, view) => onNavigate(view)} sx={{ height: BOTTOM_NAV_HEIGHT }}>
           {NAVIGATION.map(({ id, shortLabel, label }) => (
-            <BottomNavigationAction key={id} value={id} label={t(shortLabel || label)} icon={ICONS[id]} />
+            <BottomNavigationAction key={id} value={id} label={t(shortLabel || label)} icon={ICONS[id]} sx={{ minWidth: 0, px: 0.25, '& .MuiBottomNavigationAction-label': { fontSize: '0.7rem', '&.Mui-selected': { fontSize: '0.72rem' } } }} />
           ))}
         </BottomNavigation>
       </Paper>

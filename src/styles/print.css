@@ -79,3 +79,10 @@
   .paper tr { break-inside: avoid; }
   .paper .entry-break-before { break-before: page; page-break-before: always; }
 }
+
+/* Labour attendance register */
+.labour-register { table-layout: fixed; font-size: 0.85em; }
+.labour-register th, .labour-register td { padding: 2px 1px; text-align: center; }
+.labour-register th:first-child, .labour-register td:first-child { width: 22%; text-align: left; padding-left: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.labour-heading { margin: 14px 0 6px; font-size: 1.1em; }
+.labour-legend { margin-top: 8px; font-size: 0.85em; color: #555; }

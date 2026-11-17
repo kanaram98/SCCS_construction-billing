@@ -1,0 +1,105 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {
+  createLabourState, createWorker, daySummary, daysOfMonth, formatUnits, monthReport, normalizeLabour,
+  parseUnits, registerCell, removeWorker, setMark, shiftDate, shiftMonth, workerBalance, workerMonth
+} from '../../src/domain/labour.js';
+import { hydrateState } from '../../src/domain/app-state.js';
+
+const ramesh = createWorker({ id: 'w1', name: 'Ramesh', dailyWage: 600 });
+const suresh = createWorker({ id: 'w2', name: 'Suresh', dailyWage: 800 });
+
+function sample() {
+  let attendance = {};
+  attendance = setMark(attendance, '2026-10-30', ramesh, 1);
+  attendance = setMark(attendance, '2026-11-01', ramesh, 2);
+  attendance = setMark(attendance, '2026-11-02', ramesh, 1.5);
+  attendance = setMark(attendance, '2026-11-03', ramesh, 0.5);
+  attendance = setMark(attendance, '2026-11-04', ramesh, 0);
+  attendance = setMark(attendance, '2026-11-01', suresh, 1);
+  return {
+    workers: [ramesh, suresh],
+    attendance,
+    payments: [
+      { id: 'p1', workerId: 'w1', date: '2026-10-31', amount: 1000 },
+      { id: 'p2', workerId: 'w1', date: '2026-11-02', amount: 500 }
+    ]
+  };
+}
+
+test('attendance is shown and typed as P units', () => {
+  assert.deepEqual([0, 0.5, 1, 1.5, 2].map(formatUnits), ['A', '0.5P', '1P', '1.5P', '2P']);
+  assert.equal(parseUnits('2P'), 2);
+  assert.equal(parseUnits('1.5p'), 1.5);
+  assert.equal(parseUnits('½'), 0.5);
+  assert.equal(parseUnits('.5P'), 0.5);
+  assert.equal(parseUnits('a'), 0);
+  assert.equal(parseUnits('9P'), null);
+  assert.equal(parseUnits('abc'), null);
+  assert.equal(registerCell(null), '');
+  assert.equal(registerCell({ units: 0 }), 'A');
+  assert.equal(registerCell({ units: 1.5 }), '1.5');
+});
+
+test('a mark saves the wage of that day; clearing removes empty days', () => {
+  let attendance = setMark({}, '2026-11-01', ramesh, 2);
+  assert.deepEqual(attendance['2026-11-01'].w1, { units: 2, wage: 600 });
+  attendance = setMark(attendance, '2026-11-01', ramesh, null);
+  assert.deepEqual(attendance, {});
+});
+
+test('day summary counts present workers, P and cost', () => {
+  assert.deepEqual(daySummary(sample(), '2026-11-01'), { present: 2, marked: 2, units: 3, cost: 2000 });
+});
+
+test('worker month: wages, previous balance, payments and balance', () => {
+  const month = workerMonth(sample(), 'w1', '2026-11');
+  assert.equal(month.units, 4); // 2 + 1.5 + 0.5 + A
+  assert.equal(month.days, 3);
+  assert.equal(month.absent, 1);
+  assert.equal(month.earned, 2400);
+  assert.equal(month.opening, -400); // October: 600 earned − 1000 advance
+  assert.equal(month.paid, 500);
+  assert.equal(month.balance, 1500);
+  assert.equal(month.marks.length, 30);
+  assert.equal(month.marks[0].units, 2);
+  assert.equal(workerBalance(sample(), 'w1'), 1500);
+});
+
+test('a changed wage does not rewrite past attendance', () => {
+  const labour = sample();
+  labour.workers = [{ ...ramesh, dailyWage: 1000 }, suresh];
+  assert.equal(workerMonth(labour, 'w1', '2026-11').earned, 2400);
+});
+
+test('month report lists active workers and totals', () => {
+  const labour = sample();
+  labour.workers.push(createWorker({ id: 'w3', name: 'Old', dailyWage: 500, active: false }));
+  const report = monthReport(labour, '2026-11');
+  assert.deepEqual(report.rows.map((row) => row.worker.name), ['Ramesh', 'Suresh']);
+  assert.equal(report.totals.earned, 3200);
+  assert.equal(report.totals.balance, 2300);
+});
+
+test('removing a worker removes their attendance and payments', () => {
+  const labour = removeWorker(sample(), 'w1');
+  assert.deepEqual(labour.workers.map((worker) => worker.id), ['w2']);
+  assert.deepEqual(Object.keys(labour.attendance), ['2026-11-01']);
+  assert.equal(labour.payments.length, 0);
+});
+
+test('date helpers work across month and year ends', () => {
+  assert.equal(shiftDate('2026-12-31', 1), '2027-01-01');
+  assert.equal(shiftDate('2026-03-01', -1), '2026-02-28');
+  assert.equal(shiftMonth('2026-01', -1), '2025-12');
+  assert.equal(daysOfMonth('2028-02').length, 29);
+});
+
+test('saved labour data is normalised and old saves get an empty labour book', () => {
+  assert.deepEqual(normalizeLabour(null), createLabourState());
+  const labour = normalizeLabour({ workers: [{ id: 'w1', name: 'A' }, {}], attendance: { bad: {}, '2026-11-01': { w1: { units: '1.5', wage: '600' }, w2: { units: -1 } } } });
+  assert.equal(labour.workers.length, 1);
+  assert.deepEqual(labour.attendance, { '2026-11-01': { w1: { units: 1.5, wage: 600 } } });
+  const state = hydrateState({ bills: [{ id: 'b1', sections: [] }] });
+  assert.deepEqual(state.labour, createLabourState());
+});
