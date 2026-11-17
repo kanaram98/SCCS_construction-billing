@@ -49,6 +49,29 @@ export function getBillTotals(bill, rates) {
   return { subtotal, discount, tax, total, advance, balance: total - advance };
 }
 
+/** How GST is shown: split into CGST + SGST within a state, or IGST between states. */
+export const GST_TYPES = Object.freeze({
+  intra: 'CGST + SGST (same state)',
+  inter: 'IGST (other state)'
+});
+
+const percent = (value) => `${Number(value.toFixed(3))}%`;
+
+/**
+ * Tax lines for the bill's GST type. The parts always add up to `totals.tax`.
+ * @returns {{ label: string, amount: number }[]} empty when there is no tax
+ */
+export function getTaxLines(bill, totals) {
+  if (!totals.tax) return [];
+  const rate = Math.min(100, nonNegativeNumber(bill.taxRate));
+  if (bill.gstType === 'inter') return [{ label: `IGST (${percent(rate)})`, amount: totals.tax }];
+  const central = Math.round(totals.tax / 2);
+  return [
+    { label: `CGST (${percent(rate / 2)})`, amount: central },
+    { label: `SGST (${percent(rate / 2)})`, amount: totals.tax - central }
+  ];
+}
+
 export const PAYMENT_STATUSES = Object.freeze([
   { id: 'unpaid', label: 'Unpaid' },
   { id: 'partial', label: 'Partially paid' },

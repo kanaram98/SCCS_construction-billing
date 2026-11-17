@@ -39,7 +39,7 @@ test('bill document splits pages per area and ends with totals', () => {
   assert.equal(chunks[0][2].cells[0], 'Floor tiles\nMatt');
 
   const last = chunks.at(-1).map((row) => row.cells[0]);
-  assert.deepEqual(last.slice(-6), ['Subtotal', 'GST (10%)', 'Total', 'Amount in words: Rupees One Thousand Nine Hundred Twenty-Five Only', 'Advance received', 'Balance due']);
+  assert.deepEqual(last.slice(-7), ['Subtotal', 'CGST (5%)', 'SGST (5%)', 'Total', 'Amount in words: Rupees One Thousand Nine Hundred Twenty-Five Only', 'Advance received', 'Balance due']);
   assert.equal(chunks.at(-1).find((row) => row.cells[0] === 'Total').cells[4], 'R1925');
 });
 

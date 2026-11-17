@@ -13,7 +13,8 @@ import {
   getBillTotals,
   getItemQuantity,
   getLineAmount,
-  getSectionTotal
+  getSectionTotal,
+  getTaxLines
 } from '../domain/calculations.js';
 import { resolveRate, usesCount, usesDimension } from '../domain/rates.js';
 import { formatDimension } from '../domain/measurements.js';
@@ -112,7 +113,7 @@ function billTotalRows(bill, context) {
   return [
     amountRow('sectionTotal', 'Subtotal', money(totals.subtotal)),
     ...(totals.discount ? [amountRow('normal', 'Discount', `- ${money(totals.discount)}`)] : []),
-    ...(totals.tax ? [amountRow('normal', `GST (${bill.taxRate}%)`, money(totals.tax))] : []),
+    ...getTaxLines(bill, totals).map((line) => amountRow('normal', line.label, money(line.amount))),
     amountRow('grandTotal', 'Total', money(totals.total)),
     wordsRow(totals.total),
     ...(totals.advance

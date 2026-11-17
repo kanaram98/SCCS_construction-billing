@@ -123,3 +123,15 @@ test('derives payment status from the bill total and advance amount', () => {
   assert.equal(getPaymentStatus({ ...baseBill, advance: 100 }, rates), 'paid');
   assert.equal(getPaymentStatus({ discount: 0, taxRate: 0, advance: 1, sections: [] }, rates), 'unpaid');
 });
+
+test('splits GST into CGST/SGST or IGST without changing the total tax', async () => {
+  const { getTaxLines } = await import('../../src/domain/calculations.js');
+  const totals = { tax: 2121 };
+  assert.deepEqual(getTaxLines({ taxRate: '18' }, totals), [
+    { label: 'CGST (9%)', amount: 1061 },
+    { label: 'SGST (9%)', amount: 1060 }
+  ]);
+  assert.deepEqual(getTaxLines({ taxRate: '5', gstType: 'inter' }, { tax: 50 }), [{ label: 'IGST (5%)', amount: 50 }]);
+  assert.deepEqual(getTaxLines({ taxRate: '5' }, { tax: 50 }).map((line) => line.label), ['CGST (2.5%)', 'SGST (2.5%)']);
+  assert.deepEqual(getTaxLines({ taxRate: '' }, { tax: 0 }), []);
+});

@@ -16,6 +16,7 @@ export function createBill(number = '1') {
     secondLevelName: 'Area',
     discount: '',
     taxRate: '',
+    gstType: 'intra',
     advance: '',
     footer: '',
     sections: []
