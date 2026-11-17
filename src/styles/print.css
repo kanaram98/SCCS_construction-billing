@@ -91,6 +91,19 @@
 .labour-summary th, .labour-summary td { text-align: center; }
 .labour-summary th:first-child, .labour-summary td:first-child { text-align: left; }
 .labour-total td { font-weight: 700; background: #f3f5f8; }
+.labour-payments td:last-child, .labour-payments th:last-child { text-align: right; }
+.labour-payments td:first-child { width: 28px; text-align: center; }
+.worker-calendar { table-layout: fixed; margin-bottom: 10px; }
+.worker-calendar th, .worker-calendar td { text-align: center; }
+.worker-calendar td { height: 40px; vertical-align: top; padding: 3px; }
+.worker-calendar td.cell-blank { background: #f6f7f9; }
+.worker-calendar .day { display: block; font-size: 0.8em; color: #666; text-align: left; }
+.worker-calendar .cell-absent .day { color: #fff; }
+.worker-calendar .mark { display: block; font-weight: 700; font-size: 1.1em; }
+.worker-amounts { width: 60%; margin: 10px 0 0 auto; }
+.worker-amounts td:last-child { text-align: right; white-space: nowrap; }
 .labour-sign { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 28px; }
 .labour-sign-box { display: flex; flex-direction: column; align-items: center; min-width: 180px; border-top: 1px solid #222; padding-top: 4px; position: relative; }
 .labour-sign-box img { position: absolute; bottom: 100%; max-height: 44px; max-width: 160px; }
+.worker-sheet .labour-sign { margin-top: 56px; }
+.worker-sheet .worker-amounts { width: 60%; }

@@ -214,6 +214,20 @@ describe('Labour screen', () => {
     expect(screen.getAllByText('₹900').length).toBeGreaterThan(0);
     expect(screen.getAllByText('1½P × 1').length).toBeGreaterThan(0);
 
+    // Advance with date, mode and description; each worker has their own PDF.
+    await user.click(screen.getByRole('button', { name: 'Pay Ramesh' }));
+    const pay = await screen.findByRole('dialog');
+    await user.clear(within(pay).getByLabelText(/Amount/));
+    await user.type(within(pay).getByLabelText(/Amount/), '500');
+    await user.type(within(pay).getByLabelText(/Description/), 'Advance for rent');
+    await user.click(within(pay).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(await screen.findByText('₹500 · Cash')).toBeTruthy();
+    expect(screen.getAllByText(/Advance for rent/).length).toBeGreaterThan(0);
+    expect(savedState().labour.payments[0]).toMatchObject({ amount: 500, mode: 'cash', note: 'Advance for rent' });
+    expect(screen.getByRole('button', { name: 'PDF for Ramesh' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Share with Ramesh' })).toBeTruthy();
+
     // Attendance sheet with the firm header.
     await user.click(screen.getByRole('tab', { name: 'Sheet / PDF' }));
     expect((await screen.findAllByText('Labour attendance register')).length).toBeGreaterThan(0);

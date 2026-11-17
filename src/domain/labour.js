@@ -10,12 +10,16 @@
  *   labour = {
  *     workers:    [{ id, name, phone, role, dailyWage, active }],
  *     attendance: { 'YYYY-MM-DD': { [workerId]: { units, wage } } },
- *     payments:   [{ id, workerId, date, amount, note }]   // advances and wage payments
+ *     payments:   [{ id, workerId, date, amount, mode, note }]   // advances and wage payments
  *   }
  */
 import { newId } from './ids.js';
 import { formatCurrency, roundTo2, text } from './formatters.js';
 import { tr } from '../i18n/translate.js';
+import { PAYMENT_MODES } from './payments.js';
+
+/** Labour is usually paid in cash. */
+export const DEFAULT_LABOUR_PAYMENT_MODE = 'cash';
 
 /** Attendance choices shown as buttons. */
 export const ATTENDANCE_UNITS = Object.freeze([0, 0.5, 1, 1.5, 2]);
@@ -49,7 +53,9 @@ export function normalizeLabour(saved) {
   return {
     workers: Array.isArray(saved.workers) ? saved.workers.filter((worker) => worker?.id).map((worker) => createWorker(worker)) : [],
     attendance,
-    payments: Array.isArray(saved.payments) ? saved.payments.filter((payment) => payment?.id && payment.workerId) : []
+    payments: Array.isArray(saved.payments)
+      ? saved.payments.filter((payment) => payment?.id && payment.workerId).map((payment) => ({ ...payment, mode: PAYMENT_MODES[payment.mode] ? payment.mode : DEFAULT_LABOUR_PAYMENT_MODE, note: payment.note || '' }))
+      : []
   };
 }
 
@@ -122,6 +128,13 @@ export function daysOfMonth(month) {
   const [year, value] = month.split('-').map(Number);
   const count = new Date(year, value, 0).getDate();
   return Array.from({ length: count }, (_unused, index) => `${month}-${pad(index + 1)}`);
+}
+
+/** The month as calendar weeks (Sunday first), with null for blank cells. */
+export function calendarWeeks(month) {
+  const cells = [...Array(firstWeekday(month)).fill(null), ...daysOfMonth(month)];
+  while (cells.length % 7) cells.push(null);
+  return Array.from({ length: cells.length / 7 }, (_unused, index) => cells.slice(index * 7, index * 7 + 7));
 }
 
 /** Weekday of the 1st of a month (0 = Sunday), for laying out a calendar. */
@@ -230,6 +243,15 @@ export function countedUnits(counts) {
   return [...ATTENDANCE_UNITS, ...extra];
 }
 
+/** Every advance / payment made in a month, oldest first, with the worker's name. */
+export function monthPayments(labour, month) {
+  const names = new Map(labour.workers.map((worker) => [worker.id, worker.name]));
+  return labour.payments
+    .filter((payment) => inMonth(payment.date, month))
+    .map((payment) => ({ ...payment, workerName: names.get(payment.workerId) || '' }))
+    .sort((a, b) => a.date.localeCompare(b.date) || a.workerName.localeCompare(b.workerName));
+}
+
 /** Workers to show in a month: active ones plus anyone with attendance or payments that month. */
 export function workersForMonth(labour, month) {
   return labour.workers.filter((worker) => worker.active ||
@@ -243,7 +265,7 @@ export function monthReport(labour, month) {
   const sum = (field) => roundTo2(rows.reduce((total, row) => total + row[field], 0));
   const counts = {};
   rows.forEach((row) => Object.entries(row.counts).forEach(([units, count]) => { counts[units] = (counts[units] || 0) + count; }));
-  return { month, rows, totals: { units: sum('units'), earned: sum('earned'), paid: sum('paid'), balance: sum('balance'), days: sum('days'), counts } };
+  return { month, rows, payments: monthPayments(labour, month), totals: { units: sum('units'), earned: sum('earned'), paid: sum('paid'), balance: sum('balance'), days: sum('days'), counts } };
 }
 
 /** What each worker is owed today, across all months. */
@@ -273,6 +295,7 @@ export function monthLabel(month, language = 'en') {
 
 /** WhatsApp text with a worker's month summary. */
 export function workerMonthMessage({ worker, summary, firm, t, language }) {
+  const payments = (summary.payments || []).map((payment) => `• ${payment.date} · ${formatCurrency(payment.amount)} · ${t(PAYMENT_MODES[payment.mode] || 'Cash')}${payment.note ? ` · ${payment.note}` : ''}`);
   return [
     `${worker.name} · ${monthLabel(summary.month, language)}`,
     t('Attendance: {units} ({days} days)', { units: formatUnits(summary.units), days: summary.days }),
@@ -280,6 +303,7 @@ export function workerMonthMessage({ worker, summary, firm, t, language }) {
     t('Wages: {amount}', { amount: formatCurrency(summary.earned) }),
     summary.opening !== 0 && t('Previous balance: {amount}', { amount: formatCurrency(summary.opening) }),
     t('Paid / advance: {amount}', { amount: formatCurrency(summary.paid) }),
+    ...payments,
     t('Balance: {amount}', { amount: formatCurrency(summary.balance) }),
     firm?.name && `— ${firm.name}`
   ].filter(Boolean).join('\n');

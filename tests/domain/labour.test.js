@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createLabourState, createWorker, daySummary, daysOfMonth, formatUnits, monthReport, normalizeLabour,
-  parseUnits, registerCell, removeWorker, setMark, shiftDate, shiftMonth, workerBalance, workerMonth
+  calendarWeeks, monthPayments, parseUnits, registerCell, removeWorker, setMark, shiftDate, shiftMonth, workerBalance, workerMonth
 } from '../../src/domain/labour.js';
 import { hydrateState } from '../../src/domain/app-state.js';
 
@@ -110,4 +110,19 @@ test('month summary counts each kind of mark', () => {
   const report = monthReport(sample(), '2026-11');
   assert.deepEqual(report.totals.counts, { 0: 1, 0.5: 1, 1: 1, 1.5: 1, 2: 1 });
   assert.equal(report.totals.days, 4);
+});
+
+test('payments keep their mode; month payments list every worker by date', () => {
+  const labour = normalizeLabour({ ...sample(), payments: [...sample().payments, { id: 'p3', workerId: 'w2', date: '2026-11-01', amount: 200, mode: 'upi', note: 'Tea' }] });
+  assert.equal(labour.payments[0].mode, 'cash'); // older payments default to cash
+  assert.deepEqual(monthPayments(labour, '2026-11').map((payment) => [payment.date, payment.workerName, payment.mode]), [['2026-11-01', 'Suresh', 'upi'], ['2026-11-02', 'Ramesh', 'cash']]);
+  assert.equal(monthReport(labour, '2026-11').payments.length, 2);
+});
+
+test('calendar weeks start on Sunday with blanks', () => {
+  const weeks = calendarWeeks('2026-11'); // 1 Nov 2026 is a Sunday
+  assert.equal(weeks[0][0], '2026-11-01');
+  assert.equal(weeks.length, 5);
+  assert.deepEqual(weeks[4].slice(0, 2), ['2026-11-29', '2026-11-30']);
+  assert.equal(weeks[4][2], null);
 });

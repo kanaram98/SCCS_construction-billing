@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
@@ -9,6 +9,7 @@ import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import DeleteIcon from '@mui/icons-material/DeleteOutlined';
+import DownloadIcon from '@mui/icons-material/Download';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdfOutlined';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
@@ -17,11 +18,14 @@ import { useBilling } from '../../state/BillingContext.jsx';
 import { useUndoable } from '../../hooks/useUndoable.js';
 import { daysOfMonth, formatUnits, monthReport, registerCell, workerBalance, workerMonthMessage } from '../../domain/labour.js';
 import { formatCurrency } from '../../domain/formatters.js';
+import { PAYMENT_MODES } from '../../domain/payments.js';
 import { whatsappNumber, whatsappUrl } from '../../domain/whatsapp.js';
+import { canSharePdfFiles, isShareCancelled } from '../../services/files.js';
 import { getLanguage, makeTranslator, tr as t } from '../../i18n/translate.js';
 import LabourPaymentDialog from './LabourPaymentDialog.jsx';
 import MarkCounts from './MarkCounts.jsx';
 import MonthBar from './MonthBar.jsx';
+import WorkerSheetDocument from './WorkerSheetDocument.jsx';
 
 /** Small attendance calendar for one worker's month. */
 function MonthGrid({ month, marks }) {
@@ -57,7 +61,36 @@ function Amount({ label, value, strong, color }) {
   );
 }
 
-function WorkerCard({ row, onPay, onShare, onDeletePayment }) {
+/** Advances / payments in the month with date, mode and description. Tap one to edit it. */
+function PaymentList({ payments, onEdit, onDelete }) {
+  if (!payments.length) return null;
+  return (
+    <Box sx={{ mt: 1.5, p: 1, borderRadius: 1, bgcolor: 'action.hover' }}>
+      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>{t('Advances and payments')}</Typography>
+      {payments.map((payment) => (
+        <Stack key={payment.id} direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box
+            component="button"
+            type="button"
+            onClick={() => onEdit(payment)}
+            aria-label={t('Edit payment of {amount} on {date}', { amount: formatCurrency(payment.amount), date: payment.date })}
+            sx={{ all: 'unset', cursor: 'pointer', flex: 1, minWidth: 0, py: 0.5 }}
+          >
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              {formatCurrency(payment.amount)} · {t(PAYMENT_MODES[payment.mode] || 'Cash')}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" component="div" noWrap>
+              {payment.date}{payment.note ? ` · ${payment.note}` : ''}
+            </Typography>
+          </Box>
+          <IconButton size="small" aria-label={t('Delete payment')} onClick={() => onDelete(payment)}><DeleteIcon fontSize="small" /></IconButton>
+        </Stack>
+      ))}
+    </Box>
+  );
+}
+
+function WorkerCard({ row, busy, onPay, onPdf, onShare, onEditPayment, onDeletePayment }) {
   const [open, setOpen] = useState(false);
   const { worker } = row;
   return (
@@ -83,41 +116,78 @@ function WorkerCard({ row, onPay, onShare, onDeletePayment }) {
         </Grid>
         <Collapse in={open} unmountOnExit>
           <MonthGrid month={row.month} marks={row.marks} />
-          {row.payments.length > 0 && (
-            <>
-              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>{t('Payments this month')}</Typography>
-              {row.payments.map((payment) => (
-                <Stack key={payment.id} direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Typography variant="body2">{payment.date} · {formatCurrency(payment.amount)}{payment.note ? ` · ${payment.note}` : ''}</Typography>
-                  <IconButton size="small" aria-label={t('Delete payment')} onClick={() => onDeletePayment(payment)}><DeleteIcon fontSize="small" /></IconButton>
-                </Stack>
-              ))}
-            </>
-          )}
         </Collapse>
-        <Stack direction="row" spacing={1} sx={{ mt: 1, justifyContent: 'flex-end' }}>
-          <Button size="small" startIcon={<WhatsAppIcon />} onClick={onShare}>{t('Share')}</Button>
-          <Button size="small" variant="outlined" onClick={onPay}>{t('Pay / advance')}</Button>
+        <PaymentList payments={row.payments} onEdit={onEditPayment} onDelete={onDeletePayment} />
+        <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
+          <Button fullWidth size="small" variant="outlined" startIcon={<DownloadIcon />} onClick={onPdf} disabled={busy} aria-label={t('PDF for {name}', { name: worker.name })}>PDF</Button>
+          <Button
+            fullWidth
+            size="small"
+            variant="contained"
+            startIcon={<WhatsAppIcon />}
+            onClick={onShare}
+            disabled={busy}
+            aria-label={t('Share with {name}', { name: worker.name })}
+            sx={{ bgcolor: '#25D366', color: '#0b3d1f', '&:hover': { bgcolor: '#1ebe5a' } }}
+          >
+            {t('Share')}
+          </Button>
+          <Button fullWidth size="small" variant="outlined" onClick={onPay} aria-label={t('Pay {name}', { name: worker.name })}>{t('Pay')}</Button>
         </Stack>
       </CardContent>
     </Card>
   );
 }
 
-/** Month summary for every worker: attendance, wages, payments and balance. */
+/** Month summary for every worker: attendance, wages, payments and balance, with a PDF for each worker. */
 export default function ReportTab({ month, onMonthChange, onOpenSheet }) {
   const { data, actions } = useBilling();
   const notify = useNotify();
   const undoable = useUndoable();
-  const [paying, setPaying] = useState(null);
+  const sheetsRef = useRef(null);
+  const [paying, setPaying] = useState(null); // { row, payment? }
+  const [busyId, setBusyId] = useState('');
   const { labour, firm } = data;
   const language = getLanguage();
+  const docT = makeTranslator(language);
   const report = useMemo(() => monthReport(labour, month), [labour, month]);
 
+  async function exportPdf(row, shareText) {
+    setBusyId(row.workerId);
+    try {
+      const { exportWorkerPdf } = await import('../../documents/labour-pdf.js');
+      const rendered = sheetsRef.current?.querySelector(`[data-worker="${row.workerId}"]`);
+      await exportWorkerPdf({ row, firm, language, rendered, shareText });
+    } catch (error) {
+      if (!isShareCancelled(error)) notify(t('PDF export failed: {reason}', { reason: error.message || t('Unknown error') }), 'error');
+    } finally {
+      setBusyId('');
+    }
+  }
+
+  /** Phones: share the worker's PDF (pick WhatsApp, then the worker). Elsewhere: open their chat and download the PDF to attach. */
   function share(row) {
-    const message = workerMonthMessage({ worker: row.worker, summary: row, firm, t: makeTranslator(language), language });
+    const message = workerMonthMessage({ worker: row.worker, summary: row, firm, t: docT, language });
+    if (canSharePdfFiles()) {
+      notify(t('Choose WhatsApp in the share menu, then {name}.', { name: row.worker.name }), 'info');
+      exportPdf(row, message);
+      return;
+    }
     window.open(whatsappUrl(row.worker.phone, message), '_blank', 'noopener');
-    if (!whatsappNumber(row.worker.phone)) notify(t('Add the worker’s mobile number to open their chat directly.'), 'info');
+    exportPdf(row);
+    notify(whatsappNumber(row.worker.phone)
+      ? t('PDF downloaded. Attach it in the WhatsApp chat.')
+      : t('Add the worker’s mobile number to open their chat directly.'), 'info');
+  }
+
+  function savePayment(values) {
+    if (paying.payment) {
+      actions.labour.updatePayment(paying.payment.id, values);
+    } else {
+      actions.labour.addPayment({ ...values, workerId: paying.row.workerId });
+    }
+    notify(t('Payment saved.'), 'success');
+    setPaying(null);
   }
 
   return (
@@ -139,29 +209,33 @@ export default function ReportTab({ month, onMonthChange, onOpenSheet }) {
                 <Typography variant="body2" sx={{ fontWeight: 700 }}>{t('Total {units}', { units: formatUnits(report.totals.units) })}</Typography>
               </Stack>
               <MarkCounts counts={report.totals.counts} showZero />
-              <Button size="small" startIcon={<PictureAsPdfIcon />} onClick={onOpenSheet} sx={{ mt: 1 }}>{t('Attendance sheet / PDF')}</Button>
+              <Button size="small" startIcon={<PictureAsPdfIcon />} onClick={onOpenSheet} sx={{ mt: 1 }}>{t('All workers sheet / PDF')}</Button>
             </CardContent>
           </Card>
           {report.rows.map((row) => (
             <WorkerCard
               key={row.workerId}
               row={row}
-              onPay={() => setPaying(row)}
+              busy={busyId === row.workerId}
+              onPay={() => setPaying({ row })}
+              onPdf={() => exportPdf(row)}
               onShare={() => share(row)}
+              onEditPayment={(payment) => setPaying({ row, payment })}
               onDeletePayment={(payment) => undoable(t('Payment deleted.'), () => actions.labour.removePayment(payment.id))}
             />
           ))}
+          {/* Rendered worker sheets, used to make Hindi PDFs. */}
+          <Box ref={sheetsRef} sx={{ display: 'none' }} aria-hidden>
+            {report.rows.map((row) => <WorkerSheetDocument key={row.workerId} row={row} firm={firm} t={docT} language={language} />)}
+          </Box>
         </>
       )}
       <LabourPaymentDialog
         open={Boolean(paying)}
-        worker={paying?.worker}
-        balance={paying ? workerBalance(labour, paying.workerId) : 0}
-        onSave={(values) => {
-          actions.labour.addPayment({ ...values, workerId: paying.workerId });
-          notify(t('Payment saved.'), 'success');
-          setPaying(null);
-        }}
+        worker={paying?.row.worker}
+        payment={paying?.payment}
+        balance={paying ? workerBalance(labour, paying.row.workerId) : 0}
+        onSave={savePayment}
         onClose={() => setPaying(null)}
       />
     </>

@@ -1,6 +1,7 @@
 import { formatCurrency, todayIso } from '../../domain/formatters.js';
 import { countedUnits, daysOfMonth, markLabel, monthLabel, registerCell } from '../../domain/labour.js';
 import Letterhead from '../print/preview/Letterhead.jsx';
+import { PaymentsTable } from './WorkerSheetDocument.jsx';
 
 /**
  * Printable monthly labour attendance sheet (muster roll) with the firm
@@ -72,6 +73,9 @@ export default function LabourReportDocument({ report, firm, t, language }) {
         </tbody>
       </table>
       <p className="labour-legend">{t('A = absent, 1 = full day, 0.5 = half day, 2 = double')}</p>
+
+      <h3 className="labour-heading">{t('Advances and payments')}</h3>
+      <PaymentsTable payments={report.payments} t={t} showName />
 
       <footer className="labour-sign">
         <span>{t('Date: {date}', { date: '______________' })}</span>
