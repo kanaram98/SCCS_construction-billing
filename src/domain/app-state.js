@@ -4,6 +4,7 @@ import { DEFAULT_SIGNATURE_LAYOUT, normalizeSignatureLayout } from './signature-
 import { createDefaultPrintSettings, normalizePrintSettings } from './print-settings.js';
 import { createDefaultQuotation, normalizeQuotation } from './quotation.js';
 import { createLabourState, normalizeLabour } from './labour.js';
+import { COLLECTIONS, emptyExpiredBin, pruneHistory, withMeta } from './history.js';
 
 /**
  * Shape of the persisted application state.
@@ -65,7 +66,8 @@ export function createInitialState() {
     meta: { lastBackupAt: '', onboarded: false },
     preferences: { language: 'en', textSize: 'normal' },
     quotation: createDefaultQuotation(),
-    labour: createLabourState()
+    labour: createLabourState(),
+    log: []
   };
 }
 
@@ -76,7 +78,7 @@ const arrayOr = (value, fallback = []) => Array.isArray(value) ? value : fallbac
  * Returns `null` when the data has no bills to restore.
  * @returns {AppState | null}
  */
-export function hydrateState(saved) {
+export function hydrateState(saved, now = new Date()) {
   if (!saved || !Array.isArray(saved.bills) || !saved.bills.length) return null;
   const defaults = createInitialState();
   const firm = applyDefaultBranding({ ...createDefaultFirm(), ...saved.firm });
@@ -94,7 +96,7 @@ export function hydrateState(saved) {
     : saved.bills.length > 1 || saved.bills.some((bill) => (bill.sections || []).length > 0 || String(bill.projectName || '').trim());
 
   const activeExists = saved.bills.some((bill) => bill.id === saved.activeBillId);
-  return {
+  const state = {
     ...defaults,
     ...saved,
     rates: arrayOr(saved.rates, defaults.rates),
@@ -106,8 +108,11 @@ export function hydrateState(saved) {
     quotation: normalizeQuotation(saved.quotation),
     labour: normalizeLabour(saved.labour),
     preferences: { ...defaults.preferences, ...(saved.preferences && typeof saved.preferences === 'object' ? saved.preferences : {}) },
-    activeBillId: activeExists ? saved.activeBillId : saved.bills[0].id
+    activeBillId: activeExists ? saved.activeBillId : saved.bills[0].id,
+    log: pruneHistory(saved.log, now)
   };
+  for (const key of COLLECTIONS) state[key] = state[key].filter((record) => record?.id).map(withMeta);
+  return emptyExpiredBin(state, now);
 }
 
 export function selectActiveBill(state) {

@@ -23,6 +23,7 @@ import { createSampleBill } from '../domain/sample-bill.js';
 import { relabelGeneratedNames } from '../domain/relabel.js';
 import { createWorker } from '../domain/labour.js';
 import * as labourOps from '../domain/labour-ops.js';
+import * as history from '../domain/history.js';
 import { convertEstimateToBill, createNextRunningBill, nextNumberFor } from '../domain/bill-kinds.js';
 import { DEFAULT_SIGNATURE_LAYOUT, normalizeSignatureLayout } from '../domain/signature-layout.js';
 import { moveDocument, normalizePrintSettings, toggleDocument } from '../domain/print-settings.js';
@@ -387,15 +388,15 @@ function createLabourActions({ setData }) {
   };
 }
 
-function createDataActions({ setData }) {
+function createDataActions({ setData, setRaw }) {
   return {
-    /** Replaces everything with restored backup data. */
+    /** Replaces everything (raw state) with restored backup data. */
     restore(state) {
-      setData(state);
+      setRaw(state);
     },
-    /** Puts back a previously captured state, e.g. to undo a delete. */
+    /** Puts back a previously captured raw state, e.g. for a quick Undo. */
     restoreSnapshot(snapshot) {
-      setData(snapshot);
+      setRaw(snapshot);
     },
     /** Marks the welcome screen as seen (or not, to show it again). */
     setOnboarded(onboarded = true) {
@@ -407,8 +408,19 @@ function createDataActions({ setData }) {
   };
 }
 
+/** History and recycle bin for bills, rates, clients, templates, firm and quotation. */
+function createHistoryActions({ setRaw }) {
+  const apply = (operation, ...args) => setRaw((raw) => operation(raw, ...args, new Date()));
+  return {
+    undo: (entryId) => apply(history.undoEntry, entryId),
+    restore: (entity, id) => apply(history.restoreRecord, entity, id),
+    purge: (entity, id) => apply(history.purgeRecord, entity, id)
+  };
+}
+
 export function createActions(context) {
   return {
+    history: createHistoryActions(context),
     data: createDataActions(context),
     quotation: createQuotationActions(context),
     labour: createLabourActions(context),

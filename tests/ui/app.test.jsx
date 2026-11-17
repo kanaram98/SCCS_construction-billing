@@ -279,3 +279,49 @@ describe('Labour safety: history, recycle bin, closed months', () => {
     expect(Object.keys(savedState().labour.closedMonths)).toHaveLength(1);
   });
 });
+
+describe('History and recycle bin', () => {
+  it('restores a deleted bill and undoes a bill edit', async () => {
+    const { user } = renderApp(SAMPLE_STATE);
+    await user.click(nav('Bills'));
+    await screen.findByRole('heading', { name: 'Bills' });
+
+    // Deleting moves the bill to Recently deleted.
+    await user.click(await screen.findByRole('button', { name: 'Actions for bill 2' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
+    const ask = await screen.findByRole('dialog');
+    expect(within(ask).getByText('It moves to Recently deleted and can be restored for 30 days.')).toBeTruthy();
+    await user.click(within(ask).getByRole('button', { name: 'Delete' }));
+    await waitFor(() => expect(screen.queryByText('Bill 2 · Office fitout')).toBeNull());
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(savedState().bills.find((bill) => bill.id === 'b2').deletedAt).toBeTruthy();
+
+    await user.click(screen.getByRole('button', { name: 'History' }));
+    const history = await screen.findByRole('dialog');
+    expect(within(history).getByText('Bill deleted')).toBeTruthy();
+    await user.click(within(history).getByRole('tab', { name: 'Recently deleted' }));
+    expect(within(history).getByText('Bill 2 · Office fitout')).toBeTruthy();
+    await user.click(within(history).getByRole('button', { name: 'Restore' }));
+    await waitFor(() => expect(savedState().bills.find((bill) => bill.id === 'b2').deletedAt).toBeNull());
+    await user.click(within(history).getByRole('button', { name: 'Close' }));
+    expect(await screen.findByText('Bill 2 · Office fitout')).toBeTruthy();
+  });
+
+  it('undoes an edit to firm details from Settings', async () => {
+    const { user } = renderApp(SAMPLE_STATE);
+    await user.click(nav('Project'));
+    const name = await screen.findByLabelText(/Firm name/);
+    await user.clear(name);
+    await user.type(name, 'Typo Firm');
+    await waitFor(() => expect(savedState().firm.name).toBe('Typo Firm'));
+
+    await openSettings(user);
+    await user.click(await screen.findByRole('button', { name: 'Open history' }));
+    const history = await screen.findByRole('dialog');
+    expect(within(history).getByText('Firm details changed')).toBeTruthy();
+    await user.click(within(history).getAllByRole('button', { name: 'Undo' })[0]);
+    const ask = (await screen.findAllByRole('dialog')).at(-1);
+    await user.click(within(ask).getByRole('button', { name: 'Undo' }));
+    await waitFor(() => expect(savedState().firm.name).toBe('Acme Interiors'));
+  });
+});

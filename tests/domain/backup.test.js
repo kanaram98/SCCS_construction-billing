@@ -23,7 +23,10 @@ test('a backup round-trips through JSON', () => {
   const parsed = parseBackup(JSON.stringify(createBackup(state, now)));
   assert.equal(parsed.billCount, 1);
   assert.equal(parsed.exportedAt, now.toISOString());
-  assert.deepEqual(parsed.state.bills, state.bills);
+  // Loading adds sync metadata (createdAt, version…); the bill content is unchanged.
+  const content = ({ createdAt: _c, updatedAt: _u, deletedAt: _d, version: _v, ...bill }) => bill;
+  assert.deepEqual(parsed.state.bills.map(content), state.bills);
+  assert.equal(parsed.state.bills[0].version, 1);
   assert.equal(backupFilename(now), 'construction-billing-backup-2026-11-17.json');
 });
 

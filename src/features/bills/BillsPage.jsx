@@ -4,6 +4,9 @@ import Paper from '@mui/material/Paper';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import AddIcon from '@mui/icons-material/Add';
+import HistoryIcon from '@mui/icons-material/History';
+import IconButton from '@mui/material/IconButton';
+import Stack from '@mui/material/Stack';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import { useBilling } from '../../state/BillingContext.jsx';
 import { summarizeBill } from '../../domain/calculations.js';
@@ -15,6 +18,7 @@ import { VIEWS } from '../../config/app.js';
 import { useBillFilters } from './useBillFilters.js';
 import BillFilters from './BillFilters.jsx';
 import BillCard from './BillCard.jsx';
+import HistoryDialog from '../history/HistoryDialog.jsx';
 import { tr as t } from '../../i18n/translate.js';
 
 /** List of all bills and estimates: search, filter, sort and per-bill actions. */
@@ -23,6 +27,7 @@ export default function BillsPage({ onNavigate }) {
   const confirm = useConfirm();
   const notify = useNotify();
   const undoable = useUndoable();
+  const [historyOpen, setHistoryOpen] = useState(false);
   const reminder = useWhatsAppReminder();
   const { rates } = data;
   /** 'bill' or 'estimate': which list is shown, and what "New" creates. */
@@ -73,7 +78,7 @@ export default function BillsPage({ onNavigate }) {
     const label = billLabel(bill, t);
     const confirmed = await confirm({
       title: t('Delete {name}?', { name: label }),
-      message: t('This cannot be undone.'),
+      message: t('It moves to Recently deleted and can be restored for 30 days.'),
       confirmLabel: t('Delete'),
       danger: true
     });
@@ -92,9 +97,12 @@ export default function BillsPage({ onNavigate }) {
         title={t('Bills')}
         description={t('All bills and estimates on this device.')}
         action={(
-          <Button variant="contained" startIcon={<AddIcon />} onClick={create}>
-            {isEstimates ? t('New estimate') : t('New bill')}
-          </Button>
+          <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+            <IconButton aria-label={t('History')} onClick={() => setHistoryOpen(true)}><HistoryIcon /></IconButton>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={create}>
+              {isEstimates ? t('New estimate') : t('New bill')}
+            </Button>
+          </Stack>
         )}
       />
 
@@ -155,6 +163,7 @@ export default function BillsPage({ onNavigate }) {
           />
         )
       )}
+      <HistoryDialog open={historyOpen} filter="bills" onClose={() => setHistoryOpen(false)} />
     </section>
   );
 }

@@ -45,7 +45,7 @@ export function parseBackup(text) {
   }
   const state = hydrateState(backup.data);
   if (!state) throw new Error(tr('This backup does not contain any bills.'));
-  return { state, exportedAt: backup.exportedAt || '', billCount: state.bills.length };
+  return { state, exportedAt: backup.exportedAt || '', billCount: state.bills.filter((bill) => !bill.deletedAt).length };
 }
 
 /** True when the user has measurements but no recent backup. */

@@ -6,14 +6,14 @@ import { tr as t, trn } from '../../i18n/translate.js';
 
 /** Export a backup file, or restore one after confirmation (with undo). */
 export function useBackup() {
-  const { data, actions } = useBilling();
+  const { raw, actions } = useBilling();
   const notify = useNotify();
   const confirm = useConfirm();
 
   async function exportBackup() {
     const now = new Date();
     const file = new File(
-      [JSON.stringify(createBackup(data, now))],
+      [JSON.stringify(createBackup(raw, now))],
       backupFilename(now),
       { type: 'application/json' }
     );
@@ -44,7 +44,7 @@ export function useBackup() {
       danger: true
     });
     if (!confirmed) return;
-    const previous = data;
+    const previous = raw;
     actions.data.restore(parsed.state);
     notify(t('Backup restored.'), 'success', { label: t('Undo'), onClick: () => actions.data.restoreSnapshot(previous) });
   }

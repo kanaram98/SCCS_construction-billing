@@ -8,7 +8,7 @@ export function BillingProvider({ children }) {
   return <BillingContext.Provider value={store}>{children}</BillingContext.Provider>;
 }
 
-/** Access the billing store: `{ data, bill, actions, saveStatus, storageError }`. */
+/** Access the billing store: `{ data, raw, bill, actions, saveStatus, storageError }` (`data` is the live view, `raw` includes deleted records and history). */
 export function useBilling() {
   const store = useContext(BillingContext);
   if (!store) throw new Error('useBilling must be used inside <BillingProvider>.');
