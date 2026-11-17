@@ -9,11 +9,13 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
-import { SelectField, TextField } from '../../components/ui';
+import SortIcon from '@mui/icons-material/Sort';
+import { ChoiceMenu, SelectField, TextField } from '../../components/ui';
 import { PAYMENT_STATUSES } from '../../domain/calculations.js';
+import { BILL_SORTS } from '../../domain/bill-filters.js';
 
 /** Search box with a collapsible panel for client, date and status filters. */
-export default function BillFilters({ filters, clientNames, resultCount, totalCount, onChange, onClear }) {
+export default function BillFilters({ filters, sort, onSortChange, clientNames, resultCount, totalCount, onChange, onClear }) {
   const [expanded, setExpanded] = useState(false);
   const activeCount = ['client', 'dateFrom', 'dateTo', 'payment'].filter((key) => filters[key]).length;
 
@@ -24,9 +26,11 @@ export default function BillFilters({ filters, clientNames, resultCount, totalCo
           type="search"
           value={filters.search}
           placeholder="Search bill no., project or client"
-          aria-label="Search bills"
           onChange={(value) => onChange('search', value)}
-          slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> } }}
+          slotProps={{
+            input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> },
+            htmlInput: { 'aria-label': 'Search bills' }
+          }}
           sx={{ bgcolor: 'background.paper' }}
         />
         <IconButton
@@ -37,6 +41,7 @@ export default function BillFilters({ filters, clientNames, resultCount, totalCo
         >
           <Badge badgeContent={activeCount} color="secondary"><FilterListIcon /></Badge>
         </IconButton>
+        <ChoiceMenu icon={<SortIcon />} label="Sort bills" title="Sort by" options={BILL_SORTS} value={sort} onChange={onSortChange} />
       </Stack>
 
       <Collapse in={expanded}>

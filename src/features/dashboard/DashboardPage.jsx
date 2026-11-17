@@ -26,7 +26,7 @@ export default function DashboardPage({ onNavigate }) {
     () => new Map(bills.map((bill) => [bill.id, summarizeBill(bill, rates)])),
     [bills, rates]
   );
-  const { filters, filteredBills, clientNames, setFilter, clearFilters } = useBillFilters(bills, summaries);
+  const { filters, sort, setSort, filteredBills, clientNames, setFilter, clearFilters } = useBillFilters(bills, summaries);
 
   const stats = useMemo(() => {
     const all = [...summaries.values()];
@@ -83,6 +83,8 @@ export default function DashboardPage({ onNavigate }) {
       <Typography variant="h6" component="h2" sx={{ mb: 1 }}>Your bills</Typography>
       <BillFilters
         filters={filters}
+        sort={sort}
+        onSortChange={setSort}
         clientNames={clientNames}
         resultCount={filteredBills.length}
         totalCount={bills.length}

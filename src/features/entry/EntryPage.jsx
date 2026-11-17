@@ -7,13 +7,16 @@ import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import AddIcon from '@mui/icons-material/Add';
+import SearchIcon from '@mui/icons-material/Search';
+import InputAdornment from '@mui/material/InputAdornment';
 import BookmarksIcon from '@mui/icons-material/BookmarksOutlined';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdfOutlined';
 import StraightenIcon from '@mui/icons-material/Straighten';
 import UnfoldLessIcon from '@mui/icons-material/UnfoldLess';
 import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
 import { useBilling } from '../../state/BillingContext.jsx';
-import { BottomActionBar, EmptyState, IssuesAlert, PageHeading, SelectField, useNotify } from '../../components/ui';
+import { BottomActionBar, EmptyState, IssuesAlert, PageHeading, SelectField, TextField, useNotify } from '../../components/ui';
+import { countSearchResults, searchEntries } from '../../domain/entry-search.js';
 import { countBillContents, getBillTotals } from '../../domain/calculations.js';
 import { getBillValidation } from '../../domain/validation.js';
 import { formatCurrency, pluralize } from '../../domain/formatters.js';
@@ -28,6 +31,9 @@ export default function EntryPage({ onNavigate }) {
   const sections = bill.sections || [];
   const disclosure = useEntryDisclosure(sections);
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const results = useMemo(() => searchEntries(sections, data.rates, query), [sections, data.rates, query]);
+  const shownSections = results || sections.map((section) => ({ section, areas: null }));
 
   const totals = useMemo(() => getBillTotals(bill, data.rates), [bill, data.rates]);
   const errors = useMemo(() => getBillValidation(bill, data.rates), [bill, data.rates]);
@@ -75,7 +81,22 @@ export default function EntryPage({ onNavigate }) {
         <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={addSection}>{sectionLabel}</Button>
       </Stack>
 
-      {sections.length > 1 && (
+      {counts.items > 0 && (
+        <TextField
+          type="search"
+          value={query}
+          placeholder="Search entries, notes or rooms"
+          onChange={setQuery}
+          helperText={results ? `${countSearchResults(results)} matching ${pluralize(countSearchResults(results), 'entry', 'entries')}` : undefined}
+          slotProps={{
+            input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> },
+            htmlInput: { 'aria-label': 'Search entries' }
+          }}
+          sx={{ mb: 1.5, bgcolor: 'background.paper' }}
+        />
+      )}
+
+      {!results && sections.length > 1 && (
         <SelectField
           label={`Go to ${sectionLabel.toLowerCase()}`}
           value=""
@@ -98,13 +119,14 @@ export default function EntryPage({ onNavigate }) {
       )}
 
       <Stack spacing={1.25}>
-        {sections.map((section, index) => (
+        {shownSections.map(({ section, areas }) => (
           <SectionPanel
             key={section.id}
             section={section}
             sections={sections}
-            index={index}
-            open={disclosure.isSectionOpen(section.id, index)}
+            index={sections.indexOf(section)}
+            visibleAreas={areas}
+            open={Boolean(results) || disclosure.isSectionOpen(section.id, sections.indexOf(section))}
             disclosure={disclosure}
             levelName={bill.secondLevelName}
             onAddArea={addArea}
@@ -112,6 +134,15 @@ export default function EntryPage({ onNavigate }) {
           />
         ))}
       </Stack>
+
+      {results && results.length === 0 && (
+        <EmptyState
+          compact
+          title="No matching entries"
+          description={`Nothing matches “${query.trim()}”.`}
+          action={<Button onClick={() => setQuery('')}>Clear search</Button>}
+        />
+      )}
 
       {sections.length > 0 && (
         <BottomActionBar>

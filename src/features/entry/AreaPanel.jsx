@@ -23,7 +23,10 @@ import EntryDialog from './EntryDialog.jsx';
 import SectionPickerDialog from './SectionPickerDialog.jsx';
 
 /** One area: its entries, the add/edit dialog, and copy/delete actions. */
-export default function AreaPanel({ section, area, index, sections, open, onToggle, onCopied }) {
+/** @param {object[] | null} visibleItems search results to show instead of every entry */
+export default function AreaPanel({ section, area, index, sections, open, visibleItems = null, onToggle, onCopied }) {
+  const searching = Boolean(visibleItems);
+  const shownItems = visibleItems || area.items;
   const { data, actions } = useBilling();
   const { entry } = actions;
   const confirm = useConfirm();
@@ -99,9 +102,10 @@ export default function AreaPanel({ section, area, index, sections, open, onTogg
           />
         </Stack>
 
-        {area.items.length > 0 ? (
+        {shownItems.length > 0 ? (
           <EntryList
-            items={area.items}
+            items={shownItems}
+            canMove={!searching}
             rates={data.rates}
             canCopy={sections.length > 1}
             onEdit={editEntry}

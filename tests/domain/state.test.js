@@ -58,3 +58,20 @@ test('filters bills by search, client, date range and status', () => {
   assert.deepEqual(run({ payment: 'unpaid' }), ['2']);
   assert.deepEqual(getBillClientNames([...bills, { client: ' Ravi ' }]), ['Meera', 'Ravi']);
 });
+
+test('sorts bills by date, number, amount and balance', async () => {
+  const { sortBills } = await import('../../src/domain/bill-filters.js');
+  const bills = [
+    { id: 'a', number: '2', date: '2026-02-01' },
+    { id: 'b', number: '10', date: '2026-03-01' },
+    { id: 'c', number: '1', date: '2026-01-01' }
+  ];
+  const totals = { a: { total: 500, balance: 0 }, b: { total: 100, balance: 100 }, c: { total: 900, balance: 50 } };
+  const run = (sort) => sortBills(bills, sort, (bill) => ({ totals: totals[bill.id] })).map((bill) => bill.id).join('');
+  assert.equal(run('newest'), 'bac');
+  assert.equal(run('oldest'), 'cab');
+  assert.equal(run('number'), 'cab');
+  assert.equal(run('amount'), 'cab');
+  assert.equal(run('balance'), 'bca');
+  assert.equal(run('unknown'), 'bac');
+});

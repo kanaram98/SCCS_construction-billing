@@ -18,7 +18,12 @@ import { sectionAnchorId } from './useEntryDisclosure.js';
 import GroupSummary from './GroupSummary.jsx';
 import AreaPanel from './AreaPanel.jsx';
 
-export default function SectionPanel({ section, sections, index, open, disclosure, levelName, onAddArea, onCopied }) {
+/**
+ * @param {Array<{ area, items }> | null} visibleAreas search results to show instead of every area
+ */
+export default function SectionPanel({ section, sections, index, open, disclosure, levelName, visibleAreas = null, onAddArea, onCopied }) {
+  const searching = Boolean(visibleAreas);
+  const shownAreas = visibleAreas || section.areas.map((area) => ({ area, items: null }));
   const { data, actions } = useBilling();
   const { entry } = actions;
   const confirm = useConfirm();
@@ -66,8 +71,9 @@ export default function SectionPanel({ section, sections, index, open, disclosur
         </Stack>
 
         <Stack spacing={1}>
-          {section.areas.map((area, areaIndex) => {
-            const areaOpen = disclosure.isAreaOpen(area.id, areaIndex);
+          {shownAreas.map(({ area, items }) => {
+            const areaIndex = section.areas.indexOf(area);
+            const areaOpen = searching || disclosure.isAreaOpen(area.id, areaIndex);
             return (
               <AreaPanel
                 key={area.id}
@@ -76,13 +82,14 @@ export default function SectionPanel({ section, sections, index, open, disclosur
                 index={areaIndex}
                 sections={sections}
                 open={areaOpen}
+                visibleItems={items}
                 onToggle={() => disclosure.setAreaOpen(area.id, !areaOpen)}
                 onCopied={onCopied}
               />
             );
           })}
         </Stack>
-        {section.areas.length === 0 && (
+        {!searching && section.areas.length === 0 && (
           <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>No areas yet. Add one to start measuring.</Typography>
         )}
 

@@ -31,3 +31,29 @@ export function getBillClientNames(bills) {
   return [...new Set(bills.map((bill) => text(bill.client)).filter(Boolean))]
     .sort((left, right) => left.localeCompare(right));
 }
+
+export const BILL_SORTS = Object.freeze({
+  newest: 'Newest first',
+  oldest: 'Oldest first',
+  number: 'Bill number',
+  amount: 'Highest amount',
+  balance: 'Highest balance due'
+});
+
+const billNumber = (bill) => Number.parseInt(bill.number, 10) || 0;
+
+/**
+ * Sorts bills for the dashboard.
+ * @param {(bill) => { totals: { total: number, balance: number } }} getSummary cached per-bill totals
+ */
+export function sortBills(bills, sort, getSummary) {
+  const byDate = (left, right) => String(left.date).localeCompare(String(right.date)) || billNumber(left) - billNumber(right);
+  const comparators = {
+    newest: (left, right) => byDate(right, left),
+    oldest: byDate,
+    number: (left, right) => billNumber(left) - billNumber(right),
+    amount: (left, right) => getSummary(right).totals.total - getSummary(left).totals.total,
+    balance: (left, right) => getSummary(right).totals.balance - getSummary(left).totals.balance
+  };
+  return [...bills].sort(comparators[sort] || comparators.newest);
+}

@@ -7,3 +7,4 @@ export { default as ActionMenu } from './ActionMenu.jsx';
 export { default as BottomActionBar } from './BottomActionBar.jsx';
 export { FeedbackProvider, useNotify, useConfirm } from './FeedbackProvider.jsx';
 export { default as IssuesAlert } from './IssuesAlert.jsx';
+export { default as ChoiceMenu } from './ChoiceMenu.jsx';

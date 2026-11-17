@@ -14,7 +14,7 @@ import { getItemQuantity, getLineAmount } from '../../domain/calculations.js';
 import { describeMeasurement, resolveRate } from '../../domain/rates.js';
 
 /** Entries in one area as tappable cards (tap to edit). */
-export default function EntryList({ items, rates, canCopy, onEdit, onDelete, onCopy, onMove }) {
+export default function EntryList({ items, rates, canCopy, canMove = true, onEdit, onDelete, onCopy, onMove }) {
   return (
     <Stack spacing={1}>
       {items.map((item, index) => {
@@ -44,8 +44,8 @@ export default function EntryList({ items, rates, canCopy, onEdit, onDelete, onC
                 label={`Actions for ${rate.name}`}
                 items={[
                   { label: 'Edit', icon: <EditIcon fontSize="small" />, onClick: () => onEdit(item) },
-                  { label: 'Move up', icon: <ArrowUpwardIcon fontSize="small" />, onClick: () => onMove(item.id, -1), disabled: index === 0 },
-                  { label: 'Move down', icon: <ArrowDownwardIcon fontSize="small" />, onClick: () => onMove(item.id, 1), disabled: index === items.length - 1 },
+                  { label: 'Move up', icon: <ArrowUpwardIcon fontSize="small" />, onClick: () => onMove(item.id, -1), disabled: index === 0, hidden: !canMove },
+                  { label: 'Move down', icon: <ArrowDownwardIcon fontSize="small" />, onClick: () => onMove(item.id, 1), disabled: index === items.length - 1, hidden: !canMove },
                   { label: 'Copy to section…', icon: <ContentCopyIcon fontSize="small" />, onClick: () => onCopy(item.id), disabled: !canCopy },
                   { label: 'Delete', icon: <DeleteIcon fontSize="small" />, onClick: () => onDelete(item), danger: true }
                 ]}
