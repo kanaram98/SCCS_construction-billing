@@ -652,5 +652,10 @@ export default {
   '{count} working': '{count} काम पर',
   '{present} present': '{present} हाज़िर',
   '{units} · {days} days · {absent} absent': '{units} · {days} दिन · {absent} ग़ैरहाज़िर',
-  'Amount paid': 'दिया गया'
+  'Amount paid': 'दिया गया',
+  'Not marked': 'हाज़िरी नहीं लगी',
+  'All workers': 'सभी मज़दूर',
+  'Mark today’s attendance': 'आज की हाज़िरी लगाएँ',
+  'Tap a day to choose A, ½P, 1P, 1½P or 2P.': 'A, ½P, 1P, 1½P या 2P चुनने के लिए दिन पर दबाएँ।',
+  'Tap a day to fill attendance. Green = everyone marked, yellow = some marked.': 'हाज़िरी भरने के लिए दिन पर दबाएँ। हरा = सबकी लगी, पीला = कुछ की लगी।'
 };

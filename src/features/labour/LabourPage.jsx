@@ -13,7 +13,6 @@ import WorkersTab from './WorkersTab.jsx';
 export default function LabourPage() {
   const { data } = useBilling();
   const [tab, setTab] = useState(() => (data.labour.workers.length ? 'attendance' : 'workers'));
-  const [date, setDate] = useState(localToday);
   const [month, setMonth] = useState(() => monthOf(localToday()));
 
   return (
@@ -24,7 +23,7 @@ export default function LabourPage() {
         <Tab value="report" label={t('Monthly report')} />
         <Tab value="workers" label={t('Workers')} />
       </Tabs>
-      {tab === 'attendance' && <AttendanceTab date={date} onDateChange={setDate} onAddWorkers={() => setTab('workers')} />}
+      {tab === 'attendance' && <AttendanceTab month={month} onMonthChange={setMonth} onAddWorkers={() => setTab('workers')} />}
       {tab === 'report' && <ReportTab month={month} onMonthChange={setMonth} />}
       {tab === 'workers' && <WorkersTab />}
     </section>

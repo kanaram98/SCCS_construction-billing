@@ -8,8 +8,6 @@ import Grid from '@mui/material/Grid';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import DeleteIcon from '@mui/icons-material/DeleteOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdfOutlined';
@@ -17,24 +15,14 @@ import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import { EmptyState, StatCard, useNotify } from '../../components/ui';
 import { useBilling } from '../../state/BillingContext.jsx';
 import { useUndoable } from '../../hooks/useUndoable.js';
-import { daysOfMonth, localToday, monthLabel, monthOf, monthReport, registerCell, shiftMonth, workerBalance, workerMonthMessage } from '../../domain/labour.js';
+import { daysOfMonth, monthReport, registerCell, workerBalance, workerMonthMessage } from '../../domain/labour.js';
 import { formatCurrency } from '../../domain/formatters.js';
 import { whatsappNumber, whatsappUrl } from '../../domain/whatsapp.js';
 import { isShareCancelled } from '../../services/files.js';
 import { getLanguage, makeTranslator, tr as t } from '../../i18n/translate.js';
 import LabourPaymentDialog from './LabourPaymentDialog.jsx';
 import LabourReportDocument from './LabourReportDocument.jsx';
-
-function MonthBar({ month, onChange }) {
-  const current = monthOf(localToday());
-  return (
-    <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-      <IconButton aria-label={t('Previous month')} onClick={() => onChange(shiftMonth(month, -1))}><ChevronLeftIcon /></IconButton>
-      <Typography variant="h6" component="h2">{monthLabel(month, getLanguage())}</Typography>
-      <IconButton aria-label={t('Next month')} onClick={() => onChange(shiftMonth(month, 1))} disabled={month >= current}><ChevronRightIcon /></IconButton>
-    </Stack>
-  );
-}
+import MonthBar from './MonthBar.jsx';
 
 /** Small attendance calendar for one worker's month. */
 function MonthGrid({ month, marks }) {

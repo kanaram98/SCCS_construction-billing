@@ -116,6 +116,24 @@ export function daysOfMonth(month) {
   return Array.from({ length: count }, (_unused, index) => `${month}-${pad(index + 1)}`);
 }
 
+/** Weekday of the 1st of a month (0 = Sunday), for laying out a calendar. */
+export function firstWeekday(month) {
+  const [year, value] = month.split('-').map(Number);
+  return new Date(year, value - 1, 1).getDay();
+}
+
+/** Short weekday names starting Sunday, e.g. ['S', 'M', …] / ['र', 'सो', …]. */
+export function weekdayNames(language = 'en') {
+  return Array.from({ length: 7 }, (_unused, index) => new Date(2023, 0, 1 + index)
+    .toLocaleDateString(language === 'hi' ? 'hi-IN' : 'en-IN', { weekday: 'narrow' }));
+}
+
+/** "Tue, 17 Nov" / "मंगल, 17 नव॰". */
+export function dayLabel(isoDate, language = 'en') {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString(language === 'hi' ? 'hi-IN' : 'en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
 // ── Attendance ────────────────────────────────────────────────────────
 
 /** Returns attendance with one worker's mark for a day set (or cleared with `units === null`). */

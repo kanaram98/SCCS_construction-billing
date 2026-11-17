@@ -1,10 +1,13 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import ButtonBase from '@mui/material/ButtonBase';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
@@ -13,32 +16,80 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import EngineeringIcon from '@mui/icons-material/EngineeringOutlined';
-import { EmptyState, TextField } from '../../components/ui';
+import EventAvailableIcon from '@mui/icons-material/EventAvailableOutlined';
+import { EmptyState, ResponsiveDialog } from '../../components/ui';
 import { useBilling } from '../../state/BillingContext.jsx';
 import { useUndoable } from '../../hooks/useUndoable.js';
-import { ATTENDANCE_UNITS, daySummary, formatUnits, localToday, shiftDate } from '../../domain/labour.js';
+import {
+  ATTENDANCE_UNITS, dayLabel, daySummary, daysOfMonth, firstWeekday, formatUnits,
+  localToday, monthOf, shiftDate, weekdayNames, workerMonth
+} from '../../domain/labour.js';
 import { formatCurrency } from '../../domain/formatters.js';
-import { tr as t } from '../../i18n/translate.js';
+import { getLanguage, tr as t } from '../../i18n/translate.js';
+import MonthBar from './MonthBar.jsx';
 
 const UNIT_LABELS = { 0: 'A', 0.5: '½P', 1: '1P', 1.5: '1½P', 2: '2P' };
+const unitLabel = (units) => UNIT_LABELS[units] ?? formatUnits(units);
 
-/** Date picker with previous / next day. */
-function DateBar({ date, onChange }) {
-  const today = localToday();
+/** Workers to show on a day: everyone working, plus anyone who left but was marked that day. */
+function workersOn(labour, date) {
+  const marks = labour.attendance[date] || {};
+  return labour.workers.filter((worker) => worker.active || marks[worker.id]);
+}
+
+// ── Calendar ──────────────────────────────────────────────────────────
+
+/** Tile colours: every worker marked, some marked, or absent (single-worker view). */
+const TONES = {
+  full: { bgcolor: 'success.main', color: 'success.contrastText', borderColor: 'success.main' },
+  partial: { bgcolor: 'warning.light', color: 'common.black', borderColor: 'warning.main' },
+  absent: { bgcolor: 'error.main', color: 'error.contrastText', borderColor: 'error.main' },
+  empty: { bgcolor: 'transparent', color: 'text.primary', borderColor: 'divider' }
+};
+
+function DayTile({ date, today, tone, value, ariaLabel, onClick }) {
+  const future = date > today;
   return (
-    <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1.5 }}>
-      <IconButton aria-label={t('Previous day')} onClick={() => onChange(shiftDate(date, -1))}><ChevronLeftIcon /></IconButton>
-      <Box sx={{ flex: 1 }}>
-        <TextField label={t('Date')} type="date" value={date} onChange={(value) => value && onChange(value)} />
-      </Box>
-      <IconButton aria-label={t('Next day')} onClick={() => onChange(shiftDate(date, 1))} disabled={date >= today}><ChevronRightIcon /></IconButton>
-      {date !== today && <Chip label={t('Today')} onClick={() => onChange(today)} color="primary" variant="outlined" />}
-    </Stack>
+    <ButtonBase
+      onClick={onClick}
+      disabled={future}
+      aria-label={ariaLabel}
+      sx={{
+        ...TONES[tone],
+        flexDirection: 'column',
+        border: 1,
+        borderRadius: '10px',
+        minHeight: 46,
+        py: 0.5,
+        opacity: future ? 0.35 : 1,
+        outline: date === today ? '2px solid' : 'none',
+        outlineColor: 'primary.main',
+        outlineOffset: 1
+      }}
+    >
+      <Typography variant="caption" sx={{ lineHeight: 1.1, opacity: 0.8 }}>{Number(date.slice(8))}</Typography>
+      <Typography variant="caption" sx={{ fontWeight: 700, lineHeight: 1.3, minHeight: '1.3em' }}>{value}</Typography>
+    </ButtonBase>
   );
 }
 
+function MonthCalendar({ month, renderTile }) {
+  const names = weekdayNames(getLanguage());
+  const blanks = firstWeekday(month);
+  return (
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 0.5 }}>
+      {names.map((name, index) => (
+        <Typography key={index} variant="caption" color="text.secondary" sx={{ textAlign: 'center', fontWeight: 600 }}>{name}</Typography>
+      ))}
+      {Array.from({ length: blanks }, (_unused, index) => <span key={`blank-${index}`} />)}
+      {daysOfMonth(month).map(renderTile)}
+    </Box>
+  );
+}
+
+// ── Day sheet ─────────────────────────────────────────────────────────
+
 function WorkerRow({ worker, mark, onMark }) {
-  const value = mark ? String(mark.units) : null;
   return (
     <Box sx={{ py: 1.25, borderBottom: 1, borderColor: 'divider', '&:last-child': { borderBottom: 0 } }}>
       <Stack direction="row" sx={{ alignItems: 'baseline', justifyContent: 'space-between', mb: 0.75 }}>
@@ -51,7 +102,7 @@ function WorkerRow({ worker, mark, onMark }) {
         exclusive
         fullWidth
         size="small"
-        value={value}
+        value={mark ? String(mark.units) : null}
         aria-label={t('Attendance for {name}', { name: worker.name })}
         onChange={(_event, next) => onMark(next === null ? null : Number(next))}
       >
@@ -60,7 +111,6 @@ function WorkerRow({ worker, mark, onMark }) {
             key={units}
             value={String(units)}
             aria-label={`${worker.name} ${formatUnits(units)}`}
-            color={units === 0 ? 'error' : 'success'}
             sx={{
               fontWeight: 700,
               py: 0.75,
@@ -78,17 +128,71 @@ function WorkerRow({ worker, mark, onMark }) {
   );
 }
 
-/** Mark today's attendance for every working labourer. */
-export default function AttendanceTab({ date, onDateChange, onAddWorkers }) {
+/** Everyone's attendance for one day, with ◀ ▶ to move between days of the month. */
+function DaySheet({ date, month, onDateChange, onClose }) {
   const { data, actions } = useBilling();
   const undoable = useUndoable();
   const { labour } = data;
-  const workers = useMemo(() => labour.workers.filter((worker) => worker.active), [labour.workers]);
-  const marks = labour.attendance[date] || {};
-  const summary = daySummary(labour, date);
+  const today = localToday();
+  const workers = date ? workersOn(labour, date) : [];
+  const marks = (date && labour.attendance[date]) || {};
+  const summary = date ? daySummary(labour, date) : null;
   const unmarked = workers.filter((worker) => !marks[worker.id]);
+  const previous = date && shiftDate(date, -1);
+  const next = date && shiftDate(date, 1);
 
-  if (!workers.length) {
+  return (
+    <ResponsiveDialog open={Boolean(date)} title={date ? dayLabel(date, getLanguage()) : ''} onClose={onClose} maxWidth="xs">
+      {date && (
+        <>
+          <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+            <IconButton aria-label={t('Previous day')} disabled={monthOf(previous) !== month} onClick={() => onDateChange(previous)}><ChevronLeftIcon /></IconButton>
+            <Typography variant="body2" sx={{ textAlign: 'center' }}>
+              <strong>{t('{present} present', { present: summary.present })}</strong>
+              {' · '}{formatUnits(summary.units)}{' · '}{formatCurrency(summary.cost)}
+            </Typography>
+            <IconButton aria-label={t('Next day')} disabled={monthOf(next) !== month || next > today} onClick={() => onDateChange(next)}><ChevronRightIcon /></IconButton>
+          </Stack>
+          <Stack direction="row" spacing={1} sx={{ justifyContent: 'center', mb: 1 }}>
+            {unmarked.length > 0 && (
+              <Button size="small" variant="outlined" startIcon={<DoneAllIcon />} onClick={() => actions.labour.markAll(date, unmarked, 1)}>
+                {summary.marked > 0 ? t('Rest 1P') : t('All 1P')}
+              </Button>
+            )}
+            {summary.marked > 0 && (
+              <Button size="small" color="inherit" onClick={() => undoable(t('Day cleared.'), () => actions.labour.markAll(date, workers, null))}>
+                {t('Clear')}
+              </Button>
+            )}
+          </Stack>
+          {workers.map((worker) => (
+            <WorkerRow key={worker.id} worker={worker} mark={marks[worker.id]} onMark={(units) => actions.labour.mark(date, worker, units)} />
+          ))}
+          <Button fullWidth variant="contained" onClick={onClose} sx={{ mt: 2 }}>{t('Done')}</Button>
+        </>
+      )}
+    </ResponsiveDialog>
+  );
+}
+
+// ── Tab ───────────────────────────────────────────────────────────────
+
+/**
+ * Month calendar of attendance. "All workers": tap a day to fill everyone's
+ * attendance. One worker selected: tap a day to pick their mark directly.
+ */
+export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
+  const { data, actions } = useBilling();
+  const { labour } = data;
+  const today = localToday();
+  const [workerId, setWorkerId] = useState('all');
+  const [openDate, setOpenDate] = useState(null);
+  const [picker, setPicker] = useState(null); // { anchor, date } in single-worker view
+  const active = useMemo(() => labour.workers.filter((worker) => worker.active), [labour.workers]);
+  const worker = labour.workers.find((entry) => entry.id === workerId) || null;
+  const workerSummary = worker ? workerMonth(labour, worker.id, month) : null;
+
+  if (!labour.workers.length) {
     return (
       <EmptyState
         icon={<EngineeringIcon fontSize="large" />}
@@ -99,44 +203,103 @@ export default function AttendanceTab({ date, onDateChange, onAddWorkers }) {
     );
   }
 
+  function allTile(date) {
+    const workers = workersOn(labour, date);
+    const summary = daySummary(labour, date);
+    const tone = !summary.marked ? 'empty' : summary.marked >= workers.length ? 'full' : 'partial';
+    return (
+      <DayTile
+        key={date}
+        date={date}
+        today={today}
+        tone={tone}
+        value={summary.marked ? formatUnits(summary.units) : ''}
+        ariaLabel={`${dayLabel(date, getLanguage())}: ${summary.marked ? t('{present} present', { present: summary.present }) : t('Not marked')}`}
+        onClick={() => setOpenDate(date)}
+      />
+    );
+  }
+
+  function workerTile(date) {
+    const mark = labour.attendance[date]?.[worker.id];
+    const tone = !mark ? 'empty' : mark.units === 0 ? 'absent' : 'full';
+    return (
+      <DayTile
+        key={date}
+        date={date}
+        today={today}
+        tone={tone}
+        value={mark ? unitLabel(mark.units) : ''}
+        ariaLabel={`${dayLabel(date, getLanguage())}: ${mark ? formatUnits(mark.units) : t('Not marked')}`}
+        onClick={(event) => setPicker({ anchor: event.currentTarget, date })}
+      />
+    );
+  }
+
+  function pick(units) {
+    actions.labour.mark(picker.date, worker, units);
+    setPicker(null);
+  }
+
+  const showWorkers = [...active, ...(worker && !worker.active ? [worker] : [])];
+
   return (
     <>
-      <DateBar date={date} onChange={onDateChange} />
+      <MonthBar month={month} onChange={onMonthChange} />
+
+      <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', pb: 1, mb: 1, mx: -0.5, px: 0.5 }}>
+        <Chip label={t('All workers')} color={workerId === 'all' ? 'primary' : 'default'} variant={workerId === 'all' ? 'filled' : 'outlined'} onClick={() => setWorkerId('all')} />
+        {showWorkers.map((entry) => (
+          <Chip
+            key={entry.id}
+            label={entry.name}
+            color={workerId === entry.id ? 'primary' : 'default'}
+            variant={workerId === entry.id ? 'filled' : 'outlined'}
+            onClick={() => setWorkerId(entry.id)}
+          />
+        ))}
+      </Stack>
+
       <Card sx={{ mb: 2 }}>
-        <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-          <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-            <Typography variant="body2">
-              <strong>{t('{present} present', { present: summary.present })}</strong>
-              {' · '}{formatUnits(summary.units)}{' · '}{formatCurrency(summary.cost)}
-            </Typography>
-            <Stack direction="row" spacing={1}>
-              {unmarked.length > 0 && (
-                <Button size="small" startIcon={<DoneAllIcon />} onClick={() => actions.labour.markAll(date, unmarked, 1)}>
-                  {summary.marked > 0 ? t('Rest 1P') : t('All 1P')}
-                </Button>
-              )}
-              {summary.marked > 0 && (
-                <Button size="small" color="inherit" onClick={() => undoable(t('Day cleared.'), () => actions.labour.markAll(date, workers, null))}>
-                  {t('Clear')}
-                </Button>
-              )}
-            </Stack>
-          </Stack>
-          {unmarked.length > 0 && summary.marked > 0 && (
-            <Typography variant="caption" color="warning.main">{t('{count} not marked yet', { count: unmarked.length })}</Typography>
-          )}
+        <CardContent sx={{ p: 1.25, '&:last-child': { pb: 1.25 } }}>
+          <MonthCalendar month={month} renderTile={worker ? workerTile : allTile} />
         </CardContent>
       </Card>
-      <Card>
-        <CardContent sx={{ py: 0.5, '&:last-child': { pb: 0.5 } }}>
-          {workers.map((worker) => (
-            <WorkerRow key={worker.id} worker={worker} mark={marks[worker.id]} onMark={(units) => actions.labour.mark(date, worker, units)} />
-          ))}
-        </CardContent>
-      </Card>
-      <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 1 }}>
-        {t('A = absent · ½P = half day · 1P = full day · 1½P = day and a half · 2P = double. Tap again to clear.')}
+
+      {worker ? (
+        <Typography variant="body2" sx={{ mb: 1 }}>
+          <strong>{worker.name}</strong>{': '}
+          {t('{units} · {days} days · {absent} absent', { units: formatUnits(workerSummary.units), days: workerSummary.days, absent: workerSummary.absent })}
+          {' · '}{formatCurrency(workerSummary.earned)}
+        </Typography>
+      ) : (
+        month === monthOf(today) && (
+          <Button fullWidth variant="contained" startIcon={<EventAvailableIcon />} onClick={() => setOpenDate(today)} sx={{ mb: 1 }}>
+            {t('Mark today’s attendance')}
+          </Button>
+        )
+      )}
+      <Typography variant="caption" color="text.secondary" component="p">
+        {worker
+          ? t('Tap a day to choose A, ½P, 1P, 1½P or 2P.')
+          : t('Tap a day to fill attendance. Green = everyone marked, yellow = some marked.')}
       </Typography>
+
+      <DaySheet date={openDate} month={month} onDateChange={setOpenDate} onClose={() => setOpenDate(null)} />
+
+      <Menu anchorEl={picker?.anchor} open={Boolean(picker)} onClose={() => setPicker(null)}>
+        {ATTENDANCE_UNITS.map((units) => (
+          <MenuItem
+            key={units}
+            selected={labour.attendance[picker?.date]?.[worker?.id]?.units === units}
+            onClick={() => pick(units)}
+            sx={{ fontWeight: 700, color: units === 0 ? 'error.main' : 'inherit' }}
+          >
+            {UNIT_LABELS[units]}
+          </MenuItem>
+        ))}
+        <MenuItem onClick={() => pick(null)} sx={{ color: 'text.secondary' }}>{t('Clear')}</MenuItem>
+      </Menu>
     </>
   );
 }

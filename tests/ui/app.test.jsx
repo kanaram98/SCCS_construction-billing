@@ -196,12 +196,19 @@ describe('Labour screen', () => {
     expect(screen.getByText('Ramesh')).toBeTruthy();
 
     await user.click(screen.getByRole('tab', { name: 'Attendance' }));
-    await user.click(await screen.findByRole('button', { name: 'Ramesh 2P' }));
-    expect(await screen.findByText('1 present')).toBeTruthy();
+    await user.click(await screen.findByRole('button', { name: 'Mark today’s attendance' }));
+    const day = await screen.findByRole('dialog');
+    await user.click(within(day).getByRole('button', { name: 'Ramesh 2P' }));
+    expect(await within(day).findByText('1 present')).toBeTruthy();
     const today = Object.keys(savedState().labour.attendance)[0];
     expect(savedState().labour.attendance[today]).toEqual({ [savedState().labour.workers[0].id]: { units: 2, wage: 600 } });
 
-    await user.click(screen.getByRole('button', { name: 'Ramesh 1.5P' }));
+    await user.click(within(day).getByRole('button', { name: 'Ramesh 1.5P' }));
+    await user.click(within(day).getByRole('button', { name: 'Done' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    // Single-worker view: the calendar shows the worker's mark.
+    await user.click(screen.getByRole('button', { name: 'Ramesh' }));
+    expect(screen.getByRole('button', { name: /: 1.5P$/ })).toBeTruthy();
     await user.click(screen.getByRole('tab', { name: 'Monthly report' }));
     expect(await screen.findByText('1.5P · 1 days · 0 absent')).toBeTruthy();
     expect(screen.getAllByText('₹900').length).toBeGreaterThan(0);
