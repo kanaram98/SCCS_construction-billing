@@ -13,6 +13,7 @@ import MainNav from './components/layout/MainNav.jsx';
 import AppNotices from './components/layout/AppNotices.jsx';
 import HomePage from './features/home/HomePage.jsx';
 import LanguageGate from './i18n/LanguageGate.jsx';
+import ScreenErrorBoundary from './components/layout/ScreenErrorBoundary.jsx';
 import WelcomeDialog from './features/onboarding/WelcomeDialog.jsx';
 import { tr as t } from './i18n/translate.js';
 
@@ -90,9 +91,11 @@ function AppShell({ view, setView }) {
       >
         <Container maxWidth="md" sx={{ px: { xs: 1.5, sm: 3 } }}>
           <AppNotices storageError={storageError} isInstalled={installer.isInstalled} installMessage={installer.message} />
-          <Suspense fallback={<LinearProgress sx={{ my: 2 }} aria-label={t('Loading')} />}>
-            <Page onNavigate={navigate} />
-          </Suspense>
+          <ScreenErrorBoundary resetKey={view} onGoHome={() => navigate(VIEWS.home)}>
+            <Suspense fallback={<LinearProgress sx={{ my: 2 }} aria-label={t('Loading')} />}>
+              <Page onNavigate={navigate} />
+            </Suspense>
+          </ScreenErrorBoundary>
           <Typography className="no-print" variant="caption" color="text.secondary" component="footer" sx={{ display: 'block', textAlign: 'center', mt: 3 }}>
             {t('Bills are stored on this device. Export a PDF to share or archive a copy.')}
           </Typography>

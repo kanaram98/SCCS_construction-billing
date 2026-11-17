@@ -504,6 +504,10 @@ export default {
 
   // ── Home, settings, redesigned entry ─────────────────────────────
   'Home': 'होम',
+  'Something went wrong on this screen.': 'इस स्क्रीन पर कुछ गड़बड़ हो गई।',
+  'Your bills are safe. Reload the app, or go to Home.': 'आपके बिल सुरक्षित हैं। ऐप फिर से खोलें या होम पर जाएँ।',
+  'Reload': 'फिर से खोलें',
+  'Go to Home': 'होम पर जाएँ',
   'Namaste': 'नमस्ते',
   'Namaste, {name}': 'नमस्ते, {name}',
   'Received': 'मिला भुगतान',
