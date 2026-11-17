@@ -1,0 +1,76 @@
+import { DEFAULT_RATES } from './rates.js';
+import { createBill } from './factories.js';
+import { DEFAULT_SIGNATURE_LAYOUT, normalizeSignatureLayout } from './signature-layout.js';
+import { createDefaultPrintSettings, normalizePrintSettings } from './print-settings.js';
+
+/**
+ * Shape of the persisted application state.
+ * @typedef {{
+ *   bills: object[], activeBillId: string, rates: object[], clients: object[],
+ *   firm: object, templates: object[], printSettings: object
+ * }} AppState
+ */
+
+export function createDefaultFirm() {
+  return {
+    name: '',
+    address: '',
+    phone: '',
+    gstin: '',
+    logo: '',
+    signature: '',
+    signatureLayout: { ...DEFAULT_SIGNATURE_LAYOUT }
+  };
+}
+
+/** @returns {AppState} */
+export function createInitialState() {
+  const bill = createBill();
+  return {
+    bills: [bill],
+    activeBillId: bill.id,
+    rates: DEFAULT_RATES.map((rate) => ({ ...rate })),
+    clients: [],
+    firm: createDefaultFirm(),
+    templates: [],
+    printSettings: createDefaultPrintSettings()
+  };
+}
+
+const arrayOr = (value, fallback = []) => Array.isArray(value) ? value : fallback;
+
+/**
+ * Normalises previously saved state, filling in fields added in later versions.
+ * Returns `null` when the data has no bills to restore.
+ * @returns {AppState | null}
+ */
+export function hydrateState(saved, { isLegacy = false } = {}) {
+  if (!saved || !Array.isArray(saved.bills) || !saved.bills.length) return null;
+  const defaults = createInitialState();
+  const firm = { ...defaults.firm, ...saved.firm };
+
+  // Before print settings existed, the signature x offset was measured from a narrower footer box.
+  if (!isLegacy && !saved.printSettings && saved.firm?.signatureLayout) {
+    firm.signatureLayout = {
+      ...saved.firm.signatureLayout,
+      x: Number(saved.firm.signatureLayout.x || 0) + 28
+    };
+  }
+  firm.signatureLayout = normalizeSignatureLayout(firm.signatureLayout);
+
+  const activeExists = saved.bills.some((bill) => bill.id === saved.activeBillId);
+  return {
+    ...defaults,
+    ...saved,
+    rates: arrayOr(saved.rates, defaults.rates),
+    clients: arrayOr(saved.clients),
+    firm,
+    templates: isLegacy ? [] : arrayOr(saved.templates),
+    printSettings: normalizePrintSettings(saved.printSettings, saved.pdfDocuments, firm.signatureLayout),
+    activeBillId: activeExists ? saved.activeBillId : saved.bills[0].id
+  };
+}
+
+export function selectActiveBill(state) {
+  return state.bills.find((bill) => bill.id === state.activeBillId) || state.bills[0];
+}

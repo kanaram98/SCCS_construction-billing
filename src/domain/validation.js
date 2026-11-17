@@ -1,0 +1,141 @@
+import { feetInchesError, parseFeetInches } from './measurements.js';
+import { getDimensionFields, resolveRate } from './rates.js';
+import { getBillTotals } from './calculations.js';
+import { text } from './formatters.js';
+
+/**
+ * Checks one dimension value.
+ * @returns {{ kind: 'format', detail: string } | { kind: 'required' } | { kind: 'positive' } | null}
+ */
+export function getDimensionIssue(value, required) {
+  const formatError = feetInchesError(value);
+  if (formatError) return { kind: 'format', detail: formatError };
+  if (required && !text(value)) return { kind: 'required' };
+  if (required && parseFeetInches(value) <= 0) return { kind: 'positive' };
+  return null;
+}
+
+/** Short message shown beside a single dimension input. */
+export function describeDimensionIssue(issue) {
+  if (!issue) return null;
+  if (issue.kind === 'format') return issue.detail;
+  return issue.kind === 'required' ? 'Required' : 'Must be greater than zero';
+}
+
+/**
+ * Structured problems with an item's rate and measurements. Shared by the
+ * entry form and whole-bill validation, which word the messages differently.
+ */
+export function getItemIssues(values, rate) {
+  const issues = [];
+  if (!text(rate.name || values.name)) issues.push({ code: 'name' });
+  if (!text(rate.unit || values.unit)) issues.push({ code: 'unit' });
+  const rateValue = Number(rate.rate);
+  if (!Number.isFinite(rateValue) || rateValue < 0) issues.push({ code: 'rate' });
+
+  const quantity = Number(rate.type === 'direct' ? values.quantity : values.count);
+  if (!Number.isFinite(quantity) || quantity <= 0) issues.push({ code: 'quantity' });
+
+  getDimensionFields(rate.type).forEach((field) => {
+    const issue = getDimensionIssue(values[field.key], field.required);
+    if (issue) issues.push({ code: 'dimension', label: field.label, ...issue });
+  });
+  return issues;
+}
+
+const ENTRY_MESSAGES = {
+  name: () => 'Enter a work item name.',
+  unit: () => 'Enter a unit.',
+  rate: () => 'Rate must be zero or greater.',
+  quantity: () => 'Quantity must be greater than zero.',
+  dimension: (issue) => ({
+    format: `${issue.label}: ${issue.detail}`,
+    required: `${issue.label} is required.`,
+    positive: `${issue.label} must be greater than zero.`
+  })[issue.kind]
+};
+
+/** Validates the add/edit entry form. */
+export function validateEntry(entry, rate) {
+  if (!rate) return ['Choose a work item.'];
+  return getItemIssues(entry, rate).map((issue) => ENTRY_MESSAGES[issue.code](issue));
+}
+
+function describeBillItemIssue(issue, name) {
+  if (issue.code === 'name') return 'Work item: enter an item name.';
+  if (issue.code === 'unit') return `${name}: enter a unit.`;
+  if (issue.code === 'rate') return `${name}: rate must be zero or greater.`;
+  if (issue.code === 'quantity') return `${name}: quantity must be greater than zero.`;
+  const label = issue.label.toLowerCase();
+  return {
+    format: `${name}: ${label} — ${issue.detail}`,
+    required: `${name}: enter ${label}.`,
+    positive: `${name}: ${label} must be greater than zero.`
+  }[issue.kind];
+}
+
+/** Field-level errors for the bill's discount, GST and advance amounts. */
+export function getAmountErrors(bill, rates, totals = getBillTotals(bill, rates)) {
+  const errors = { discount: '', taxRate: '', advance: '' };
+  const discount = Number(bill.discount);
+  const taxRate = Number(bill.taxRate);
+  const advance = Number(bill.advance);
+
+  if (text(bill.discount) && (!Number.isFinite(discount) || discount < 0)) {
+    errors.discount = 'Discount must be zero or greater.';
+  } else if (discount > totals.subtotal) {
+    errors.discount = 'Discount cannot exceed the subtotal.';
+  }
+  if (text(bill.taxRate) && (!Number.isFinite(taxRate) || taxRate < 0 || taxRate > 100)) {
+    errors.taxRate = 'GST must be between 0 and 100%.';
+  }
+  if (text(bill.advance) && (!Number.isFinite(advance) || advance < 0)) {
+    errors.advance = 'Advance must be zero or greater.';
+  } else if (advance > totals.total) {
+    errors.advance = 'Advance cannot exceed the bill total.';
+  }
+  return errors;
+}
+
+/** All calculation problems in a bill: entries, then amounts. */
+export function getBillValidation(bill, rates) {
+  const errors = [];
+  let itemCount = 0;
+  (bill.sections || []).forEach((section) => (section.areas || []).forEach((area) =>
+    (area.items || []).forEach((item) => {
+      itemCount += 1;
+      const rate = resolveRate(item, rates);
+      const name = text(rate.name || item.name) || 'Work item';
+      getItemIssues(item, rate).forEach((issue) => errors.push(describeBillItemIssue(issue, name)));
+    })));
+
+  if (itemCount === 0) errors.push('Add at least one work item before exporting a bill.');
+  const amountErrors = getAmountErrors(bill, rates);
+  return [...errors, ...Object.values(amountErrors).filter(Boolean)];
+}
+
+export function isBillNumberTaken(bills, bill) {
+  return bills.some((entry) => entry.id !== bill.id && text(entry.number) === text(bill.number));
+}
+
+/** Required project details for export, keyed by field. */
+export function getRequiredDetailErrors(bill, firm) {
+  return {
+    projectName: text(bill.projectName) ? '' : 'Project or site name is required for PDF export.',
+    client: text(bill.client) ? '' : 'Client name is required for PDF export.',
+    firmName: text(firm?.name) ? '' : 'Firm name is required for PDF export.'
+  };
+}
+
+/** Everything that blocks printing or exporting the active bill. */
+export function getExportErrors({ bill, bills, rates, firm, billErrors = getBillValidation(bill, rates) }) {
+  const required = getRequiredDetailErrors(bill, firm);
+  return [
+    ...billErrors,
+    ...(!text(bill.number) ? ['Enter a bill number in Project details.'] : []),
+    ...(isBillNumberTaken(bills, bill) ? ['Bill number is already used by another bill.'] : []),
+    ...(required.projectName ? ['Enter a project or site name in Project details.'] : []),
+    ...(required.client ? ['Enter a client name in Project details.'] : []),
+    ...(required.firmName ? ['Enter your firm name in Project details.'] : [])
+  ];
+}

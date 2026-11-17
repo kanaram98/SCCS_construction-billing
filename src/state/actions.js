@@ -1,0 +1,270 @@
+/**
+ * State actions, grouped by feature.
+ *
+ * Every write goes through a functional `setData` update so it applies to the
+ * latest state. Reads that need to return something to the caller (a created
+ * section, a copy result) use the current render's `data` / `bill` snapshot.
+ */
+import * as tree from '../domain/bill-tree.js';
+import {
+  createArea,
+  createBill,
+  createItem,
+  createSection,
+  duplicateBill,
+  getNextBillNumber,
+  nextLevelName
+} from '../domain/factories.js';
+import { createRate } from '../domain/rates.js';
+import { newId } from '../domain/ids.js';
+import { clientDetailsPatch, clientFromBill, getClientSaveError, getClientProfileState } from '../domain/clients.js';
+import { createTemplate } from '../domain/templates.js';
+import { DEFAULT_SIGNATURE_LAYOUT, normalizeSignatureLayout } from '../domain/signature-layout.js';
+import { moveDocument, normalizePrintSettings, toggleDocument } from '../domain/print-settings.js';
+
+/** Applies `updater` to the active bill within the full state. */
+function updateActiveBill(state, updater) {
+  return {
+    ...state,
+    bills: state.bills.map((bill) => bill.id === state.activeBillId ? tree.applyPatch(bill, updater) : bill)
+  };
+}
+
+function createBillActions({ data, setData }) {
+  const insertAndOpen = (bill) =>
+    setData((current) => ({ ...current, bills: [bill, ...current.bills], activeBillId: bill.id }));
+
+  return {
+    open(billId) {
+      setData((current) => ({ ...current, activeBillId: billId }));
+    },
+    create() {
+      insertAndOpen(createBill(getNextBillNumber(data.bills)));
+    },
+    duplicate(source) {
+      insertAndOpen(duplicateBill(source, getNextBillNumber(data.bills)));
+    },
+    remove(billId) {
+      setData((current) => {
+        const remaining = current.bills.filter((entry) => entry.id !== billId);
+        if (!remaining.length) {
+          const fresh = createBill('1');
+          return { ...current, bills: [fresh], activeBillId: fresh.id };
+        }
+        return {
+          ...current,
+          bills: remaining,
+          activeBillId: current.activeBillId === billId ? remaining[0].id : current.activeBillId
+        };
+      });
+    },
+    /** Patches the active bill with an object or `(bill) => bill` updater. */
+    update(updater) {
+      setData((current) => updateActiveBill(current, updater));
+    }
+  };
+}
+
+function createEntryActions({ data, bill, setData }) {
+  const updateBill = (updater) => setData((current) => updateActiveBill(current, updater));
+
+  /** Runs a `{ apply, result }` operation from bill-tree and returns its result. */
+  const run = (operation) => {
+    if (!operation) return null;
+    updateBill(operation.apply);
+    return operation.result;
+  };
+
+  return {
+    addSection() {
+      const section = createSection(nextLevelName(bill.firstLevelName, 'Section', bill.sections.length));
+      updateBill((current) => tree.appendSection(current, section));
+      return section;
+    },
+    addArea(sectionId) {
+      const section = bill.sections.find((entry) => entry.id === sectionId);
+      if (!section) return null;
+      const area = createArea(nextLevelName(bill.secondLevelName, 'Area', section.areas.length));
+      updateBill((current) => tree.appendArea(current, sectionId, area));
+      return area;
+    },
+    addItem(sectionId, areaId, rateId, values) {
+      const rate = data.rates.find((entry) => entry.id === rateId);
+      if (!rate) return null;
+      const item = createItem(rate, values);
+      updateBill((current) => tree.appendItems(current, sectionId, areaId, [item]));
+      return item;
+    },
+    updateSection(sectionId, patch) {
+      updateBill((current) => tree.updateSection(current, sectionId, patch));
+    },
+    updateArea(sectionId, areaId, patch) {
+      updateBill((current) => tree.updateArea(current, sectionId, areaId, patch));
+    },
+    updateItem(sectionId, areaId, itemId, patch) {
+      updateBill((current) => tree.updateItem(current, sectionId, areaId, itemId, patch));
+    },
+    removeSection(sectionId) {
+      updateBill((current) => tree.removeSection(current, sectionId));
+    },
+    removeArea(sectionId, areaId) {
+      updateBill((current) => tree.removeArea(current, sectionId, areaId));
+    },
+    removeItem(sectionId, areaId, itemId) {
+      updateBill((current) => tree.removeItem(current, sectionId, areaId, itemId));
+    },
+    copyArea(sectionId, areaId, targetSectionId) {
+      return run(tree.copyAreaToSection(bill, sectionId, areaId, targetSectionId));
+    },
+    copyItem(sectionId, areaId, itemId, targetSectionId) {
+      return run(tree.copyItemToSection(bill, sectionId, areaId, itemId, targetSectionId));
+    }
+  };
+}
+
+function createTemplateActions({ data, bill, setData }) {
+  return {
+    /** @returns {boolean} whether the template was saved (names must be unique) */
+    save(template) {
+      const record = createTemplate(data.templates, template);
+      if (!record) return false;
+      setData((current) => ({ ...current, templates: [...current.templates, record] }));
+      return true;
+    },
+    remove(templateId) {
+      setData((current) => ({
+        ...current,
+        templates: current.templates.filter((template) => template.id !== templateId)
+      }));
+    },
+    apply(templateId, targetSectionId) {
+      const template = data.templates.find((entry) => entry.id === templateId);
+      const operation = tree.applyTemplate(bill, template, targetSectionId);
+      if (!operation) return null;
+      setData((current) => updateActiveBill(current, operation.apply));
+      return operation.result;
+    }
+  };
+}
+
+function createClientActions({ data, bill, setData }) {
+  return {
+    /** Links a saved profile to the bill, or unlinks it when `clientId` is empty. */
+    select(clientId) {
+      const client = data.clients.find((entry) => entry.id === clientId);
+      setData((current) => updateActiveBill(current, client ? clientDetailsPatch(client) : { clientId: '' }));
+    },
+    /** @returns {{ ok: boolean, message: string }} */
+    saveProfile(updateExisting) {
+      const error = getClientSaveError(bill, data.clients, updateExisting);
+      if (error) return { ok: false, message: error };
+
+      const { selectedClient } = getClientProfileState(bill, data.clients);
+      const client = clientFromBill(bill, updateExisting ? selectedClient.id : newId());
+      setData((current) => updateActiveBill({
+        ...current,
+        clients: updateExisting
+          ? current.clients.map((entry) => entry.id === client.id ? client : entry)
+          : [...current.clients, client]
+      }, clientDetailsPatch(client)));
+      return {
+        ok: true,
+        message: updateExisting ? 'Saved client profile updated.' : 'Client profile saved for future bills.'
+      };
+    },
+    /** Deletes a saved profile; bills keep their copied client details. */
+    removeProfile(clientId) {
+      setData((current) => ({
+        ...current,
+        clients: current.clients.filter((entry) => entry.id !== clientId),
+        bills: current.bills.map((entry) => entry.clientId === clientId ? { ...entry, clientId: '' } : entry)
+      }));
+    }
+  };
+}
+
+function createRateActions({ setData }) {
+  return {
+    add() {
+      setData((current) => ({ ...current, rates: [...current.rates, { id: newId(), ...createRate() }] }));
+    },
+    update(rateId, patch) {
+      setData((current) => ({
+        ...current,
+        rates: current.rates.map((rate) => rate.id === rateId ? { ...rate, ...patch } : rate)
+      }));
+    },
+    remove(rateId) {
+      setData((current) => ({ ...current, rates: current.rates.filter((rate) => rate.id !== rateId) }));
+    }
+  };
+}
+
+function createFirmActions({ setData }) {
+  return {
+    update(patch) {
+      setData((current) => ({ ...current, firm: { ...current.firm, ...patch } }));
+    }
+  };
+}
+
+function createPrintActions({ setData }) {
+  const setSettings = (updater) => setData((current) => ({
+    ...current,
+    printSettings: updater(current.printSettings)
+  }));
+
+  return {
+    update(patch) {
+      setSettings((settings) => normalizePrintSettings({ ...settings, ...patch }));
+    },
+    toggleDocument(documentId) {
+      setSettings((settings) => toggleDocument(settings, documentId));
+    },
+    moveDocument(documentId, direction) {
+      setSettings((settings) => moveDocument(settings, documentId, direction));
+    },
+    /** Signature width lives in print settings and the firm's layout; keep them in sync. */
+    setSignatureWidth(value) {
+      setData((current) => {
+        const printSettings = normalizePrintSettings({ ...current.printSettings, signatureWidth: value });
+        const signatureLayout = normalizeSignatureLayout({
+          ...current.firm.signatureLayout,
+          width: printSettings.signatureWidth
+        });
+        return { ...current, printSettings, firm: { ...current.firm, signatureLayout } };
+      });
+    },
+    setSignatureLayout(signatureLayout) {
+      setData((current) => ({
+        ...current,
+        firm: { ...current.firm, signatureLayout },
+        printSettings: normalizePrintSettings({ ...current.printSettings, signatureWidth: signatureLayout.width })
+      }));
+    },
+    resetSignatureLayout() {
+      setData((current) => ({
+        ...current,
+        firm: {
+          ...current.firm,
+          signatureLayout: normalizeSignatureLayout({
+            ...DEFAULT_SIGNATURE_LAYOUT,
+            width: current.printSettings.signatureWidth
+          })
+        }
+      }));
+    }
+  };
+}
+
+export function createActions(context) {
+  return {
+    bills: createBillActions(context),
+    entry: createEntryActions(context),
+    templates: createTemplateActions(context),
+    clients: createClientActions(context),
+    rates: createRateActions(context),
+    firm: createFirmActions(context),
+    print: createPrintActions(context)
+  };
+}

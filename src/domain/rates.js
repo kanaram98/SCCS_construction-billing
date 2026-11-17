@@ -1,0 +1,70 @@
+import { formatDimension } from './measurements.js';
+
+export const DEFAULT_RATES = Object.freeze([
+  { id: 'floor-tiles', name: 'Floor tiles', unit: 'sqft', type: 'area', rate: 85 },
+  { id: 'skirting', name: 'Skirting', unit: 'rft', type: 'length', rate: 30 },
+  { id: 'gas-hole', name: 'Gas hole', unit: 'nos', type: 'count', rate: 250 }
+]);
+
+/** How a work item is measured, shown in the "Measured as" picker. */
+export const MEASUREMENT_TYPES = Object.freeze([
+  { id: 'area', label: 'Length × breadth' },
+  { id: 'length', label: 'Length' },
+  { id: 'lenw', label: 'Length (width noted)' },
+  { id: 'volume', label: 'Length × breadth × height' },
+  { id: 'count', label: 'Count (nos)' },
+  { id: 'direct', label: 'Enter quantity' }
+]);
+
+/**
+ * Dimension fields used by each measurement type, in display order.
+ * `required: false` means the field is recorded but does not affect the quantity.
+ */
+const DIMENSION_FIELDS = Object.freeze({
+  area: [{ key: 'length', label: 'Length', required: true }, { key: 'width', label: 'Width', required: true }],
+  length: [{ key: 'length', label: 'Length', required: true }],
+  lenw: [{ key: 'length', label: 'Length', required: true }, { key: 'width', label: 'Width', required: false }],
+  volume: [
+    { key: 'length', label: 'Length', required: true },
+    { key: 'width', label: 'Width', required: true },
+    { key: 'height', label: 'Height', required: true }
+  ],
+  count: [],
+  direct: []
+});
+
+export function getDimensionFields(type) {
+  return DIMENSION_FIELDS[type] || [];
+}
+
+export function usesDimension(type, key) {
+  return getDimensionFields(type).some((field) => field.key === key);
+}
+
+/** Direct-quantity items have no count; every other type multiplies by a count. */
+export function usesCount(type) {
+  return type !== 'direct';
+}
+
+export function createRate() {
+  return { name: 'New work item', unit: 'nos', type: 'count', rate: 0 };
+}
+
+/**
+ * Finds the current rate for a bill item. Items keep a snapshot of their rate,
+ * which is used when the rate has since been deleted.
+ */
+export function resolveRate(item, rates) {
+  return rates.find((rate) => rate.id === item.rateId) || item;
+}
+
+/** Human-readable measurement summary for an entry, e.g. `12'0" × 10'6"`. */
+export function describeMeasurement(item, rate) {
+  if (rate.type === 'direct') return 'Manual quantity';
+  if (rate.type === 'count') return 'Count';
+  const dimensions = getDimensionFields(rate.type)
+    .filter((field) => field.required || item[field.key])
+    .map((field) => formatDimension(item[field.key]))
+    .filter(Boolean);
+  return dimensions.join(' × ') || 'Measurements needed';
+}
