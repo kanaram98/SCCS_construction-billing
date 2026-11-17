@@ -3,9 +3,7 @@
 export const APP_NAME = 'Construction Billing';
 
 export const STORAGE_KEYS = Object.freeze({
-  state: 'construction_billing_react_v1',
-  /** Data saved by the original standalone app. */
-  legacyState: 'billing_v1'
+  state: 'construction_billing_react_v1'
 });
 
 export const IMAGE_UPLOAD = Object.freeze({

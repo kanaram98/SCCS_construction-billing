@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { hydrateState, selectActiveBill } from '../../src/domain/app-state.js';
-import { migrateLegacyState } from '../../src/domain/legacy-migration.js';
 import { getClientProfileState, getClientSaveError } from '../../src/domain/clients.js';
 import { filterBills, getBillClientNames } from '../../src/domain/bill-filters.js';
 import { EMPTY_BILL_FILTERS } from '../../src/domain/bill-filters.js';
@@ -13,25 +12,6 @@ test('hydrating saved state fills defaults and repairs the active bill id', () =
   assert.equal(state.printSettings.paper, 'a4');
   assert.equal(selectActiveBill(state).id, 'b1');
   assert.equal(hydrateState({ bills: [] }), null);
-});
-
-test('migrates legacy bills including feet/inch pairs', () => {
-  const migrated = migrateLegacyState({
-    bid: 2,
-    rates: [{ id: 1, name: 'Tiles', unit: 'sqft', type: 'area', rate: 50 }],
-    bills: [{
-      id: 2,
-      p: { no: 9, name: 'Old site' },
-      floors: [{ id: 3, name: 'GF', rooms: [{ id: 4, name: 'Hall', items: [{ id: 5, rid: 1, l: [10, 6], b: [8, 0] }] }] }]
-    }]
-  });
-  const state = hydrateState(migrated, { isLegacy: true });
-  const item = state.bills[0].sections[0].areas[0].items[0];
-  assert.equal(state.activeBillId, '2');
-  assert.equal(item.length, '10.6');
-  assert.equal(item.name, 'Tiles');
-  assert.deepEqual(state.templates, []);
-  assert.equal(migrateLegacyState({}), null);
 });
 
 test('client profile state detects duplicates by case-insensitive name', () => {

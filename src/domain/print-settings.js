@@ -83,28 +83,15 @@ function validDocumentOrder(order) {
   return [...unique, ...DEFAULT_DOCUMENT_ORDER.filter((id) => !unique.includes(id))];
 }
 
-/**
- * Fills in defaults and clamps every print setting to a valid value.
- * `legacyDocuments` and `legacySignatureLayout` migrate older saved data.
- */
-export function normalizePrintSettings(settings, legacyDocuments = [], legacySignatureLayout) {
+/** Fills in defaults and clamps every print setting to a valid value. */
+export function normalizePrintSettings(settings) {
   const defaults = createDefaultPrintSettings();
   const saved = settings && typeof settings === 'object' ? settings : {};
-  const legacyOrder = Array.isArray(legacyDocuments)
-    ? legacyDocuments.filter((id) => DOCUMENT_IDS.includes(id))
-    : [];
-  const documentOrder = validDocumentOrder(saved.documentOrder || legacyOrder);
+  const documentOrder = validDocumentOrder(saved.documentOrder);
   const documents = Object.fromEntries(DOCUMENT_IDS.map((id) => [
     id,
-    typeof saved.documents?.[id] === 'boolean'
-      ? saved.documents[id]
-      : legacyOrder.length
-        ? legacyOrder.includes(id)
-        : defaults.documents[id]
+    typeof saved.documents?.[id] === 'boolean' ? saved.documents[id] : defaults.documents[id]
   ]));
-  const signatureWidth = saved.signatureWidth == null && legacySignatureLayout
-    ? legacySignatureLayout.width
-    : saved.signatureWidth;
 
   return {
     ...defaults,
@@ -124,7 +111,7 @@ export function normalizePrintSettings(settings, legacyDocuments = [], legacySig
     upiQr: saved.upiQr !== false,
     billLanguage: oneOf(saved.billLanguage, Object.keys(BILL_LANGUAGES), defaults.billLanguage),
     signatureMode: oneOf(saved.signatureMode, Object.keys(SIGNATURE_MODES), defaults.signatureMode),
-    signatureWidth: boundedNumber(signatureWidth, defaults.signatureWidth, SIGNATURE_WIDTH_RANGE.min, SIGNATURE_WIDTH_RANGE.max),
+    signatureWidth: boundedNumber(saved.signatureWidth, defaults.signatureWidth, SIGNATURE_WIDTH_RANGE.min, SIGNATURE_WIDTH_RANGE.max),
     previewDocument: oneOf(saved.previewDocument, DOCUMENT_IDS, defaults.previewDocument)
   };
 }

@@ -16,7 +16,6 @@ import EditIcon from '@mui/icons-material/EditOutlined';
 import { ActionMenu, useConfirm } from '../../components/ui';
 import RenameDialog from '../../components/ui/RenameDialog.jsx';
 import { getAreaTotal } from '../../domain/calculations.js';
-import { pluralize } from '../../domain/formatters.js';
 import { useUndoable } from '../../hooks/useUndoable.js';
 import { useEntryForm } from './useEntryForm.js';
 import GroupSummary from './GroupSummary.jsx';

@@ -8,10 +8,6 @@ export const EMPTY_BILL_FILTERS = Object.freeze({
   payment: ''
 });
 
-export function hasActiveFilters(filters) {
-  return Object.values(filters).some(Boolean);
-}
-
 /**
  * Filters bills for the dashboard.
  * @param {(bill) => string} getStatus payment status lookup, so callers can reuse cached summaries

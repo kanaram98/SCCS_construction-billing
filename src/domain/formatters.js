@@ -12,10 +12,6 @@ export function roundTo2(value) {
   return Math.round(value * 100) / 100;
 }
 
-export function pluralize(count, singular, plural = `${singular}s`) {
-  return count === 1 ? singular : plural;
-}
-
 export function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }

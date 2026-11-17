@@ -1,7 +1,5 @@
 import { useState } from 'react';
 
-export const sectionAnchorId = (sectionId) => `section-${sectionId}`;
-
 /**
  * Which floor (section) is shown and which rooms (areas) are expanded.
  * One floor is shown at a time; its first room starts open.

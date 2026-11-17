@@ -28,7 +28,6 @@ export const DEFAULT_LABOUR_PAYMENT_MODE = 'cash';
 
 /** Attendance choices shown as buttons. */
 export const ATTENDANCE_UNITS = Object.freeze([0, 0.5, 1, 1.5, 2]);
-export const MAX_UNITS = 3;
 
 /** Deleted workers and payments can be restored for this many days. */
 export const RECYCLE_DAYS = 30;
@@ -157,18 +156,6 @@ export function registerCell(mark) {
   return mark.units === 0 ? 'A' : String(roundTo2(mark.units));
 }
 
-/**
- * Reads what a contractor types: "2P", "1.5p", "½", "0.5", "A".
- * Returns units, or null when it can't be understood.
- */
-export function parseUnits(input) {
-  const value = text(input).toUpperCase().replace('½', '.5').replace(/P$/, '').trim();
-  if (value === 'A' || value === '') return value === 'A' ? 0 : null;
-  const units = Number(value.startsWith('.') ? `0${value}` : value);
-  if (!Number.isFinite(units) || units < 0 || units > MAX_UNITS) return null;
-  return Math.round(units * 2) / 2;
-}
-
 export function getWorkerErrors(values) {
   const wage = Number(values.dailyWage);
   return {
@@ -234,13 +221,6 @@ export function dayLabel(isoDate, language = 'en') {
 }
 
 // ── Attendance ────────────────────────────────────────────────────────
-
-/** Returns attendance with one worker's mark for a day set (or cleared with `units === null`). */
-export function setMark(attendance, date, worker, units, now = new Date()) {
-  return putMark(attendance, date, worker.id, units === null || units === undefined
-    ? null
-    : { units, wage: Number(worker.dailyWage) || 0, at: now.toISOString() });
-}
 
 /** Returns attendance with a worker's mark for a day replaced by `mark` (or removed when null). */
 export function putMark(attendance, date, workerId, mark) {

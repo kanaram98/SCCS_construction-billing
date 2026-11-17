@@ -1,4 +1,4 @@
-import { Notice } from '../ui/Feedback.jsx';
+import { Notice } from '../ui';
 import { isIosDevice } from '../../hooks/useInstallPrompt.js';
 import { tr as t } from '../../i18n/translate.js';
 

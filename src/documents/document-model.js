@@ -36,7 +36,6 @@ export const DOCUMENT_COLUMNS = Object.freeze({
 
 /** Row kinds that span the full table width as a heading band. */
 export const BAND_KINDS = new Set(['section', 'area']);
-export const TOTAL_KINDS = new Set(['total', 'sectionTotal', 'grandTotal']);
 
 const row = (kind, cells) => ({ kind, cells });
 

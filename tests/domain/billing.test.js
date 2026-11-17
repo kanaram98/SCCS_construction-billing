@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { feetInchesError, inchesPart, parseFeetInches } from '../../src/domain/measurements.js';
+import { feetInchesError, parseFeetInches } from '../../src/domain/measurements.js';
 import { getBillTotals, getItemQuantity, getLineAmount, getPaymentStatus } from '../../src/domain/calculations.js';
 import { getBillValidation } from '../../src/domain/validation.js';
 import {
@@ -27,27 +27,21 @@ test('normalizes signature placement to the footer area', () => {
   });
 });
 
-test('normalizes print settings and preserves legacy document selection', () => {
+test('normalizes print settings: invalid values fall back, order is de-duplicated', () => {
   const settings = normalizePrintSettings(
-    { paper: 'invalid', margin: 80, documentOrder: ['items', 'bill', 'items'] },
-    ['bill', 'measurement']
+    { paper: 'invalid', margin: 80, documentOrder: ['items', 'bill', 'items'], documents: { items: true } }
   );
   assert.equal(settings.paper, 'a4');
   assert.equal(settings.margin, 30);
   assert.deepEqual(settings.documentOrder, ['items', 'bill', 'summary', 'measurement']);
-  assert.deepEqual(settings.documents, {
-    summary: false,
-    bill: true,
-    measurement: true,
-    items: false
-  });
+  assert.equal(settings.documents.items, true);
+  assert.deepEqual(Object.keys(settings.documents).sort(), ['bill', 'items', 'measurement', 'summary']);
   assert.equal(createDefaultPrintSettings().signatureMode, 'last');
 });
 
 test('parses feet.inches dimensions as feet and inches', () => {
   assert.equal(parseFeetInches('15.4'), 15 + 4 / 12);
   assert.equal(parseFeetInches('8.11'), 8 + 11 / 12);
-  assert.equal(inchesPart('15.12'), 12);
 });
 
 test('rejects invalid feet-and-inches values instead of calculating them', () => {

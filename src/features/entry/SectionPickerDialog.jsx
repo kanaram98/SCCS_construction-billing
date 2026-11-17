@@ -3,8 +3,7 @@ import ListItemButton from '@mui/material/ListItemButton';
 import ListItemText from '@mui/material/ListItemText';
 import Typography from '@mui/material/Typography';
 import { ResponsiveDialog } from '../../components/ui';
-import { pluralize } from '../../domain/formatters.js';
-import { tr as t, trn } from '../../i18n/translate.js';
+import { trn } from '../../i18n/translate.js';
 
 /** Lets the user choose a target section (excluding the current one). */
 export default function SectionPickerDialog({ open, title, description, sections, currentSectionId, onPick, onClose }) {

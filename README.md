@@ -1,16 +1,18 @@
 # Construction Billing
 
-A mobile-first React app (Material UI) for construction measurements in feet and inches, work-item rates, bill totals, and PDF export. It runs in a browser and can be installed as a Progressive Web App (PWA) on phones and desktops. The Windows `.exe` build is also available.
+A mobile-first React app (Material UI) for construction measurements, bills, rate quotations and labour attendance. It runs in the browser, installs as a Progressive Web App (PWA) on phones and computers, and works offline. English and Hindi.
 
 ## Features
 
-- **Measurements** in feet.inches (`15.4` = 15′4″) by floor and room, with area, length, volume, count and direct-quantity work items. Entries can be reordered, copied between floors, searched, and saved as reusable templates.
-- **Bills** with discount, GST shown as CGST + SGST (same state) or IGST (other state), the total in words, an advance, and a list of payments received. Payment status and balance are tracked per bill.
-- **PDF and print**: summary, bill, measurement sheet and item totals, with paper size, margins, headers, page breaks, a draggable signature, and bank/UPI details with a UPI QR code for the balance due.
-- **Safety**: every delete can be undone, and a backup file can be saved to WhatsApp, Drive or email and restored later. The app reminds you when you haven't backed up for a week.
-- **Mobile-first** Material UI design with bottom navigation, full-screen forms on phones, and light/dark themes. It installs as an app and works offline.
+- **Home**: totals, this month, overdue payments with WhatsApp reminders, clients with dues, recent bills.
+- **Bills and estimates** with running (RA) bills, discount, optional GST (CGST + SGST or IGST), total in words, and payments received.
+- **Measurements** in feet.inches (`15.4` = 15′4″) by floor and room: area, length, volume, count and direct-quantity work items. Entries can be reordered, copied, searched and saved as templates.
+- **Rates** as a printable, shareable rate quotation with your terms and disclaimer.
+- **PDF and print**: firm letterhead (logo, details), summary, bill, measurement sheet and item totals, bank/UPI details with a UPI QR code, and a signature. Hindi documents are exported from the rendered page so Devanagari prints correctly.
+- **Labour**: daily attendance (A, ½P, 1P, 1½P, 2P) on a month calendar, advances and payments (with mode and description), a monthly report, an all-workers register PDF and a PDF sheet for each worker.
+- **Safety**: undo for deletes; for labour, a full activity log with undo, a 30-day recycle bin and closed (locked) months. Backup files can be saved and restored.
 
-All data stays in the browser on each device; nothing is uploaded.
+All data is stored in the browser on each device. A free Firebase backend (login and cloud sync) is being built and currently runs only on the local emulators.
 
 ## Run locally
 
@@ -19,78 +21,58 @@ npm install
 npm run dev
 ```
 
-Open the local URL printed by Vite. Run `npm run build` to create the production app in `dist`. To test the installable/offline production version locally, run `npm run preview` and open its local URL.
+Open the local URL printed by Vite. `npm run build` creates the production app in `dist`; `npm run preview` serves that build.
 
-## Install as an app
+### Local backend (Firebase emulators)
 
-- **Android:** Open the HTTPS site in Chrome, tap **⋮**, then **Install app** (or **Add to Home screen**).
-- **iPhone/iPad:** Open the HTTPS site in Safari, tap **Share**, then **Add to Home Screen**.
-- **Desktop:** Use the install button in Chrome or Edge, when offered.
+Needs Java 21 (`winget install Microsoft.OpenJDK.21`).
 
-PWA installation on a hosted site requires HTTPS. The app caches its files for offline use after the first visit. Bills stay in that browser's local storage and do not sync across devices.
-
-## Host the app for your phone
-
-The app is static, so hosting does not need a server or database. Netlify can build this project and provide the HTTPS address needed for PWA installation.
-
-### Quick manual deploy
-
-1. On your computer, open the project folder in a terminal.
-2. Run `npm install` once, then `npm run build`. The production site is created in the `dist` folder.
-3. Sign in to Netlify and open its manual deploy / deploy manually page.
-4. Drag the project's **`dist` folder** into the deploy area. Do not upload the whole project folder.
-5. Wait for Netlify to finish and open the HTTPS address it provides (ending in `.netlify.app`).
-6. On your phone, open that address in Chrome on Android or Safari on iPhone/iPad and follow the install steps above.
-
-For later updates, rebuild with `npm run build` and upload the new `dist` folder to the same Netlify site. The included [`netlify.toml`](./netlify.toml) sets the build output and cache behavior if you later connect the project to a Git-based Netlify deploy.
-
-**Local data reminder:** hosting publishes the app files, not your bills. Bills, client profiles, rates, templates, and settings remain in the browser storage on each device; they are not shared with Netlify or synced between your computer and phone.
-
-## Windows executable
-
-Run `npm run dist:win` to create both an installer and a portable `.exe` in `release`.
-
-## Project layout
-
-The code is split into layers. Lower layers never import from higher ones, so all
-billing logic can be unit-tested in Node without a browser.
-
-```
-src/
-  domain/        Pure business logic (no React, no browser APIs)
-    measurements.js     feet.inches parsing, validation and formatting
-    rates.js            default rates, measurement types, dimension rules
-    calculations.js     quantities, line/area/section/bill totals, payment status
-    validation.js       entry, bill, amount and export validation
-    bill-tree.js        immutable section → area → item updates, copy, templates
-    factories.js        create/duplicate bills, sections, areas, items
-    clients.js, templates.js, bill-filters.js
-    print-settings.js, signature-layout.js
-    app-state.js        initial state and hydration of saved data
-    legacy-migration.js data from the original standalone app
-  documents/     Printable documents
-    document-model.js   rows for each document, shared by preview and PDF
-    pdf-export.js       jsPDF renderer (loaded on demand)
-  services/      Browser integrations: local storage, image resizing, service worker
-  state/         App store (useBillingStore), actions, and BillingContext
-  hooks/         Reusable React hooks (PWA install prompt)
-  components/
-    ui/          Reusable MUI-based building blocks: TextField, SelectField, Card,
-                 ResponsiveDialog, ActionMenu, BottomActionBar, toasts/confirm dialogs…
-    layout/      App bar, navigation (bottom tabs on mobile, sidebar on desktop)
-  features/      One folder per screen: dashboard, entry, rates, project, print
-  theme.js       MUI theme (colours, typography, component defaults)
-  styles/        print.css: paper preview and browser-print output only
-  config/        App constants (storage keys, navigation, upload limits)
-tests/           node:test suites for domain/ and documents/
+```powershell
+npm run emulators
 ```
 
-- `public/manifest.webmanifest` and `public/sw.js` configure the installable, offline-capable PWA.
-- `electron.cjs` configures the Windows desktop build.
-- `legacy/` holds the original standalone version (`billing.html`, `app.js`, `styles.css`). Its saved data is migrated automatically on first launch.
+This runs the Firebase Auth, Firestore and Hosting emulators under the offline demo project `demo-sccs`. Nothing connects to a real Firebase project. The Emulator UI is at http://localhost:4000.
 
 ## Testing
 
-- `npm test` runs everything: `test:unit` (billing logic, with Node's test runner) and `test:ui` (screens rendered at phone size with Vitest + Testing Library).
-- `npm run verify` runs the tests and the production build. Netlify runs this on every deploy, so a failing test stops a broken update from going live.
+- `npm test` runs everything: `test:unit` (domain and document logic, with Node's test runner) and `test:ui` (screens rendered at phone size with Vitest + Testing Library).
+- `npm run verify` runs the tests and the production build. Netlify runs it on every deploy, so a failing test stops a broken update from going live.
 - GitHub Actions (`.github/workflows/ci.yml`) runs the same checks on every push.
+
+## Hosting
+
+Pushing to `main` on GitHub deploys to Netlify ([`netlify.toml`](./netlify.toml)) after `npm run verify` passes. PWA installation needs HTTPS:
+
+- **Android:** open the site in Chrome, tap **⋮**, then **Install app**.
+- **iPhone/iPad:** open the site in Safari, tap **Share**, then **Add to Home Screen**.
+- **Computer:** use the install button in Chrome or Edge.
+
+## Project layout
+
+Lower layers never import from higher ones, so the business logic is tested in Node without a browser.
+
+```
+src/
+  domain/       Pure business logic (no React, no browser APIs)
+                bills: measurements, rates, calculations, validation, bill-tree, factories,
+                       bill-kinds (estimates, RA bills), payments, amount-in-words, warnings
+                labour: labour (model, reports), labour-ops (every change + activity log),
+                        labour-log (readable history)
+                other: app-state (initial state, loading saved data), backup, quotation,
+                       dashboard, clients, templates, print-settings, whatsapp, relabel
+  documents/    Printable documents: document model shared by preview and PDF, jsPDF
+                renderers (bill, quotation, labour), letterhead, image PDFs for Hindi
+  services/     Browser integrations: local storage, files/sharing, images, service worker
+  state/        App store (useBillingStore), actions and BillingContext
+  hooks/        Shared React hooks
+  i18n/         tr()/trn() translation and the Hindi dictionary (hi.js)
+  components/   ui/ (reusable MUI building blocks), layout/ (header, navigation, error boundary)
+  features/     One folder per screen: home, bills, entry, labour, rates, project, print,
+                settings, backup, onboarding
+  config/       App constants and default branding
+  styles/       print.css: paper preview and print output only
+  theme.js      MUI theme
+tests/          domain/ and documents/ (node:test), ui/ (Vitest)
+public/         PWA manifest, service worker and icons
+firebase.json, .firebaserc, firestore.rules   Firebase emulator setup (local only)
+```

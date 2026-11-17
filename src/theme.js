@@ -55,8 +55,6 @@ const theme = createTheme({
 
 export default theme;
 
-/** Subtle tinted background for nested surfaces (areas, chips, table heads). */
-export const SUBTLE_SURFACE = 'action.hover';
 
 /** Width of the desktop navigation drawer. */
 export const DRAWER_WIDTH = 220;

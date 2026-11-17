@@ -11,8 +11,6 @@ import { getBillTotals } from './calculations.js';
 import { newId } from './ids.js';
 import { getPrintDocument } from './print-settings.js';
 
-export const BILL_KINDS = Object.freeze({ bill: 'Bills', estimate: 'Estimates' });
-
 export function isEstimate(bill) {
   return bill.kind === 'estimate';
 }

@@ -2,9 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createLabourState, createWorker, daySummary, daysOfMonth, formatUnits, monthReport, normalizeLabour,
-  calendarWeeks, monthPayments, parseUnits, registerCell, purgeWorker, setMark, shiftDate, shiftMonth, workerBalance, workerMonth
+  calendarWeeks, monthPayments, putMark, registerCell, purgeWorker, shiftDate, shiftMonth, workerBalance, workerMonth
 } from '../../src/domain/labour.js';
 import { hydrateState } from '../../src/domain/app-state.js';
+
+const setMark = (attendance, date, worker, units, now = new Date()) =>
+  putMark(attendance, date, worker.id, units === null ? null : { units, wage: worker.dailyWage, at: now.toISOString() });
 
 const ramesh = createWorker({ id: 'w1', name: 'Ramesh', dailyWage: 600 });
 const suresh = createWorker({ id: 'w2', name: 'Suresh', dailyWage: 800 });
@@ -27,15 +30,8 @@ function sample() {
   };
 }
 
-test('attendance is shown and typed as P units', () => {
+test('attendance is shown as P units', () => {
   assert.deepEqual([0, 0.5, 1, 1.5, 2].map(formatUnits), ['A', '0.5P', '1P', '1.5P', '2P']);
-  assert.equal(parseUnits('2P'), 2);
-  assert.equal(parseUnits('1.5p'), 1.5);
-  assert.equal(parseUnits('½'), 0.5);
-  assert.equal(parseUnits('.5P'), 0.5);
-  assert.equal(parseUnits('a'), 0);
-  assert.equal(parseUnits('9P'), null);
-  assert.equal(parseUnits('abc'), null);
   assert.equal(registerCell(null), '');
   assert.equal(registerCell({ units: 0 }), 'A');
   assert.equal(registerCell({ units: 1.5 }), '1.5');

@@ -55,11 +55,6 @@ export function trn(count, singular, plural, params) {
   return current(count === 1 ? singular : plural, { count, ...params });
 }
 
-/** Same as `trn` for a specific translator (used by documents). */
-export function pluralWith(translate, count, singular, plural, params) {
-  return translate(count === 1 ? singular : plural, { count, ...params });
-}
-
 /** True when a value (or anything inside it) contains Hindi/Devanagari text. */
 export function containsDevanagari(value) {
   return /[ऀ-ॿ]/.test(typeof value === 'string' ? value : JSON.stringify(value ?? ''));

@@ -76,26 +76,16 @@ const arrayOr = (value, fallback = []) => Array.isArray(value) ? value : fallbac
  * Returns `null` when the data has no bills to restore.
  * @returns {AppState | null}
  */
-export function hydrateState(saved, { isLegacy = false } = {}) {
+export function hydrateState(saved) {
   if (!saved || !Array.isArray(saved.bills) || !saved.bills.length) return null;
   const defaults = createInitialState();
-  let firm = applyDefaultBranding({ ...createDefaultFirm(), ...saved.firm });
-
-  // Before print settings existed, the signature x offset was measured from a narrower footer box.
-  if (!isLegacy && !saved.printSettings && saved.firm?.signatureLayout) {
-    firm.signatureLayout = {
-      ...saved.firm.signatureLayout,
-      x: Number(saved.firm.signatureLayout.x || 0) + 28
-    };
-  }
+  const firm = applyDefaultBranding({ ...createDefaultFirm(), ...saved.firm });
   firm.signatureLayout = normalizeSignatureLayout(firm.signatureLayout);
   // Data from before the GST switch: treat the firm as registered if it already used GST.
   if (typeof saved.firm?.gstRegistered !== 'boolean') {
     firm.gstRegistered = Boolean(String(firm.gstin || '').trim()) ||
       saved.bills.some((bill) => Number(bill.taxRate) > 0);
   }
-  // The original app stored bank details as one free-text `bank` field.
-  if (!firm.bankName && typeof firm.bank === 'string' && firm.bank.trim()) firm.bankName = firm.bank.trim();
 
   // People who already have bills have seen the app: skip the welcome screen.
   const savedMeta = saved.meta && typeof saved.meta === 'object' ? saved.meta : {};
@@ -110,8 +100,8 @@ export function hydrateState(saved, { isLegacy = false } = {}) {
     rates: arrayOr(saved.rates, defaults.rates),
     clients: arrayOr(saved.clients),
     firm,
-    templates: isLegacy ? [] : arrayOr(saved.templates),
-    printSettings: normalizePrintSettings(saved.printSettings, saved.pdfDocuments, firm.signatureLayout),
+    templates: arrayOr(saved.templates),
+    printSettings: normalizePrintSettings(saved.printSettings),
     meta: { ...defaults.meta, ...savedMeta, onboarded },
     quotation: normalizeQuotation(saved.quotation),
     labour: normalizeLabour(saved.labour),

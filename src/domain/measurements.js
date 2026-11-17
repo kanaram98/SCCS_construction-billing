@@ -20,24 +20,12 @@ export function feetInchesError(value) {
   return null;
 }
 
-/** Converts a `feet.inches` value (or a legacy `[feet, inches]` pair) into decimal feet. */
+/** Converts a `feet.inches` value into decimal feet. */
 export function parseFeetInches(value) {
-  if (Array.isArray(value)) {
-    const feet = Number(value[0]);
-    const inches = Number(value[1]);
-    if (!Number.isFinite(feet) || !Number.isFinite(inches) || feet < 0 || inches < 0 || inches > 11) return 0;
-    return feet + inches / 12;
-  }
   if (feetInchesError(value)) return 0;
   const match = String(value ?? '').trim().match(FEET_INCHES_PATTERN);
   if (!match) return 0;
   return (Number(match[1]) || 0) + (Number(match[2]) || 0) / 12;
-}
-
-/** Returns the inches part of a `feet.inches` value. */
-export function inchesPart(value) {
-  const match = String(value ?? '').trim().match(/^-?\d+\.(\d{1,2})$/);
-  return match ? Number(match[1]) : 0;
 }
 
 /** Formats `15.4` as `15'4"`. Returns an empty string for blank or unreadable values. */

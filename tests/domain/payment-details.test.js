@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import { buildUpiUri, createQrMatrix, getPaymentFieldErrors, getPaymentLines } from '../../src/domain/payment-details.js';
 import { buildPaymentBlock } from '../../src/documents/payment-block.js';
 import { createDefaultPrintSettings } from '../../src/domain/print-settings.js';
-import { hydrateState } from '../../src/domain/app-state.js';
 
 const firm = { name: 'Acme', bankName: 'SBI', accountNumber: '12345678901', ifsc: 'SBIN0001234', upiId: 'acme@oksbi', accountName: '' };
 
@@ -36,9 +35,4 @@ test('payment block appears on money documents with a QR for the balance due', (
   assert.equal(buildPaymentBlock('bill', bill, rates, firm, { ...settings, paymentDetails: false }), null);
   assert.equal(buildPaymentBlock('bill', bill, rates, firm, { ...settings, upiQr: false }).qr, null);
   assert.equal(buildPaymentBlock('bill', { ...bill, advance: '1000' }, rates, firm, settings).qr, null);
-});
-
-test('legacy free-text bank field becomes the bank name', () => {
-  const state = hydrateState({ bills: [{ id: 'b', sections: [] }], firm: { bank: 'HDFC, Pune' }, printSettings: {} });
-  assert.equal(state.firm.bankName, 'HDFC, Pune');
 });
