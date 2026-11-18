@@ -28,7 +28,7 @@ export default {
   'You can install it later from your browser menu.': 'आप बाद में ब्राउज़र मेनू से इंस्टॉल कर सकते हैं।',
   'Use your browser menu to install this app.': 'ऐप इंस्टॉल करने के लिए ब्राउज़र मेनू का उपयोग करें।',
   'To install on iPhone or iPad, open this page in Safari, tap Share, then choose “Add to Home Screen”.': 'iPhone या iPad पर इंस्टॉल करने के लिए यह पेज Safari में खोलें, Share दबाएँ और “Add to Home Screen” चुनें।',
-  'Saved data could not be loaded. The app opened a new bill instead.': 'सेव डेटा नहीं खुल सका। ऐप ने नया बिल खोला है।',
+  'Saved data could not be loaded. The app opened a new bill instead. The old data was kept aside, not erased.': 'सेव डेटा नहीं खुल सका। ऐप ने नया बिल खोला है। पुराना डेटा मिटाया नहीं गया, अलग रखा है।',
   'Could not save changes on this device. Check available browser storage.': 'बदलाव सेव नहीं हो सके। फ़ोन में जगह जाँचें।',
   'Add': 'जोड़ें',
   'Save': 'सेव करें',
