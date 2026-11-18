@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -32,6 +32,7 @@ import AreaPanel from './AreaPanel.jsx';
 import TemplatesDialog from './TemplatesDialog.jsx';
 import GettingStarted from './GettingStarted.jsx';
 import AmountsCard from '../project/AmountsCard.jsx';
+import { isFinal } from '../../domain/bill-final.js';
 import PaymentsCard from '../project/PaymentsCard.jsx';
 
 const TABS = { measure: 'measure', amounts: 'amounts' };
@@ -43,6 +44,12 @@ export default function EntryPage({ onNavigate }) {
   const disclosure = useEntryDisclosure(sections);
   const [tab, setTab] = useState(TABS.measure);
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  const locked = isFinal(bill);
+  useEffect(() => {
+    const inform = () => notify(t('This bill is final. Reopen it in Bill details to make changes.'), 'info');
+    window.addEventListener('bill-locked', inform);
+    return () => window.removeEventListener('bill-locked', inform);
+  }, [notify]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
   const results = useMemo(() => searchEntries(sections, data.rates, query), [sections, data.rates, query]);
@@ -97,6 +104,7 @@ export default function EntryPage({ onNavigate }) {
         </Tabs>
       </Paper>
 
+      {locked && <Alert severity="info" sx={{ mb: 1.5 }}>{t('This bill is final: prices are frozen and measurements are locked. Payments can still be added.')}</Alert>}
       {bill.isSample && (
         <Alert severity="info" sx={{ mb: 1.5 }}>{t('This is a sample bill to explore. Delete it from Bills when you are done.')}</Alert>
       )}
@@ -104,7 +112,7 @@ export default function EntryPage({ onNavigate }) {
       {tab === TABS.amounts ? (
         <>
           <IssuesAlert issues={errors} suffix={t('to fix before export')} />
-          <AmountsCard />
+          <Box component="fieldset" disabled={locked} sx={{ border: 0, p: 0, m: 0, minWidth: 0 }}><AmountsCard /></Box>
           {!isEstimate(bill) && <PaymentsCard />}
         </>
       ) : (

@@ -492,3 +492,62 @@ describe('Worker leaves and rejoins', () => {
     expect(savedState().labour.workers[0].leftOn).toBe('');
   });
 });
+
+describe('Apply a project advance to a bill', () => {
+  it('applies part of the advance on the bill and keeps the project total unchanged', async () => {
+    const stamp = { createdAt: '2026-11-01T00:00:00.000Z', updatedAt: '2026-11-01T00:00:00.000Z', version: 1 };
+    const project = { id: 'p1', name: 'Lake villa', clientId: '', client: 'Mehta', clientPhone: '', clientAddress: '', clientGstin: '', address: '', status: 'running', agreedAmount: '', notes: '', ...stamp };
+    const { user } = renderApp({
+      ...SAMPLE_STATE,
+      projects: [project],
+      activeBillId: SAMPLE_STATE.bills[0].id,
+      bills: SAMPLE_STATE.bills.map((bill, index) => (index === 0 ? { ...bill, projectId: 'p1', advance: '0', payments: [] } : bill)),
+      advances: [{ id: 'a1', projectId: 'p1', date: '2026-11-02', amount: 5000, mode: 'cash', note: '', ...stamp }]
+    });
+    await goTo(user, 'Entry');
+    await user.click(await screen.findByRole('tab', { name: 'Amounts & payments' }));
+    await user.click(await screen.findByRole('button', { name: 'Apply project advance' }));
+    const dialog = await screen.findByRole('dialog');
+    const amount = within(dialog).getByLabelText(/Amount to apply/);
+    await user.clear(amount);
+    await user.type(amount, '3000');
+    await user.click(within(dialog).getByRole('button', { name: 'Apply' }));
+    await waitFor(() => expect(savedState().bills[0].advanceAdjustments).toHaveLength(1));
+    expect(savedState().bills[0].advanceAdjustments[0]).toMatchObject({ advanceId: 'a1', amount: 3000 });
+    expect((await screen.findAllByText('Adjusted from advance')).length).toBeGreaterThan(0);
+  });
+});
+
+describe('Final bill', () => {
+  it('marks a bill final, freezing its prices, and the admin can reopen it', async () => {
+    const { user } = renderApp(SAMPLE_STATE);
+    await goTo(user, 'Bill details');
+    await user.click(await screen.findByRole('button', { name: 'Mark bill as final' }));
+    const ask = await screen.findByRole('dialog');
+    await user.click(within(ask).getByRole('button', { name: 'Mark as final' }));
+    await waitFor(() => expect(savedState().bills[0].final).toBe(true));
+    const item = savedState().bills[0].sections[0].areas[0].items[0];
+    expect(item.rateId).toBeUndefined();
+    expect(item.sourceRateId).toBe('floor-tiles');
+    await user.click(await screen.findByRole('button', { name: 'Reopen' }));
+    const again = await screen.findByRole('dialog');
+    await user.click(within(again).getByRole('button', { name: 'Reopen' }));
+    await waitFor(() => expect(savedState().bills[0].final).toBeFalsy());
+    expect(savedState().bills[0].sections[0].areas[0].items[0].rateId).toBe('floor-tiles');
+  });
+});
+
+describe('Payment receipt', () => {
+  it('opens a receipt for a payment recorded on the bill', async () => {
+    const payment = { id: 'pay1', date: '2026-11-02', amount: 1500, mode: 'cash', note: '' };
+    const { user } = renderApp({ ...SAMPLE_STATE, bills: SAMPLE_STATE.bills.map((bill, index) => (index === 0 ? { ...bill, payments: [payment] } : bill)) });
+    await goTo(user, 'Entry');
+    await user.click(await screen.findByRole('tab', { name: 'Amounts & payments' }));
+    await user.click(await screen.findByRole('button', { name: /Actions for payment on 2026-11-02/ }));
+    await user.click(screen.getByRole('menuitem', { name: 'Receipt' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Receipt no.')).toBeTruthy();
+    expect(within(dialog).getAllByText('RCT-261102-PAY1').length).toBeGreaterThan(0);
+    expect(within(dialog).getByText('Payment for bill 1')).toBeTruthy();
+  });
+});

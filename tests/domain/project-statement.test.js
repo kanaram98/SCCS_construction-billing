@@ -72,3 +72,23 @@ test('period choices', () => {
   assert.equal(inPeriod('2026-11-05', { from: '2026-11-01', to: '2026-11-31' }), true);
   assert.equal(inPeriod('2026-12-01', { from: '2026-11-01', to: '2026-11-31' }), false);
 });
+
+test('advance applied to a bill lowers the bill balance but is not counted as new money', async () => {
+  const { getBillTotals } = await import('../../src/domain/calculations.js');
+  const { advanceRemaining, createAdjustment } = await import('../../src/domain/payments.js');
+  const { projectSummary } = await import('../../src/domain/project-report.js');
+  const advance = createAdvance({ id: 'a1', projectId: 'p1', amount: 6000, date: '2026-11-01' });
+  const adjusted = bill({ advance: '0', payments: [], advanceAdjustments: [createAdjustment({ advanceId: 'a1', amount: 4000 })] });
+  const totals = getBillTotals(adjusted, rates);
+  assert.equal(totals.total, 10000);
+  assert.equal(totals.paid, 4000);
+  assert.equal(totals.balance, 6000);
+  assert.equal(totals.cashPaid, 0);
+  assert.equal(advanceRemaining(advance, [adjusted]), 2000);
+
+  const state = { bills: [adjusted], advances: [advance], expenses: [], rates, labour: createLabourState() };
+  for (const s of [projectStatement(project, state), projectSummary(project, state)]) {
+    assert.equal(s.received, 6000); // the advance only: the 4000 applied is not added again
+    assert.equal(s.receivable, 4000);
+  }
+});

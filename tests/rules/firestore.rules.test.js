@@ -176,6 +176,13 @@ describe('what the contractor (your father) can and cannot do', () => {
     await assertSucceeds(put(admin, advance, { ...advance.data, version: advance.data.version + 1, updatedBy: ADMIN.uid, amount: 60000 }));
   });
 
+  it('a bill may carry advance adjustments (a list, size limited)', async () => {
+    const bill = find(sampleDocs(FATHER), 'bills', 'bill-1');
+    const adjustments = [{ id: 'j1', advanceId: 'a1', amount: 500, date: '2026-11-02' }];
+    await assertSucceeds(put(as(FATHER), bill, { ...bill.data, version: bill.data.version + 1, advanceAdjustments: adjustments }));
+    await assertFails(put(as(FATHER), bill, { ...bill.data, version: bill.data.version + 2, advanceAdjustments: 'lots' }));
+  });
+
   it('a project holds the client details (optional fields, size limited)', async () => {
     const project = find(sampleDocs(FATHER), 'projects');
     const withClient = { ...project.data, clientPhone: '98765', clientAddress: 'Jaipur', clientGstin: '08ABCDE1234F1Z5' };

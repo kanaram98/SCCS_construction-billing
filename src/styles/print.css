@@ -109,6 +109,11 @@
 .worker-sheet .labour-sign { margin-top: 56px; }
 .worker-sheet .worker-amounts { width: 60%; }
 
+/* Payment receipt */
+.receipt-table th { width: 32%; background: #f3f5f8; font-weight: 700; }
+.receipt-table td, .receipt-table th { padding: 6px 8px; }
+.receipt-thanks { margin: 18px 0 0; }
+
 /* Project statement */
 .statement-section h4 { margin: 12px 0 4px; font-size: 1.05em; }
 .statement-table { width: 100%; border-collapse: collapse; }

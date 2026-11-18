@@ -55,6 +55,7 @@ export default function BillCard({ bill, summary, selected, note, onOpen, onLink
               variant={summary.status === 'unpaid' ? 'outlined' : 'filled'}
             />
           )}
+          {bill.final && <Chip size="small" variant="outlined" label={t('Final')} />}
           {unlinked && <Chip size="small" variant="outlined" color="warning" label={t('No project linked')} />}
         </Stack>
       </CardActionArea>

@@ -57,7 +57,8 @@ export function createItem(rate, values = {}) {
 
 /** Copies items with fresh ids. */
 export function cloneItems(items = []) {
-  return items.map((item) => ({ ...item, id: newId() }));
+  // An item of a final bill is detached from its rate; the copy follows the live rate again.
+  return items.map(({ sourceRateId, ...item }) => ({ ...item, id: newId(), ...(sourceRateId && !item.rateId ? { rateId: sourceRateId } : {}) }));
 }
 
 /** Deep-copies a section/area tree with fresh ids at every level. */
@@ -82,6 +83,9 @@ export function duplicateBill(source, number) {
     number,
     projectName: tr('{name} (copy)', { name: source.projectName || tr('Untitled') }),
     payments: [],
+    advanceAdjustments: [],
+    final: undefined,
+    finalizedAt: undefined,
     sections: cloneSections(copy.sections)
   };
 }

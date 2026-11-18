@@ -33,6 +33,18 @@ test('daily expenses table with PDF and Excel export', async ({ page }) => {
   await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click();
   await expect(page.getByText('Received from the client: ₹50,000')).toBeVisible();
 
+  // Receipt for the advance: preview and PDF
+  await page.getByRole('button', { name: /Receipt for advance/ }).click();
+  await expect(page.locator('.receipt-document')).toContainText('Rupees Fifty Thousand');
+  const receiptPdf = page.waitForEvent('download');
+  await page.getByRole('dialog').getByRole('button', { name: 'PDF', exact: true }).click();
+  const receiptText = fs.readFileSync(await (await receiptPdf).path(), 'latin1');
+  expect(receiptText).toContain('PAYMENT RECEIPT');
+  expect(receiptText).toContain('Rs. 50,000');
+  expect(receiptText).toContain('Sharma ji');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+
   await goTo(page, 'Expenses');
   for (const [amount, note] of [['250', 'Tea and lunch'], ['400', 'Auto to site']]) {
     await page.getByRole('button', { name: 'Add expense' }).click();

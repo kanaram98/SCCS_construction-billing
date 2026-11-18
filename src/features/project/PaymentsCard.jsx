@@ -17,9 +17,13 @@ import { useUndoable } from '../../hooks/useUndoable.js';
 import { ActionMenu, Card, useNotify } from '../../components/ui';
 import { getBillTotals, getPaymentStatus, paymentStatusLabel } from '../../domain/calculations.js';
 import { formatCurrency } from '../../domain/formatters.js';
-import { getPayments, paymentModeLabel, sortPayments } from '../../domain/payments.js';
+import { createAdjustment, advanceRemaining, getAdjustments, getPayments, paymentModeLabel, sortPayments } from '../../domain/payments.js';
 import { getAmountErrors } from '../../domain/validation.js';
 import PaymentDialog from './PaymentDialog.jsx';
+import ApplyAdvanceDialog from './ApplyAdvanceDialog.jsx';
+import ReceiptDialog from '../receipts/ReceiptDialog.jsx';
+import { billPaymentReceipt } from '../../domain/receipt.js';
+import ReceiptIcon from '@mui/icons-material/ReceiptOutlined';
 import { tr as t } from '../../i18n/translate.js';
 
 const STATUS_COLORS = { paid: 'success', partial: 'warning', unpaid: 'default' };
@@ -41,10 +45,23 @@ export default function PaymentsCard() {
   const reminder = useWhatsAppReminder();
   /** null = closed, 'new' = adding, otherwise the payment being edited. */
   const [editing, setEditing] = useState(null);
+  const [applying, setApplying] = useState(false);
+  const [receipt, setReceipt] = useState(null);
   const totals = getBillTotals(bill, data.rates);
   const status = getPaymentStatus(bill, data.rates, totals);
   const overpaid = getAmountErrors(bill, data.rates, totals).payments;
   const payments = sortPayments(getPayments(bill));
+  const adjustments = getAdjustments(bill);
+  const choices = data.advances
+    .filter((advance) => bill.projectId && advance.projectId === bill.projectId)
+    .map((advance) => ({ advance, remaining: advanceRemaining(advance, data.bills) }))
+    .filter((choice) => choice.remaining > 0);
+
+  function apply(values) {
+    actions.bills.update({ advanceAdjustments: [...adjustments, createAdjustment(values)] });
+    notify(t('{amount} of the advance applied.', { amount: formatCurrency(values.amount) }));
+    setApplying(false);
+  }
 
   function save(values) {
     if (editing === 'new') {
@@ -66,6 +83,7 @@ export default function PaymentsCard() {
         <SummaryRow label={t('Bill total')} value={formatCurrency(totals.total)} />
         {totals.advance > 0 && <SummaryRow label={t('Advance')} value={`- ${formatCurrency(totals.advance)}`} />}
         {totals.received > 0 && <SummaryRow label={t('Payments received')} value={`- ${formatCurrency(totals.received)}`} />}
+        {totals.adjusted > 0 && <SummaryRow label={t('Adjusted from advance')} value={`- ${formatCurrency(totals.adjusted)}`} />}
         <Divider />
         <SummaryRow label={t('Balance due')} value={formatCurrency(totals.balance)} strong />
         {overpaid && <Typography variant="caption" color="error">{overpaid}</Typography>}
@@ -82,6 +100,7 @@ export default function PaymentsCard() {
                   size="small"
                   label={t('Actions for payment on {date}', { date: payment.date })}
                   items={[
+                    { label: t('Receipt'), icon: <ReceiptIcon fontSize="small" />, onClick: () => setReceipt(billPaymentReceipt({ bill, payment, rates: data.rates })) },
                     { label: t('Edit'), icon: <EditIcon fontSize="small" />, onClick: () => setEditing(payment) },
                     {
                       label: t('Delete'),
@@ -102,7 +121,32 @@ export default function PaymentsCard() {
         </List>
       )}
 
+      {adjustments.length > 0 && (
+        <List dense disablePadding sx={{ mb: 1 }}>
+          {adjustments.map((entry) => (
+            <ListItem
+              key={entry.id}
+              disableGutters
+              secondaryAction={(
+                <ActionMenu
+                  size="small"
+                  label={t('Actions for advance adjustment on {date}', { date: entry.date })}
+                  items={[{ label: t('Remove'), icon: <DeleteIcon fontSize="small" />, danger: true, onClick: () => undoable(t('Adjustment removed.'), () => actions.bills.update({ advanceAdjustments: adjustments.filter((item) => item.id !== entry.id) })) }]}
+                />
+              )}
+            >
+              <ListItemText primary={`${formatCurrency(entry.amount)} · ${t('From client advance')}`} secondary={[entry.date, data.advances.find((advance) => advance.id === entry.advanceId)?.date].filter(Boolean).join(' · ')} />
+            </ListItem>
+          ))}
+        </List>
+      )}
+
       <Button fullWidth variant="outlined" startIcon={<AddIcon />} onClick={() => setEditing('new')}>{t('Record payment')}</Button>
+      {choices.length > 0 && totals.balance > 0 && (
+        <Button fullWidth variant="outlined" onClick={() => setApplying(true)} sx={{ mt: 1 }}>{t('Apply project advance')}</Button>
+      )}
+      <ReceiptDialog receipt={receipt} onClose={() => setReceipt(null)} />
+      <ApplyAdvanceDialog open={applying} choices={choices} balance={Math.max(0, totals.balance)} onApply={apply} onClose={() => setApplying(false)} />
       {totals.balance > 0 && (
         <Button fullWidth startIcon={<WhatsAppIcon />} onClick={() => reminder.remind(bill)} sx={{ mt: 1, color: '#128C7E' }}>
           {t('Remind on WhatsApp')}

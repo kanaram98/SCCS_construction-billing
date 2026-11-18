@@ -24,6 +24,7 @@ import { relabelGeneratedNames } from '../domain/relabel.js';
 import { createWorker } from '../domain/labour.js';
 import * as labourOps from '../domain/labour-ops.js';
 import * as history from '../domain/history.js';
+import { finalizeBill, isFinal, reopenBill } from '../domain/bill-final.js';
 import { convertEstimateToBill, createNextRunningBill, nextNumberFor } from '../domain/bill-kinds.js';
 import { DEFAULT_SIGNATURE_LAYOUT, normalizeSignatureLayout } from '../domain/signature-layout.js';
 import { moveDocument, normalizePrintSettings, toggleDocument } from '../domain/print-settings.js';
@@ -104,6 +105,14 @@ function createBillActions({ data, setData }) {
         };
       });
     },
+    /** Locks the active bill and freezes its prices. */
+    finalize() {
+      setData((current) => updateActiveBill(current, (bill) => finalizeBill(bill, current.rates)));
+    },
+    /** Unlocks the active bill (admin). */
+    reopen() {
+      setData((current) => updateActiveBill(current, (bill) => reopenBill(bill, current.rates)));
+    },
     /** Patches the active bill with an object or `(bill) => bill` updater. */
     update(updater) {
       setData((current) => updateActiveBill(current, updater));
@@ -112,7 +121,14 @@ function createBillActions({ data, setData }) {
 }
 
 function createEntryActions({ data, bill, setData }) {
-  const updateBill = (updater) => setData((current) => updateActiveBill(current, updater));
+  // A final bill's measurements are locked.
+  const updateBill = (updater) => setData((current) => {
+    if (isFinal(current.bills.find((entry) => entry.id === current.activeBillId))) {
+      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bill-locked'));
+      return current;
+    }
+    return updateActiveBill(current, updater);
+  });
 
   /** Runs a `{ apply, result }` operation from bill-tree and returns its result. */
   const run = (operation) => {

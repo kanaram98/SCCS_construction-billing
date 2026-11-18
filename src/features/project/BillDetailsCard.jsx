@@ -2,7 +2,10 @@ import Grid from '@mui/material/Grid';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import { useBilling } from '../../state/BillingContext.jsx';
-import { Card, Notice, SelectField, TextField } from '../../components/ui';
+import { useCloud } from '../account/CloudProvider.jsx';
+import { isEstimate } from '../../domain/bill-kinds.js';
+import { isFinal } from '../../domain/bill-final.js';
+import { Card, Notice, SelectField, TextField, useConfirm, useNotify } from '../../components/ui';
 import { getRequiredDetailErrors, isBillNumberTaken } from '../../domain/validation.js';
 import { text } from '../../domain/formatters.js';
 import { billFieldsFromProject } from '../../domain/projects.js';
@@ -14,11 +17,36 @@ import { tr as t } from '../../i18n/translate.js';
 export default function BillDetailsCard({ onNavigate }) {
   const { data, bill, actions } = useBilling();
   const update = actions.bills.update;
+  const cloud = useCloud();
+  const confirm = useConfirm();
+  const notify = useNotify();
   const project = data.projects.find((entry) => entry.id === bill.projectId);
   const required = getRequiredDetailErrors(bill, data.firm);
   const numberError = !text(bill.number)
     ? t('Bill number is required.')
     : isBillNumberTaken(data.bills, bill) ? t('This bill number is already in use.') : '';
+  async function markFinal() {
+    const ok = await confirm({
+      title: t('Mark this bill as final?'),
+      message: t('Prices are frozen at today’s rates and measurements are locked. Payments can still be added. Only the admin can reopen it.'),
+      confirmLabel: t('Mark as final')
+    });
+    if (!ok) return;
+    actions.bills.finalize();
+    notify(t('Bill marked as final.'), 'success');
+  }
+
+  async function reopen() {
+    const ok = await confirm({
+      title: t('Reopen this bill?'),
+      message: t('Items follow the current Rates list again, so the amounts may change.'),
+      confirmLabel: t('Reopen')
+    });
+    if (!ok) return;
+    actions.bills.reopen();
+    notify(t('Bill reopened.'), 'info');
+  }
+
   const clientLines = [bill.client, bill.clientPhone, hasGst(bill) ? bill.clientGstin : '', bill.clientAddress].filter(Boolean);
 
   return (
@@ -56,6 +84,18 @@ export default function BillDetailsCard({ onNavigate }) {
         <Grid size={6}>
           <TextField label={t('Date')} type="date" value={bill.date} warning={futureDateWarning(bill.date)} onChange={(date) => update({ date })} />
         </Grid>
+        {!isEstimate(bill) && (
+          <Grid size={12}>
+            {isFinal(bill) ? (
+              <Notice tone="info" sx={{ mb: 0 }}>
+                {t('This bill is final: prices are frozen and measurements are locked.')}
+                {cloud.can('reopenBill') && <Button size="small" onClick={reopen} sx={{ ml: 1 }}>{t('Reopen')}</Button>}
+              </Notice>
+            ) : (
+              <Button variant="outlined" onClick={markFinal}>{t('Mark bill as final')}</Button>
+            )}
+          </Grid>
+        )}
         <Grid size={6}>
           <TextField label={t('First level name')} helperText={t('e.g. Floor')} value={bill.firstLevelName} onChange={(firstLevelName) => update({ firstLevelName })} />
         </Grid>

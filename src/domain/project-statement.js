@@ -47,7 +47,8 @@ export function projectStatement(project, { bills = [], advances = [], expenses 
 
   const billed = sum('total');
   const tax = sum('tax');
-  const paidOnBills = sum('paid');
+  const paidOnBills = sum('cashPaid'); // advance applied to bills is already in the project advances
+  const advanceApplied = sum('adjusted');
   const advanceTotal = totalAmount(projectAdvances);
   const received = roundTo2(paidOnBills + advanceTotal);
   const expenseTotal = totalAmount(projectExpenses);
@@ -61,6 +62,7 @@ export function projectStatement(project, { bills = [], advances = [], expenses 
     tax,
     billedBeforeTax: roundTo2(billed - tax),
     paidOnBills,
+    advanceApplied,
     advances: projectAdvances,
     advanceTotal,
     received,

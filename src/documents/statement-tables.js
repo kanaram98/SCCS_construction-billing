@@ -17,6 +17,7 @@ export function statementTables(s, t, money) {
     ...(s.tax > 0 ? [row([t('of which tax'), money(s.tax)])] : []),
     row([t('Received on bills'), money(s.paidOnBills)]),
     row([t('Advances from the client'), money(s.advanceTotal)]),
+    ...(s.advanceApplied > 0 ? [row([t('of which applied to bills'), money(s.advanceApplied)])] : []),
     row([t('Total received'), money(s.received)], true),
     row([s.receivable < 0 ? t('Client paid ahead') : t('Client still owes'), money(Math.abs(s.receivable))], true),
     row([t('Site expenses'), money(s.expenseTotal)]),

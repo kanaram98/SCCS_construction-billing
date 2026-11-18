@@ -17,7 +17,7 @@ import EditIcon from '@mui/icons-material/EditOutlined';
 import { EmptyState, PageHeading, StatCard, useConfirm, useNotify } from '../../components/ui';
 import { useBilling } from '../../state/BillingContext.jsx';
 import { useUndoable } from '../../hooks/useUndoable.js';
-import { PAYMENT_MODES } from '../../domain/payments.js';
+import { PAYMENT_MODES, advanceApplied } from '../../domain/payments.js';
 import { PROJECT_STATUSES, EXPENSE_CATEGORIES, expensesByDay } from '../../domain/projects.js';
 import { projectSummary } from '../../domain/project-report.js';
 import { billLabel, isEstimate } from '../../domain/bill-kinds.js';
@@ -28,6 +28,9 @@ import { tr as t, trn } from '../../i18n/translate.js';
 import Alert from '@mui/material/Alert';
 import { useCloud } from '../account/CloudProvider.jsx';
 import ExpenseDays from '../expenses/ExpenseDays.jsx';
+import ReceiptDialog from '../receipts/ReceiptDialog.jsx';
+import { advanceReceipt } from '../../domain/receipt.js';
+import ReceiptIcon from '@mui/icons-material/ReceiptOutlined';
 import ExpenseDialog from '../expenses/ExpenseDialog.jsx';
 import AdvanceDialog from './AdvanceDialog.jsx';
 import ProjectDialog from './ProjectDialog.jsx';
@@ -62,6 +65,7 @@ function ProjectDetail({ project, onBack, onNavigate }) {
   const undoable = useUndoable();
   const [tab, setTab] = useState('advances');
   const [advanceDialog, setAdvanceDialog] = useState(null);
+  const [receipt, setReceipt] = useState(null);
   const [expenseDialog, setExpenseDialog] = useState(null);
   const [projectDialog, setProjectDialog] = useState(false);
   const summary = useMemo(() => projectSummary(project, data), [project, data]);
@@ -72,6 +76,10 @@ function ProjectDetail({ project, onBack, onNavigate }) {
   const canEditProject = cloud.can('editProject');
 
   async function removeAdvance(advance) {
+    if (advanceApplied(advance, data.bills) > 0) {
+      notify(t('This advance is applied to bills. Remove the adjustment on the bill first.'), 'error');
+      return;
+    }
     const ok = await confirm({ title: t('Delete this advance?'), message: `${formatCurrency(advance.amount)} · ${advance.date}`, confirmLabel: t('Delete'), danger: true });
     if (!ok) return;
     setAdvanceDialog(null);
@@ -151,19 +159,21 @@ function ProjectDetail({ project, onBack, onNavigate }) {
           ) : (
             <Card>
               {advances.map((advance, index) => (
+                <Stack key={advance.id} direction="row" sx={{ alignItems: 'center', borderTop: index ? 1 : 0, borderColor: 'divider' }}>
                 <Box
-                  key={advance.id}
                   component={canEditAdvance ? 'button' : 'div'}
                   type={canEditAdvance ? 'button' : undefined}
                   onClick={canEditAdvance ? () => setAdvanceDialog(advance) : undefined}
                   aria-label={canEditAdvance ? t('Open advance {amount}', { amount: formatCurrency(advance.amount) }) : undefined}
-                  sx={{ all: 'unset', boxSizing: 'border-box', display: 'flex', width: '100%', justifyContent: 'space-between', gap: 1, px: 1.75, py: 1.25, borderTop: index ? 1 : 0, borderColor: 'divider', cursor: canEditAdvance ? 'pointer' : 'default' }}
+                  sx={{ all: 'unset', boxSizing: 'border-box', display: 'flex', flex: 1, minWidth: 0, justifyContent: 'space-between', gap: 1, px: 1.75, py: 1.25, cursor: canEditAdvance ? 'pointer' : 'default' }}
                 >
                   <Box sx={{ minWidth: 0 }}>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>{formatCurrency(advance.amount)} · {t(PAYMENT_MODES[advance.mode] || 'Cash')}</Typography>
-                    <Typography variant="caption" color="text.secondary" component="div" sx={{ wordBreak: 'break-word' }}>{[advance.date, advance.note].filter(Boolean).join(' · ')}</Typography>
+                    <Typography variant="caption" color="text.secondary" component="div" sx={{ wordBreak: 'break-word' }}>{[advance.date, advance.note, advanceApplied(advance, data.bills) > 0 && t('{amount} applied to bills', { amount: formatCurrency(advanceApplied(advance, data.bills)) })].filter(Boolean).join(' · ')}</Typography>
                   </Box>
                 </Box>
+                <IconButton aria-label={t('Receipt for advance {amount}', { amount: formatCurrency(advance.amount) })} onClick={() => setReceipt(advanceReceipt({ project, advance }))} sx={{ mr: 0.5 }}><ReceiptIcon fontSize="small" /></IconButton>
+                </Stack>
               ))}
             </Card>
           )}
@@ -183,6 +193,7 @@ function ProjectDetail({ project, onBack, onNavigate }) {
         </>
       )}
 
+      <ReceiptDialog receipt={receipt} onClose={() => setReceipt(null)} />
       <AdvanceDialog
         open={Boolean(advanceDialog)}
         advance={advanceDialog === 'new' ? null : advanceDialog}
@@ -190,6 +201,10 @@ function ProjectDetail({ project, onBack, onNavigate }) {
         projectId={project.id}
         onDelete={advanceDialog && advanceDialog !== 'new' && canEditAdvance ? () => removeAdvance(advanceDialog) : undefined}
         onSave={(values) => {
+          if (advanceDialog !== 'new' && values.amount < advanceApplied(advanceDialog, data.bills)) {
+            notify(t('{amount} of this advance is applied to bills, so it cannot be lowered below that.', { amount: formatCurrency(advanceApplied(advanceDialog, data.bills)) }), 'error');
+            return;
+          }
           if (advanceDialog === 'new') { actions.advances.add(values); notify(t('Advance recorded.'), 'success'); } else actions.advances.update(advanceDialog.id, values);
           setAdvanceDialog(null);
         }}

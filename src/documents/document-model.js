@@ -122,6 +122,7 @@ function billTotalRows(bill, context) {
     ...(context.runningAccount ? runningAccountRows(context) : [
       ...(totals.advance ? [amountRow('normal', t('Advance received'), `- ${money(totals.advance)}`)] : []),
       ...(totals.received ? [amountRow('normal', t('Payments received'), `- ${money(totals.received)}`)] : []),
+      ...(totals.adjusted ? [amountRow('normal', t('Adjusted from advance'), `- ${money(totals.adjusted)}`)] : []),
       ...(totals.paid ? [amountRow('grandTotal', t('Balance due'), money(totals.balance))] : [])
     ])
   ];

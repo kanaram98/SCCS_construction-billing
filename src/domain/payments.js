@@ -14,6 +14,37 @@ export function paymentModeLabel(mode) {
   return PAYMENT_MODES[mode] || 'Other';
 }
 
+/**
+ * Advance adjustments: part of a project's client advance applied to this bill,
+ * [{ id, advanceId, amount, date }]. The money was already received as the advance,
+ * so it reduces what this bill still owes but does not count as new money.
+ */
+export function getAdjustments(bill) {
+  return Array.isArray(bill.advanceAdjustments) ? bill.advanceAdjustments : [];
+}
+
+export function sumAdjustments(bill) {
+  return getAdjustments(bill).reduce((sum, entry) => sum + (Number(entry.amount) > 0 ? Number(entry.amount) : 0), 0);
+}
+
+/** How much of `advance` has been applied to bills (optionally ignoring one bill). */
+export function advanceApplied(advance, bills, exceptBillId = '') {
+  return bills
+    .filter((bill) => bill.id !== exceptBillId)
+    .flatMap(getAdjustments)
+    .filter((entry) => entry.advanceId === advance.id)
+    .reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0);
+}
+
+/** What is left of a client advance to apply to bills. */
+export function advanceRemaining(advance, bills) {
+  return Math.max(0, (Number(advance.amount) || 0) - advanceApplied(advance, bills));
+}
+
+export function createAdjustment(values) {
+  return { id: newId(), advanceId: '', amount: 0, date: todayIso(), ...values, amount: Number(values.amount) || 0 };
+}
+
 export function getPayments(bill) {
   return Array.isArray(bill.payments) ? bill.payments : [];
 }

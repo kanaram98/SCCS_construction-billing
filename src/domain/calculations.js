@@ -1,7 +1,7 @@
 import { parseFeetInches } from './measurements.js';
 import { resolveRate } from './rates.js';
 import { roundTo2 } from './formatters.js';
-import { sumPayments } from './payments.js';
+import { sumAdjustments, sumPayments } from './payments.js';
 
 function nonNegativeNumber(value) {
   const number = Number(value);
@@ -53,8 +53,10 @@ export function getBillTotals(bill, rates) {
   const total = Math.max(0, subtotal - discount + tax);
   const advance = nonNegativeNumber(bill.advance);
   const received = sumPayments(bill);
-  const paid = advance + received;
-  return { subtotal, discount, tax, total, advance, received, paid, balance: total - paid };
+  const adjusted = sumAdjustments(bill);
+  const cashPaid = advance + received; // money received on this bill itself
+  const paid = cashPaid + adjusted; // plus project advance applied to it
+  return { subtotal, discount, tax, total, advance, received, adjusted, cashPaid, paid, balance: total - paid };
 }
 
 /** How GST is shown: split into CGST + SGST within a state, or IGST between states. */

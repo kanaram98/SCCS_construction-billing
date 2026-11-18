@@ -19,10 +19,11 @@ export function projectSummary(project, { bills = [], advances = [], expenses = 
   const projectBills = bills.filter((bill) => bill.projectId === project.id && !isEstimate(bill));
   const totals = projectBills.map((bill) => getBillTotals(bill, rates));
   const sum = (field) => roundTo2(totals.reduce((total, item) => total + item[field], 0));
+  const applied = sum('adjusted');
   const projectAdvances = advances.filter((advance) => advance.projectId === project.id);
   const projectExpenses = expenses.filter((expense) => expense.projectId === project.id);
   const billed = sum('total');
-  const paidOnBills = sum('paid');
+  const paidOnBills = sum('cashPaid'); // advance applied to bills is already in the project advances
   const advanceTotal = totalAmount(projectAdvances);
   const received = roundTo2(paidOnBills + advanceTotal);
   const expenseTotal = totalAmount(projectExpenses);
@@ -31,6 +32,7 @@ export function projectSummary(project, { bills = [], advances = [], expenses = 
     billed,
     paidOnBills,
     advances: advanceTotal,
+    advanceApplied: applied,
     received,
     receivable: roundTo2(billed - received),
     expenses: expenseTotal,
