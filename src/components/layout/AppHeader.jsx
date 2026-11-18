@@ -15,6 +15,7 @@ import { useCloud } from '../../features/account/CloudProvider.jsx';
 import { CLOUD_STATUS_TEXT } from '../../features/account/AccountCard.jsx';
 import { DRAWER_WIDTH } from '../../theme.js';
 import IconButton from '@mui/material/IconButton';
+import Badge from '@mui/material/Badge';
 import SettingsIcon from '@mui/icons-material/SettingsOutlined';
 import { tr as t } from '../../i18n/translate.js';
 
@@ -46,11 +47,20 @@ export default function AppHeader({ subtitle, saveStatus, canInstall, onInstall,
         {canInstall && (
           <Button size="small" variant="contained" startIcon={<InstallMobileIcon />} onClick={onInstall}>{t('Install')}</Button>
         )}
-        <Tooltip title={t(statusText)}>
-          <Box role="status" aria-label={t(statusText)} sx={{ display: 'flex', color }}>
-            {icon}
-          </Box>
-        </Tooltip>
+        {cloudActive && cloud.access === 'full' ? (
+          // Tap to sync now; the badge counts changes still waiting to upload.
+          <Tooltip title={`${t(statusText)} · ${t('Tap to sync now')}`}>
+            <IconButton aria-label={t(statusText)} onClick={cloud.syncNow} disabled={cloud.syncing} sx={{ color }}>
+              <Badge badgeContent={cloud.pending} color="warning" max={99}>{icon}</Badge>
+            </IconButton>
+          </Tooltip>
+        ) : (
+          <Tooltip title={t(statusText)}>
+            <Box role="status" aria-label={t(statusText)} sx={{ display: 'flex', color }}>
+              {icon}
+            </Box>
+          </Tooltip>
+        )}
         <Tooltip title={t('App settings')}>
           <IconButton aria-label={t('App settings')} onClick={onOpenSettings} edge="end">
             <SettingsIcon />

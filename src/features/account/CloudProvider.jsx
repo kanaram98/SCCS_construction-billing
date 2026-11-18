@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useBilling } from '../../state/BillingContext.jsx';
 import { useNotify } from '../../components/ui';
+import { formatLogTime } from '../../domain/labour-log.js';
 import { cloudConfig, isCloudConfigured } from '../../backend/config.js';
 import { can as roleCan, canEditAttendanceDate, canRestore, canUndo } from '../../domain/permissions.js';
 import { tr as t, trn } from '../../i18n/translate.js';
@@ -25,6 +26,11 @@ import { tr as t, trn } from '../../i18n/translate.js';
  */
 const SIGNED_IN_FLAG = 'construction_billing_cloud_signed_in';
 const LAST_USER_KEY = 'construction_billing_last_user';
+const lastSyncedKey = (uid) => `construction_billing_last_synced:${uid}`;
+/** Notices about other people's changes are shown at most this often (ms). */
+const OTHERS_NOTICE_GAP = 20000;
+/** After this long in "syncing", finishing is worth a notice (ms). */
+const SLOW_SYNC_MS = 8000;
 const syncStateKey = (uid) => `construction_billing_sync:${cloudConfig.workspaceId}:${uid}`;
 
 const storage = {
@@ -44,6 +50,10 @@ const LOCAL_ONLY = Object.freeze({
   members: [],
   switchInfo: null,
   noAccessReason: '',
+  pending: 0,
+  syncing: false,
+  lastSynced: null,
+  syncNow: async () => {},
   can: () => true,
   canEditDate: () => true,
   canUndo: () => true,
@@ -95,6 +105,12 @@ function ConnectedCloud({ children }) {
   const [members, setMembers] = useState([]);
   const [switchInfo, setSwitchInfo] = useState(null);
   const [noAccessReason, setNoAccessReason] = useState('');
+  const [inFlight, setInFlight] = useState(0);
+  const [unsent, setUnsent] = useState(0);
+  const [syncing, setSyncing] = useState(false);
+  const [lastSynced, setLastSynced] = useState(null);
+  const membersRef = useRef([]);
+  const noticeRef = useRef({ lastOthers: 0, syncingSince: 0, wasOffline: false, firstOnlineCheck: true });
   // A phone signed in before restores its session on start: treat it as signed in meanwhile.
   const [status, setStatus] = useState(() => (storage.get(SIGNED_IN_FLAG) ? 'connecting' : 'signed-out'));
   const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine !== false));
@@ -105,7 +121,9 @@ function ConnectedCloud({ children }) {
     const firebase = firebaseRef.current;
     if (!firebase) return;
     const { listMembers } = await import('../../backend/session.js');
-    setMembers(await listMembers({ db: firebase.db, fs: firebase.fs }, cloudConfig.workspaceId).catch(() => []));
+    const list = await listMembers({ db: firebase.db, fs: firebase.fs }, cloudConfig.workspaceId).catch(() => []);
+    membersRef.current = list;
+    setMembers(list);
   }, []);
 
   /** Starts syncing for a member (after any account-switch check). */
@@ -129,17 +147,45 @@ function ConnectedCloud({ children }) {
       wid: cloudConfig.workspaceId,
       uid: nextUser.uid,
       getRaw: () => rawRef.current,
-      applyRaw: (next, conflicts = []) => {
+      applyRaw: (next, conflicts = [], info = {}) => {
         rawRef.current = next;
         actionsRef.current.data.restore(next);
+        const others = info.fromOthers || [];
+        const notices = noticeRef.current;
+        if (others.length && Date.now() - notices.lastOthers > OTHERS_NOTICE_GAP) {
+          notices.lastOthers = Date.now();
+          const names = [...new Set(others.map((item) => membersRef.current.find((member) => member.uid === item.by)?.name).filter(Boolean))];
+          notifyRef.current(trn(others.length,
+            '{count} change from {who} arrived. This phone is up to date.',
+            '{count} changes from {who} arrived. This phone is up to date.',
+            { who: names.length ? names.join(', ') : t('another device') }), 'info');
+        }
         if (conflicts.length) notifyRef.current(trn(conflicts.length, '{count} item was also changed on another device. The newer version was kept; see History.', '{count} items were also changed on another device. The newer versions were kept; see History.'), 'warning');
       },
       loadState: () => storage.getJson(key),
       saveState: (state) => storage.set(key, JSON.stringify(state)),
-      onStatus: setStatus,
+      onStatus: (next) => {
+        const notices = noticeRef.current;
+        if (next === 'syncing' && !notices.syncingSince) notices.syncingSince = Date.now();
+        if (next === 'synced') {
+          const at = new Date().toISOString();
+          storage.set(lastSyncedKey(nextUser.uid), at);
+          setLastSynced(at);
+          // A long wait (offline, slow network) deserves a confirmation; quick syncs stay quiet.
+          if (notices.syncingSince && (notices.wasOffline || Date.now() - notices.syncingSince > SLOW_SYNC_MS)) {
+            notifyRef.current(t('All changes are uploaded.'), 'success');
+          }
+          notices.syncingSince = 0;
+          notices.wasOffline = false;
+        }
+        if (next === 'error') notifyRef.current(t('Sync problem. Changes are kept on this device; try again later.'), 'warning');
+        setStatus(next);
+      },
+      onPending: setInFlight,
       onRefused: () => notifyRef.current(t('Only the admin can make that change. It was undone.'), 'warning')
     });
     engineRef.current = engine;
+    setLastSynced(storage.get(lastSyncedKey(nextUser.uid)));
     try {
       await engine.start();
     } catch (error) {
@@ -220,6 +266,27 @@ function ConnectedCloud({ children }) {
     return () => clearTimeout(timer);
   }, [raw]);
 
+  // Changes still waiting to upload (counted shortly after each change).
+  useEffect(() => {
+    const engine = engineRef.current;
+    if (!engine) { setUnsent(0); return undefined; }
+    const timer = setTimeout(() => setUnsent(engine.unsentCount()), 400);
+    return () => clearTimeout(timer);
+  }, [raw, status, inFlight]);
+
+  // Tell the user when the phone goes offline and when it is back.
+  useEffect(() => {
+    const notices = noticeRef.current;
+    if (notices.firstOnlineCheck) { notices.firstOnlineCheck = false; if (online) return; }
+    if (!engineRef.current) return;
+    if (!online) {
+      notices.wasOffline = true;
+      notifyRef.current(t('You are offline. Everything is saved on this phone and uploads when the internet is back.'), 'info');
+    } else if (notices.wasOffline) {
+      notifyRef.current(t('Back online. Uploading your changes…'), 'info');
+    }
+  }, [online]);
+
   useEffect(() => {
     const update = () => setOnline(navigator.onLine !== false);
     window.addEventListener('online', update);
@@ -237,6 +304,27 @@ function ConnectedCloud({ children }) {
       notify(t('Sign-in failed: {reason}', { reason: error.code || error.message }), 'error');
     }
   }, [connect, notify]);
+
+  /** "Sync now": uploads everything, waits for the server to confirm, downloads what others changed. */
+  const syncNow = useCallback(async () => {
+    const engine = engineRef.current;
+    if (!engine || syncing) return;
+    setSyncing(true);
+    try {
+      const result = await engine.syncNow();
+      if (result.ok) {
+        notifyRef.current(t('All changes are uploaded and this phone is up to date.'), 'success');
+      } else if (result.pending > 0) {
+        notifyRef.current(trn(result.pending,
+          '{count} change is still waiting to upload (no internet?). It is safe on this phone and uploads automatically.',
+          '{count} changes are still waiting to upload (no internet?). They are safe on this phone and upload automatically.'), 'warning');
+      } else {
+        notifyRef.current(t('Everything is uploaded, but this phone could not check for new changes. Try again with internet.'), 'warning');
+      }
+    } finally {
+      setSyncing(false);
+    }
+  }, [syncing]);
 
   const signOut = useCallback(async () => {
     stopEngine();
@@ -286,6 +374,10 @@ function ConnectedCloud({ children }) {
     members,
     switchInfo,
     noAccessReason,
+    pending: unsent + inFlight,
+    syncing,
+    lastSynced,
+    syncNow,
     can: (action) => (effectiveRole ? roleCan(effectiveRole, action) : true),
     /** Timesheet day: contractors only today and the 2 days before. */
     canEditDate: (date) => (effectiveRole ? canEditAttendanceDate(effectiveRole, date) : true),
@@ -298,7 +390,7 @@ function ConnectedCloud({ children }) {
     retry,
     refreshMembers,
     firebase: firebaseRef.current
-  }), [access, status, online, user, lastUser, role, effectiveRole, members, switchInfo, noAccessReason, signIn, signOut, pendingChanges, continueSwitch, retry, refreshMembers]);
+  }), [access, status, online, user, lastUser, role, effectiveRole, members, switchInfo, noAccessReason, unsent, inFlight, syncing, lastSynced, syncNow, signIn, signOut, pendingChanges, continueSwitch, retry, refreshMembers]);
 
   return <CloudContext.Provider value={value}>{children}</CloudContext.Provider>;
 }

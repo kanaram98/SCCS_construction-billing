@@ -5,9 +5,11 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import GoogleIcon from '@mui/icons-material/Google';
 import LogoutIcon from '@mui/icons-material/Logout';
+import SyncIcon from '@mui/icons-material/Sync';
 import { Card, useConfirm } from '../../components/ui';
 import { ROLES } from '../../domain/permissions.js';
-import { tr as t, trn } from '../../i18n/translate.js';
+import { getLanguage, tr as t, trn } from '../../i18n/translate.js';
+import { formatLogTime } from '../../domain/labour-log.js';
 import { useCloud } from './CloudProvider.jsx';
 
 /** What each sync state means, in words. */
@@ -106,7 +108,22 @@ export default function AccountCard() {
       {status !== 'no-access' && status !== 'switch-blocked' && status !== 'unreachable' && (
         <Typography variant="body2" sx={{ mb: 1.5 }} color={status === 'error' ? 'error' : 'text.primary'}>{t(CLOUD_STATUS_TEXT[status] || status)}</Typography>
       )}
-      <Button size="small" startIcon={<LogoutIcon />} onClick={signOut}>{t('Sign out')}</Button>
+      {['synced', 'syncing', 'offline', 'error'].includes(status) && (
+        <>
+          {cloud.pending > 0 && (
+            <Typography variant="body2" color="warning.main" sx={{ mb: 0.5 }}>
+              {trn(cloud.pending, '{count} change waiting to upload', '{count} changes waiting to upload')}
+            </Typography>
+          )}
+          <Typography variant="caption" color="text.secondary" component="p" sx={{ mb: 1 }}>
+            {cloud.lastSynced ? t('Last synced: {time}', { time: formatLogTime(cloud.lastSynced, getLanguage()) }) : t('Not synced yet on this phone.')}
+          </Typography>
+          <Button variant="contained" size="small" startIcon={<SyncIcon />} onClick={cloud.syncNow} disabled={cloud.syncing} sx={{ mr: 1, mb: 1 }}>
+            {cloud.syncing ? t('Syncing…') : t('Sync now')}
+          </Button>
+        </>
+      )}
+      <Button size="small" startIcon={<LogoutIcon />} onClick={signOut} sx={{ mb: 1 }}>{t('Sign out')}</Button>
       <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 1 }}>
         {t('Signed out, only Labour can be used on this phone; entries upload at the next sign-in.')}
       </Typography>

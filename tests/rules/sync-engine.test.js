@@ -37,17 +37,18 @@ const dbFor = (person) => env.authenticatedContext(person.uid, { email: person.e
 
 /** A phone: raw state in memory, sync state in memory, and an engine. */
 function phone(person, raw, syncState = null) {
-  const device = { raw, syncState, conflicts: [], status: '' };
+  const device = { raw, syncState, conflicts: [], fromOthers: [], status: '' };
   const db = dbFor(person);
   device.cloud = { db, fs: firestore };
   device.engine = createSyncEngine({
     db, fs: firestore, wid: WS, uid: person.uid,
     getRaw: () => device.raw,
-    applyRaw: (raw, conflicts = []) => { device.raw = raw; device.conflicts.push(...conflicts); },
+    applyRaw: (raw, conflicts = [], info = {}) => { device.raw = raw; device.conflicts.push(...conflicts); device.fromOthers.push(...(info.fromOthers || [])); },
     loadState: () => device.syncState,
     saveState: (state) => { device.syncState = state; },
     onStatus: (status) => { device.status = status; },
-    onRefused: (items) => { device.refused = items; }
+    onRefused: (items) => { device.refused = items; },
+    onPending: (count) => { device.inFlight = count; }
   });
   engines.push(device.engine);
   device.edit = (change) => {
@@ -158,6 +159,20 @@ describe('sync between two phones', () => {
     // Adding a rate is fine and reaches the admin.
     await father.edit((live) => ({ ...live, rates: [...live.rates, { id: 'new-rate', name: 'Plaster', unit: 'sqft', type: 'area', rate: 40 }] }));
     await waitFor(() => admin.raw.rates.some((item) => item.id === 'new-rate'));
+  });
+
+  it('Sync now confirms everything is uploaded and downloads what others changed', async () => {
+    const { admin, father } = await setUpBoth();
+    admin.raw = recordChanges(admin.raw, ((live) => ({ ...live, bills: live.bills.map((item) => (item.id === 'bill-1' ? { ...item, client: 'Quick edit' } : item)) }))(liveState(admin.raw)), new Date());
+    expect(admin.engine.unsentCount()).toBeGreaterThan(0);
+    const result = await admin.engine.syncNow();
+    expect(result).toMatchObject({ ok: true, pending: 0 });
+    expect(admin.engine.pendingCount()).toBe(0);
+    // The father hears about it, and the change is attributed to someone else.
+    await waitFor(() => bill(father, 'bill-1').client === 'Quick edit');
+    expect(father.fromOthers.some((item) => item.id === 'bill-1' && item.by === ADMIN.uid)).toBe(true);
+    // Nothing waiting any more on either phone.
+    expect((await father.engine.syncNow()).ok).toBe(true);
   });
 
   it('keeps out an account that was never invited', async () => {

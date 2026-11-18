@@ -825,5 +825,21 @@ export default {
   'You can add workers and mark them as left. Only the admin can change wages or details, or delete a worker.': 'आप मज़दूर जोड़ सकते हैं और उन्हें "काम छोड़ा" मार्क कर सकते हैं। मज़दूरी या जानकारी बदलना और मज़दूर हटाना सिर्फ़ एडमिन कर सकते हैं।',
   'Details: {reason}': 'विवरण: {reason}',
   'Cannot reach the server. Check the internet connection and try again.': 'सर्वर से नहीं जुड़ पा रहा। इंटरनेट जाँचें और फिर कोशिश करें।',
-  'Try again': 'फिर कोशिश करें'
+  'Try again': 'फिर कोशिश करें',
+  '{count} change from {who} arrived. This phone is up to date.': '{who} का {count} बदलाव आया। यह फ़ोन अप-टू-डेट है।',
+  '{count} changes from {who} arrived. This phone is up to date.': '{who} के {count} बदलाव आए। यह फ़ोन अप-टू-डेट है।',
+  'another device': 'दूसरे फ़ोन',
+  'All changes are uploaded.': 'सारे बदलाव अपलोड हो गए।',
+  'All changes are uploaded and this phone is up to date.': 'सारे बदलाव अपलोड हो गए और यह फ़ोन अप-टू-डेट है।',
+  '{count} change is still waiting to upload (no internet?). It is safe on this phone and uploads automatically.': '{count} बदलाव अभी अपलोड होना बाकी है (इंटरनेट नहीं?)। यह फ़ोन में सुरक्षित है और अपने आप अपलोड होगा।',
+  '{count} changes are still waiting to upload (no internet?). They are safe on this phone and upload automatically.': '{count} बदलाव अभी अपलोड होने बाकी हैं (इंटरनेट नहीं?)। ये फ़ोन में सुरक्षित हैं और अपने आप अपलोड होंगे।',
+  'Everything is uploaded, but this phone could not check for new changes. Try again with internet.': 'सब कुछ अपलोड हो गया, पर नए बदलाव जाँचे नहीं जा सके। इंटरनेट के साथ फिर कोशिश करें।',
+  'You are offline. Everything is saved on this phone and uploads when the internet is back.': 'आप ऑफ़लाइन हैं। सब कुछ इस फ़ोन में सेव है और इंटरनेट आने पर अपलोड होगा।',
+  'Back online. Uploading your changes…': 'इंटरनेट वापस आ गया। आपके बदलाव अपलोड हो रहे हैं…',
+  '{count} change waiting to upload': '{count} बदलाव अपलोड होने का इंतज़ार कर रहा है',
+  '{count} changes waiting to upload': '{count} बदलाव अपलोड होने का इंतज़ार कर रहे हैं',
+  'Last synced: {time}': 'आख़िरी सिंक: {time}',
+  'Not synced yet on this phone.': 'इस फ़ोन में अभी सिंक नहीं हुआ।',
+  'Sync now': 'अभी सिंक करें',
+  'Tap to sync now': 'अभी सिंक करने के लिए दबाएँ'
 };

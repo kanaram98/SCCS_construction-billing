@@ -28,6 +28,17 @@ export const SYNC_STATUS = Object.freeze({
   error: 'error'
 });
 
+/** Where each versioned record list lives in the app state. */
+const RECORD_PATHS = Object.freeze({
+  bills: ['bills'], rates: ['rates'], clients: ['clients'], templates: ['templates'],
+  workers: ['labour', 'workers'], labourPayments: ['labour', 'payments']
+});
+
+function versionOf(raw, collection, id) {
+  const list = RECORD_PATHS[collection]?.reduce((value, key) => value?.[key], raw);
+  return list?.find((item) => item.id === id)?.version ?? 0;
+}
+
 /** The version this device last synced for a document (0 if never). */
 function baseOf(state, doc) {
   const sent = state.sent[keyOf(doc.collection, doc.id)];
@@ -37,8 +48,9 @@ function baseOf(state, doc) {
 /** Firestore Timestamp | ISO string → ISO string. */
 const toIso = (value) => (value?.toDate ? value.toDate().toISOString() : value || null);
 
-export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState, saveState, onStatus = () => {}, onRefused = () => {} }) {
+export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState, saveState, onStatus = () => {}, onRefused = () => {}, onPending = () => {} }) {
   let syncState = loadState() || createSyncState();
+  let inFlight = 0; // uploads sent to the server and not yet confirmed (they wait while offline)
   let unsubscribers = [];
   let pushing = null;
   let pushAgain = false;
@@ -54,10 +66,16 @@ export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState
   function receive(docs, { force = false } = {}) {
     if (!docs.length) return;
     const newest = docs.map((doc) => toIso(doc.data?.syncedAt)).filter(Boolean).sort().at(-1);
-    const merged = applyIncoming(getRaw(), docs, syncState, new Date(), { by: uid, force });
+    const before = getRaw();
+    const merged = applyIncoming(before, docs, syncState, new Date(), { by: uid, force });
+    // Changes made by someone else (used for a "updated from another device" notice).
+    const fromOthers = force ? [] : docs
+      .filter((doc) => doc.exists && RECORD_PATHS[doc.collection] && doc.data.updatedBy && doc.data.updatedBy !== uid
+        && doc.data.version > versionOf(before, doc.collection, doc.id))
+      .map((doc) => ({ collection: doc.collection, id: doc.id, by: doc.data.updatedBy }));
     syncState = { ...merged.syncState, pulledAt: newest && (!syncState.pulledAt || newest > syncState.pulledAt) ? newest : syncState.pulledAt };
     persist();
-    applyRaw(merged.raw, merged.conflicts);
+    applyRaw(merged.raw, merged.conflicts, { fromOthers });
     // Conflicts and merges may leave something to send (e.g. a conflict history entry).
     if (merged.conflicts.length) push();
   }
@@ -87,7 +105,12 @@ export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState
     const previous = syncState;
     syncState = { ...syncState, sent: plan.sent, marks: plan.marks };
     persist();
+    inFlight += plan.ops.length;
+    onPending(inFlight);
+    // Each write is confirmed only when the server has it, so this waits while offline.
     const results = await Promise.allSettled(plan.ops.map(writeOp));
+    inFlight -= plan.ops.length;
+    onPending(inFlight);
     const rejected = [];
     results.forEach((result, index) => {
       if (result.status === 'fulfilled') return;
@@ -149,6 +172,19 @@ export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState
     // Empty cloud: everything on this device is uploaded by the push below.
   }
 
+  /** Downloads whatever changed on the server since this phone last heard (throws when unreachable). */
+  async function pullNow() {
+    const since = syncState.pulledAt ? fs.Timestamp.fromDate(new Date(syncState.pulledAt)) : fs.Timestamp.fromMillis(0);
+    const batches = await Promise.all(DATA_COLLECTIONS.map((collection) =>
+      fs.getDocsFromServer(fs.query(fs.collection(db, `${workspacePath(wid)}/${collection}`), fs.where('syncedAt', '>', since)))
+        .then((snap) => snap.docs.map((item) => snapshotDoc(collection, item)))));
+    const docs = batches.flat();
+    receive(docs);
+    return docs.length;
+  }
+
+  const unsentCount = () => planUpload(getRaw(), syncState, { by: uid }).ops.length;
+
   function listen() {
     const since = syncState.pulledAt ? fs.Timestamp.fromDate(new Date(syncState.pulledAt)) : fs.Timestamp.fromMillis(0);
     unsubscribers = DATA_COLLECTIONS.map((collection) => fs.onSnapshot(
@@ -173,6 +209,28 @@ export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState
       listen();
     },
     push,
+    /** Changes on this phone that the server has not confirmed yet. */
+    pendingCount: () => unsentCount() + inFlight,
+    /** Changes not yet sent to the server (excludes writes waiting for confirmation). */
+    unsentCount,
+    /**
+     * "Sync now": sends everything, waits (up to `timeout` ms) for the server to
+     * confirm it, then downloads what others changed.
+     * @returns {Promise<{ ok: boolean, pending: number, downloaded?: number, unreachable?: boolean }>}
+     */
+    async syncNow({ timeout = 15000 } = {}) {
+      await Promise.race([push(), new Promise((resolve) => setTimeout(resolve, timeout))]);
+      const pending = unsentCount() + inFlight;
+      if (pending > 0) return { ok: false, pending };
+      try {
+        const downloaded = await pullNow();
+        status(SYNC_STATUS.synced);
+        return { ok: true, pending: 0, downloaded };
+      } catch (error) {
+        if (error?.code !== 'unavailable') console.error('Sync now could not download.', error);
+        return { ok: false, pending: 0, unreachable: true };
+      }
+    },
     stop() {
       stopped = true;
       unsubscribers.forEach((unsubscribe) => unsubscribe());

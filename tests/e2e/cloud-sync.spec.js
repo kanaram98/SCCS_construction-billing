@@ -87,6 +87,11 @@ test('admin creates the workspace, invites the father, and changes sync both way
   await expect(father.getByText(SYNCED)).toBeVisible({ timeout: 20000 });
   await expect(father.getByText('Contractor', { exact: true }).first()).toBeVisible();
   await expect(father.getByText('People')).toHaveCount(0); // members are admin-only
+  // Sync now: everything uploaded and up to date, with a confirmation.
+  await expect(father.getByText(/Last synced:/)).toBeVisible();
+  await father.getByRole('button', { name: 'Sync now' }).click();
+  await expect(father.getByText('All changes are uploaded and this phone is up to date.')).toBeVisible();
+  await father.screenshot({ path: 'test-results/screens/6-father-sync-now.png' });
   await nav(father, 'Bills').click();
   await expect(father.getByText(/Sample: 2BHK flat/).first()).toBeVisible();
   await father.getByText(/Sample: 2BHK flat/).first().click(); // the open bill is per phone
