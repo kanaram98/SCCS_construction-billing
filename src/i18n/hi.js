@@ -1084,5 +1084,11 @@ export default {
   'Hide details': 'विवरण छिपाएँ',
   'Show details': 'विवरण दिखाएँ',
   'Search workers': 'मज़दूर खोजें',
-  'No matching workers': 'कोई मज़दूर नहीं मिला'
+  'No matching workers': 'कोई मज़दूर नहीं मिला',
+  'Measurement bills': 'नाप के बिल',
+  'Daily attendance, wages and payments for every worker.': 'हर मज़दूर की रोज़ की हाज़िरी, मज़दूरी और भुगतान।',
+  'Write down each day’s expenses for every project.': 'हर प्रोजेक्ट का रोज़ का खर्च लिखें।',
+  'Project reports': 'प्रोजेक्ट रिपोर्ट',
+  'Billed, received, expenses and labour cost in one statement.': 'बिल, मिली रकम, खर्च और मज़दूरी एक ही स्टेटमेंट में।',
+  'Maybe later': 'बाद में'
 };

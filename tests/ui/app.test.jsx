@@ -181,6 +181,14 @@ describe('First use', () => {
     expect(savedState().meta.onboarded).toBe(true);
   });
 
+  it('lets the welcome popup be closed without starting a bill', async () => {
+    const { user } = renderApp();
+    const welcome = await screen.findByRole('dialog');
+    await user.click(within(welcome).getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(savedState().meta.onboarded).toBe(true);
+  });
+
   it('opens an empty bill without a getting-started checklist', async () => {
     const { user } = renderApp();
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Start my first bill' }));

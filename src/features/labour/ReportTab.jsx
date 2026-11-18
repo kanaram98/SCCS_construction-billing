@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import Box from '@mui/material/Box';
+import { alpha } from '@mui/material/styles';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
@@ -110,11 +111,11 @@ function PaymentList({ payments, locked, onEdit, onDelete }) {
 }
 
 /** One worker: a compact row (name, balance, PDF / share / pay) that opens to the full details. */
-function WorkerRow({ row, first, open, busy, locked, onToggle, onPay, onPdf, onShare, onHistory, onEditPayment, onDeletePayment }) {
+function WorkerRow({ row, index, open, busy, locked, onToggle, onPay, onPdf, onShare, onHistory, onEditPayment, onDeletePayment }) {
   const { worker } = row;
   return (
-    <Box sx={{ borderTop: first ? 0 : 1, borderColor: 'divider', px: 1.25, py: 0.75 }}>
-      <Stack direction="row" spacing={0.25} sx={{ alignItems: 'center' }}>
+    <Box sx={{ borderTop: index ? 1 : 0, borderColor: 'divider', px: 1.25, py: 0.75, bgcolor: (theme) => (index % 2 ? alpha(theme.palette.primary.main, 0.09) : 'background.paper') }}>
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
         <Box
           component="button"
           type="button"
@@ -128,7 +129,7 @@ function WorkerRow({ row, first, open, busy, locked, onToggle, onPay, onPdf, onS
             {t('{units} · {days} days · {absent} absent', { units: `${row.units}P`, days: row.days, absent: row.absent })}
           </Typography>
         </Box>
-        <Box sx={{ textAlign: 'right', mr: 0.5 }}>
+        <Box sx={{ textAlign: 'right', mr: 1 }}>
           <Typography variant="caption" color="text.secondary" component="div">{t('Balance')}</Typography>
           <Typography variant="body2" sx={{ fontWeight: 700 }} color={row.balance < 0 ? 'warning.main' : row.balance > 0 ? 'primary' : 'text.secondary'}>{formatCurrency(row.balance)}</Typography>
         </Box>
@@ -286,7 +287,7 @@ export default function ReportTab({ month, onMonthChange, onOpenSheet, onOpenHis
                 <WorkerRow
                   key={row.workerId}
                   row={row}
-                  first={index === 0}
+                  index={index}
                   open={openId === row.workerId}
                   busy={busyId === row.workerId}
                   locked={closed || !canEditPayments}
