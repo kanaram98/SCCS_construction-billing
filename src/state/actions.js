@@ -363,9 +363,9 @@ function createLabourActions({ setData }) {
     restoreWorker: (workerId) => apply(labourOps.restoreWorker, workerId),
     purgeWorker: (workerId) => apply(labourOps.purgeDeletedWorker, workerId),
     /** Sets a worker's attendance for a day in P units; `null` clears it. */
-    mark: (date, worker, units) => apply(labourOps.markAttendance, date, [{ worker, units }]),
+    mark: (date, worker, units, projectId = '') => apply(labourOps.markAttendance, date, [{ worker, units, projectId }]),
     /** Marks every listed worker for a day (one log entry). */
-    markAll: (date, workers, units) => apply(labourOps.markAttendance, date, workers.map((worker) => ({ worker, units }))),
+    markAll: (date, workers, units, projectId = '') => apply(labourOps.markAttendance, date, workers.map((worker) => ({ worker, units, projectId }))),
     addPayment: (values) => apply(labourOps.addPayment, values),
     updatePayment: (paymentId, values) => apply(labourOps.updatePayment, paymentId, values),
     /** Moves a payment to the recycle bin. */

@@ -31,6 +31,7 @@ export const ADMIN_ONLY = Object.freeze([
   'deleteForever',
   'unlockMonth',
   'editFirm',
+  'viewReports',
   'editRate',
   'deleteRate',
   'editWorker',

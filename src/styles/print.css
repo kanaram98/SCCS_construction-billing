@@ -109,6 +109,14 @@
 .worker-sheet .labour-sign { margin-top: 56px; }
 .worker-sheet .worker-amounts { width: 60%; }
 
+/* Project statement */
+.statement-section h4 { margin: 12px 0 4px; font-size: 1.05em; }
+.statement-table { width: 100%; border-collapse: collapse; }
+.statement-table th, .statement-table td { border: 1px solid #c9ced6; padding: 3px 6px; text-align: left; }
+.statement-table th { background: #ebeef2; }
+.statement-table .num { text-align: right; white-space: nowrap; }
+.statement-bold td { font-weight: 800; background: #f3f5f8; }
+
 /* Daily expense sheet */
 .expense-table td:last-child, .expense-table th:last-child { text-align: right; white-space: nowrap; }
 .expense-day-total td { font-weight: 700; background: #f3f5f8; }

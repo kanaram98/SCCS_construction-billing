@@ -16,7 +16,8 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import EngineeringIcon from '@mui/icons-material/EngineeringOutlined';
 import EventAvailableIcon from '@mui/icons-material/EventAvailableOutlined';
-import { EmptyState, ResponsiveDialog } from '../../components/ui';
+import { EmptyState, ResponsiveDialog, SelectField } from '../../components/ui';
+import { useBilling } from '../../state/BillingContext.jsx';
 import { useUndoable } from '../../hooks/useUndoable.js';
 import {
   ATTENDANCE_UNITS, dayLabel, daySummary, formatUnits,
@@ -86,7 +87,7 @@ function WorkerRow({ worker, mark, onMark, disabled }) {
 }
 
 /** Everyone's attendance for one day, with ◀ ▶ to move between days of the month. */
-function DaySheet({ date, month, onDateChange, onClose }) {
+function DaySheet({ date, month, siteId, onDateChange, onClose }) {
   const { labour, actions } = useLabour();
   const undoable = useUndoable();
   const allowOld = useOldDateGuard();
@@ -118,7 +119,7 @@ function DaySheet({ date, month, onDateChange, onClose }) {
           {tooOld && <Notice tone="info">{t('This day is more than {days} days old. Only the admin can change it.', { days: CONTRACTOR_TIMESHEET_DAYS })}</Notice>}
           <Stack direction="row" spacing={1} sx={{ justifyContent: 'center', mb: 1, display: closed ? 'none' : 'flex' }}>
             {unmarked.length > 0 && (
-              <Button size="small" variant="outlined" startIcon={<DoneAllIcon />} onClick={change(() => actions.markAll(date, unmarked, 1))}>
+              <Button size="small" variant="outlined" startIcon={<DoneAllIcon />} onClick={change(() => actions.markAll(date, unmarked, 1, siteId))}>
                 {summary.marked > 0 ? t('Rest 1P') : t('All 1P')}
               </Button>
             )}
@@ -129,13 +130,28 @@ function DaySheet({ date, month, onDateChange, onClose }) {
             )}
           </Stack>
           {workers.map((worker) => (
-            <WorkerRow key={worker.id} worker={worker} mark={marks[worker.id]} disabled={closed} onMark={(units) => change(() => actions.mark(date, worker, units))()} />
+            <WorkerRow key={worker.id} worker={worker} mark={marks[worker.id]} disabled={closed} onMark={(units) => change(() => actions.mark(date, worker, units, siteId))()} />
           ))}
           <Button fullWidth variant="contained" onClick={onClose} sx={{ mt: 2 }}>{t('Done')}</Button>
         </>
       )}
     </ResponsiveDialog>
   );
+}
+
+/** The site new marks are saved against: remembered on this phone; the only running project by default. */
+function useSite(projects) {
+  const [stored, setStored] = useState(() => {
+    try { return window.localStorage.getItem('attendance_site') || ''; } catch { return ''; }
+  });
+  const running = projects.filter((project) => project.status === 'running');
+  const valid = projects.some((project) => project.id === stored);
+  const siteId = valid ? stored : (running.length === 1 ? running[0].id : '');
+  function setSite(next) {
+    setStored(next);
+    try { window.localStorage.setItem('attendance_site', next); } catch { /* remembering is optional */ }
+  }
+  return [siteId, setSite];
 }
 
 // ── Tab ───────────────────────────────────────────────────────────────
@@ -150,7 +166,9 @@ export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
   const closed = useMonthLock().isClosed(month);
   const cloud = useCloud();
   const today = localToday();
+  const { data } = useBilling();
   const [workerId, setWorkerId] = useState('all');
+  const [siteId, setSite] = useSite(data.projects);
   const [openDate, setOpenDate] = useState(null);
   const [picker, setPicker] = useState(null); // { anchor, date } in single-worker view
   const active = useMemo(() => labour.workers.filter((worker) => worker.active), [labour.workers]);
@@ -204,7 +222,7 @@ export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
   async function pick(units) {
     const { date } = picker;
     setPicker(null);
-    if (await allowOld(date)) actions.mark(date, worker, units);
+    if (await allowOld(date)) actions.mark(date, worker, units, siteId);
   }
 
   const showWorkers = [...active, ...(worker && !worker.active ? [worker] : [])];
@@ -214,6 +232,17 @@ export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
       <MonthBar month={month} onChange={onMonthChange} />
       <ClosedMonthNotice month={month} />
 
+      {data.projects.length > 0 && (
+        <SelectField
+          label={t('Working at (site)')}
+          value={siteId}
+          placeholder={t('No site')}
+          options={data.projects.filter((project) => project.status === 'running' || project.id === siteId).map((project) => ({ value: project.id, label: project.name }))}
+          helperText={t('New marks are saved against this site, so each project can show its labour cost.')}
+          onChange={setSite}
+          sx={{ mb: 1.5 }}
+        />
+      )}
       <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', pb: 1, mb: 1, mx: -0.5, px: 0.5 }}>
         <Chip label={t('All workers')} color={workerId === 'all' ? 'primary' : 'default'} variant={workerId === 'all' ? 'filled' : 'outlined'} onClick={() => setWorkerId('all')} />
         {showWorkers.map((entry) => (
@@ -252,7 +281,7 @@ export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
           : t('Tap a day to fill attendance. Green = everyone marked, yellow = some marked, red = all absent.')}
       </Typography>
 
-      <DaySheet date={openDate} month={month} onDateChange={setOpenDate} onClose={() => setOpenDate(null)} />
+      <DaySheet date={openDate} month={month} siteId={siteId} onDateChange={setOpenDate} onClose={() => setOpenDate(null)} />
 
       <Menu anchorEl={picker?.anchor} open={Boolean(picker)} onClose={() => setPicker(null)}>
         {ATTENDANCE_UNITS.map((units) => (

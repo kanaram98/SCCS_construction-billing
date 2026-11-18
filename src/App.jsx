@@ -8,7 +8,7 @@ import { CloudProvider, useCloud } from './features/account/CloudProvider.jsx';
 import SignedOutBanner from './features/account/SignedOutBanner.jsx';
 import { FeedbackProvider } from './components/ui';
 import { useInstallPrompt } from './hooks/useInstallPrompt.js';
-import { VIEWS } from './config/app.js';
+import { NAVIGATION, VIEWS } from './config/app.js';
 import { BOTTOM_NAV_HEIGHT, DRAWER_WIDTH } from './theme.js';
 import AppHeader from './components/layout/AppHeader.jsx';
 import MainNav from './components/layout/MainNav.jsx';
@@ -33,6 +33,7 @@ const loaders = {
   labour: () => import('./features/labour/LabourPage.jsx'),
   projects: () => import('./features/projects/ProjectsPage.jsx'),
   firm: () => import('./features/project/FirmPage.jsx'),
+  reports: () => import('./features/reports/ReportsPage.jsx'),
   expenses: () => import('./features/expenses/ExpensesPage.jsx')
 };
 const EntryPage = lazy(loaders.entry);
@@ -44,6 +45,7 @@ const PrintPage = lazy(loaders.print);
 const LabourPage = lazy(loaders.labour);
 const ProjectsPage = lazy(loaders.projects);
 const FirmPage = lazy(loaders.firm);
+const ReportsPage = lazy(loaders.reports);
 const ExpensesPage = lazy(loaders.expenses);
 
 function usePrefetchPages() {
@@ -69,6 +71,7 @@ const PAGES = {
   [VIEWS.labour]: LabourPage,
   [VIEWS.projects]: ProjectsPage,
   [VIEWS.firm]: FirmPage,
+  [VIEWS.reports]: ReportsPage,
   [VIEWS.expenses]: ExpensesPage
 };
 
@@ -80,7 +83,7 @@ function AppShell({ view: chosenView, setView }) {
   const { data, bill, saveStatus, storageError } = useBilling();
   const installer = useInstallPrompt();
   const cloud = useCloud();
-  const allowed = LIMITED_VIEWS[cloud.access] || null;
+  const allowed = LIMITED_VIEWS[cloud.access] || (cloud.can('viewReports') ? null : [...NAVIGATION.map(({ id }) => id), VIEWS.settings].filter((id) => id !== VIEWS.reports));
   const view = allowed && !allowed.includes(chosenView) ? allowed[0] : chosenView;
   const Page = PAGES[view];
   usePrefetchPages();

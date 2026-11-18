@@ -18,7 +18,7 @@ const WORKER_FIELDS = ['name', 'phone', 'role', 'dailyWage', 'active'];
 const PAYMENT_FIELDS = ['workerId', 'date', 'amount', 'mode', 'note'];
 
 const pick = (record, fields) => Object.fromEntries(fields.map((field) => [field, record[field]]));
-const sameMark = (a, b) => (!a && !b) || (a && b && a.units === b.units && a.wage === b.wage);
+const sameMark = (a, b) => (!a && !b) || (a && b && a.units === b.units && a.wage === b.wage && (a.projectId || '') === (b.projectId || ''));
 
 function addLog(labour, entry, now) {
   return { ...labour, log: [...(labour.log || []), { id: newId(), at: now.toISOString(), ...entry }] };
@@ -31,14 +31,14 @@ const touch = (record, patch, now) => ({ ...record, ...patch, updatedAt: now.toI
 // ── Attendance ────────────────────────────────────────────────────────
 
 /**
- * Sets attendance for one day: `changes` is [{ worker, units }] with units
- * null to clear. Logged as one entry. Ignored when the month is closed.
+ * Sets attendance for one day: `changes` is [{ worker, units, projectId? }] with units
+ * null to clear. `projectId` is the site worked at (kept on the mark for project reports). Logged as one entry. Ignored when the month is closed.
  */
 export function markAttendance(labour, date, changes, now = new Date(), extra = {}) {
   if (isDateClosed(labour, date)) return labour;
-  return applyMarks(labour, date, changes.map(({ worker, units }) => ({
+  return applyMarks(labour, date, changes.map(({ worker, units, projectId }) => ({
     workerId: worker.id,
-    mark: units === null || units === undefined ? null : { units, wage: Number(worker.dailyWage) || 0, at: now.toISOString() }
+    mark: units === null || units === undefined ? null : { units, wage: Number(worker.dailyWage) || 0, at: now.toISOString(), ...(projectId ? { projectId } : {}) }
   })), now, extra);
 }
 

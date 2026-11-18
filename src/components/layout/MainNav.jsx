@@ -13,6 +13,7 @@ import Toolbar from '@mui/material/Toolbar';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import StraightenIcon from '@mui/icons-material/Straighten';
 import HomeIcon from '@mui/icons-material/HomeOutlined';
+import AssessmentIcon from '@mui/icons-material/AssessmentOutlined';
 import DescriptionIcon from '@mui/icons-material/DescriptionOutlined';
 import SellIcon from '@mui/icons-material/SellOutlined';
 import SettingsIcon from '@mui/icons-material/SettingsOutlined';
@@ -34,6 +35,7 @@ const ICONS = {
   [VIEWS.settings]: <SettingsIcon />,
   [VIEWS.project]: <DescriptionIcon />,
   [VIEWS.firm]: <BusinessIcon />,
+  [VIEWS.reports]: <AssessmentIcon />,
   [VIEWS.print]: <PictureAsPdfIcon />,
   [VIEWS.labour]: <EngineeringIcon />,
   [VIEWS.projects]: <AccountTreeIcon />,

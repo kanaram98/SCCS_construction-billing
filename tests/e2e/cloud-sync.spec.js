@@ -119,6 +119,7 @@ test('admin creates the workspace, invites the father, and changes sync both way
   await expect(father.getByText('Only the admin can change these details.')).toBeVisible();
   await expect(father.getByLabel(/Firm name/)).toBeDisabled();
   await father.screenshot({ path: 'test-results/screens/2-father-project.png' });
+  await expectTab(father, 'Reports', 0); // profit and cash are for the admin only
 
   // ── He edits the bill; it arrives on your phone ──
   await goTo(father, 'Bill details');

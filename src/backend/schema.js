@@ -289,7 +289,7 @@ export const labourPaymentSchema = z.strictObject({
   note: long
 });
 
-const mark = z.strictObject({ units: z.number().min(0).max(3), wage: z.number().finite().min(0), at: isoTime });
+const mark = z.strictObject({ units: z.number().min(0).max(3), wage: z.number().finite().min(0), at: isoTime, projectId: id.optional() });
 
 /** One month of attendance: marks[DD][workerId]. */
 export const attendanceMonthSchema = z.strictObject({

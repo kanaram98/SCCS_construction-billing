@@ -424,3 +424,25 @@ describe('Firm tag line', () => {
     await waitFor(() => expect(savedState().firm.tagline).toBe('Specialist in marble'));
   });
 });
+
+describe('Project report', () => {
+  it('shows billing, money received, costs and cash for a project', async () => {
+    const stamp = { createdAt: '2026-11-01T00:00:00.000Z', updatedAt: '2026-11-01T00:00:00.000Z', version: 1 };
+    const project = { id: 'p1', name: 'Lake villa', clientId: '', client: 'Mehta', clientPhone: '', clientAddress: '', clientGstin: '', address: '', status: 'running', agreedAmount: '', notes: '', ...stamp };
+    const { user } = renderApp({
+      ...SAMPLE_STATE,
+      projects: [project],
+      bills: SAMPLE_STATE.bills.map((bill, index) => (index === 0 ? { ...bill, projectId: 'p1' } : bill)),
+      advances: [{ id: 'a1', projectId: 'p1', date: '2026-11-02', amount: 2000, mode: 'cash', note: '', ...stamp }],
+      expenses: [{ id: 'e1', projectId: 'p1', date: '2026-11-03', amount: 500, category: 'food', note: '', ...stamp }]
+    });
+    await goTo(user, 'Reports');
+    expect(await screen.findByRole('heading', { name: 'Reports' })).toBeTruthy();
+    expect(screen.getAllByText('Total received').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Cash in hand').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('₹2,000').length).toBeGreaterThan(0); // the advance
+    expect(screen.getAllByText('₹500').length).toBeGreaterThan(0); // site expenses
+    await user.click(screen.getByRole('button', { name: 'PDF preview' }));
+    expect(await screen.findByText('Project statement')).toBeTruthy();
+  });
+});

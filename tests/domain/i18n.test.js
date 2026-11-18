@@ -15,6 +15,7 @@ import { LOG_TITLES } from '../../src/domain/labour-log.js';
 import { FIELD_LABELS, HISTORY_FILTERS, HISTORY_TITLES } from '../../src/domain/history-log.js';
 import { ROLES } from '../../src/domain/permissions.js';
 import { EXPENSE_CATEGORIES, PROJECT_STATUSES } from '../../src/domain/projects.js';
+import { PERIOD_LABELS } from '../../src/domain/project-statement.js';
 
 /** Codes and examples that read the same in Hindi. */
 const SAME_IN_HINDI = new Set(['PDF', 'UPI', 'UPI ID', 'IFSC', 'GSTIN', 'sqft', 'name@okbank', 'SBIN0001234', 'English', 'हिंदी', 'Language']);
@@ -52,7 +53,7 @@ function listLabels() {
     ...NAVIGATION.flatMap((entry) => [entry.label, entry.shortLabel].filter(Boolean)),
     ...Object.values(DOCUMENT_COLUMNS).flat(),
     ...Object.values(LOG_TITLES), 'Month closed', 'Undone', 'Deleted forever',
-    ...Object.values(HISTORY_TITLES), ...Object.values(FIELD_LABELS), ...Object.values(HISTORY_FILTERS), ...Object.values(ROLES), ...Object.values(EXPENSE_CATEGORIES), ...Object.values(PROJECT_STATUSES),
+    ...Object.values(HISTORY_TITLES), ...Object.values(FIELD_LABELS), ...Object.values(HISTORY_FILTERS), ...Object.values(ROLES), ...Object.values(EXPENSE_CATEGORIES), ...Object.values(PROJECT_STATUSES), ...Object.values(PERIOD_LABELS),
     'Not signed in. Bills are only on this device.', 'Connecting…', 'Syncing…', 'Synced. Your data is safe in the cloud.',
     'Offline. Changes are saved here and sync when you are back online.', 'Sync problem. Changes are kept on this device; try again later.', 'No access', 'Waiting: another account has changes on this phone.', 'Admin only', 'Tap to sync now', 'Some items could not be uploaded.', 'Cannot reach the server. Check the internet connection and try again.',
     'Bill', 'Rate', 'Client', 'Template', 'Restore it first', 'Too old to undo', 'Other details', 'Change',

@@ -71,4 +71,22 @@ test('daily expenses table with PDF and Excel export', async ({ page }) => {
   expect(csvText).toContain('Sharma house,Food & tea,Tea and lunch,250');
   expect(csvText).toContain('Sharma house,Travel,Auto to site,400');
   expect(csvText).toContain('Total,,,,650');
+
+  // ── The project report: PDF and Excel ──
+  await goTo(page, 'Reports');
+  await expect(page.getByRole('heading', { name: 'Reports' })).toBeVisible();
+  const reportPdf = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'PDF', exact: true }).click();
+  const reportText = fs.readFileSync(await (await reportPdf).path(), 'latin1');
+  expect(reportText).toContain('PROJECT STATEMENT');
+  expect(reportText).toContain('Sharma house');
+  expect(reportText).toContain('Rs. 50,000'); // the advance
+  expect(reportText).toContain('Rs. 650'); // site expenses
+
+  const reportCsv = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Excel (CSV)' }).click();
+  const reportCsvText = fs.readFileSync(await (await reportCsv).path(), 'utf8');
+  expect(reportCsvText).toContain('Advances from the client');
+  expect(reportCsvText).toContain('Total received,50000');
+  expect(reportCsvText).toContain('Cash in hand (received − costs),49350');
 });
