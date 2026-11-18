@@ -48,7 +48,8 @@ function phone(person, raw, syncState = null) {
     saveState: (state) => { device.syncState = state; },
     onStatus: (status) => { device.status = status; },
     onRefused: (items) => { device.refused = items; },
-    onPending: (count) => { device.inFlight = count; }
+    onPending: (count) => { device.inFlight = count; },
+    onProblems: (list) => { device.problems = list; }
   });
   engines.push(device.engine);
   device.edit = (change) => {
@@ -173,6 +174,28 @@ describe('sync between two phones', () => {
     expect(father.fromOthers.some((item) => item.id === 'bill-1' && item.by === ADMIN.uid)).toBe(true);
     // Nothing waiting any more on either phone.
     expect((await father.engine.syncNow()).ok).toBe(true);
+  });
+
+  it('uploads an old bill that lacks newer fields; lists a bill the server refuses instead of retrying forever', async () => {
+    const { admin, father } = await setUpBoth();
+    // A bill saved by an older version of the app: no payments, GST or client fields.
+    await father.edit((live) => ({ ...live, bills: [...live.bills, { id: 'old-bill', number: '9', date: '2026-01-01', sections: [] }] }));
+    await waitFor(() => admin.raw.bills.some((item) => item.id === 'old-bill'));
+    expect(admin.raw.bills.find((item) => item.id === 'old-bill').gstType).toBe('intra');
+    expect(father.engine.unsentCount()).toBe(0);
+
+    // A bill with an impossible value is refused by the server: it is listed, and not sent again and again.
+    await father.edit((live) => ({ ...live, bills: [...live.bills, { id: 'bad-bill', number: '10', projectName: 'Broken', gstType: 'bogus', sections: [] }] }));
+    expect(father.status).toBe('attention');
+    expect(father.problems).toEqual([{ collection: 'bills', id: 'bad-bill', code: 'permission-denied', name: 'Bill 10 · Broken' }]);
+    expect(father.engine.unsentCount()).toBe(0);
+    expect(admin.raw.bills.some((item) => item.id === 'bad-bill')).toBe(false);
+
+    // Once fixed, it uploads and the warning goes away.
+    await father.edit((live) => ({ ...live, bills: live.bills.map((item) => (item.id === 'bad-bill' ? { ...item, gstType: 'intra' } : item)) }));
+    await waitFor(() => admin.raw.bills.some((item) => item.id === 'bad-bill'));
+    expect(father.problems).toEqual([]);
+    expect(father.status).toBe('synced');
   });
 
   it('keeps out an account that was never invited', async () => {

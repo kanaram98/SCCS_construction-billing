@@ -14,6 +14,7 @@
  * `syncedAt` is not part of `data`: the sync layer adds the server time.
  */
 import { hydrateState } from '../domain/app-state.js';
+import { createBill } from '../domain/factories.js';
 import { COLLECTIONS, DOCUMENT_SCHEMAS, SETTINGS_SCHEMAS } from './schema.js';
 
 /** Drops undefined values (Firestore rejects them) and anything not plain JSON. */
@@ -36,8 +37,16 @@ const withRecordMeta = (item, by) => ({
   updatedBy: item.updatedBy || by
 });
 
+/** Fields every item must have; saved data from older versions of the app can lack some. */
+const REQUIRED_DEFAULTS = {
+  bills: () => { const { id: _id, ...fields } = createBill(); return fields; },
+  clients: () => ({ name: '', phone: '', address: '', gstin: '' }),
+  rates: () => ({ name: '', unit: 'nos', type: 'count', rate: 0 }),
+  templates: () => ({ name: '', type: 'area' })
+};
+
 function record(collection, data) {
-  const value = plain(data);
+  const value = plain({ ...(REQUIRED_DEFAULTS[collection]?.() || {}), ...data });
   return { collection, id: value.id, data: pickKnown(DOCUMENT_SCHEMAS[collection], value) };
 }
 

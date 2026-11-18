@@ -22,7 +22,8 @@ export const CLOUD_STATUS_TEXT = Object.freeze({
   error: 'Sync problem. Changes are kept on this device; try again later.',
   'no-access': 'No access',
   'switch-blocked': 'Waiting: another account has changes on this phone.',
-  unreachable: 'Cannot reach the server. Check the internet connection and try again.'
+  unreachable: 'Cannot reach the server. Check the internet connection and try again.',
+  attention: 'Some items could not be uploaded.'
 });
 
 /** Sign in with Google, sync status and sign out. Hidden when the cloud isn't set up. */
@@ -105,10 +106,20 @@ export default function AccountCard() {
           {t(CLOUD_STATUS_TEXT.unreachable)}
         </Alert>
       )}
-      {status !== 'no-access' && status !== 'switch-blocked' && status !== 'unreachable' && (
+      {status !== 'no-access' && status !== 'switch-blocked' && status !== 'unreachable' && status !== 'attention' && (
         <Typography variant="body2" sx={{ mb: 1.5 }} color={status === 'error' ? 'error' : 'text.primary'}>{t(CLOUD_STATUS_TEXT[status] || status)}</Typography>
       )}
-      {['synced', 'syncing', 'offline', 'error'].includes(status) && (
+      {cloud.problems.length > 0 && (
+        <Alert severity="warning" sx={{ mb: 1.5 }} action={<Button color="inherit" size="small" onClick={cloud.retryProblems}>{t('Try again')}</Button>}>
+          {t('These items could not be uploaded. Everything else is synced.')}
+          {cloud.problems.map((item) => (
+            <Typography key={`${item.collection}/${item.id}`} variant="caption" component="div" sx={{ mt: 0.5, wordBreak: 'break-word' }}>
+              {item.name} — {item.code === 'permission-denied' ? t('the server refused it (a required detail is missing, or only the admin can change it)') : item.code}
+            </Typography>
+          ))}
+        </Alert>
+      )}
+      {['synced', 'syncing', 'offline', 'error', 'attention'].includes(status) && (
         <>
           {cloud.pending > 0 && (
             <Typography variant="body2" color="warning.main" sx={{ mb: 0.5 }}>

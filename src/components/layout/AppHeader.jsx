@@ -24,8 +24,8 @@ export default function AppHeader({ subtitle, saveStatus, canInstall, onInstall,
   const cloud = useCloud();
   const cloudActive = cloud.configured && cloud.user && cloud.status !== 'no-access';
   const statusText = cloudActive ? CLOUD_STATUS_TEXT[cloud.status] || cloud.status : saveStatus;
-  const color = saveFailed || cloud.status === 'error' ? 'error.main' : cloudActive && cloud.status === 'offline' ? 'text.disabled' : 'success.main';
-  const icon = saveFailed || (cloudActive && (cloud.status === 'error' || cloud.status === 'offline' || cloud.status === 'unreachable'))
+  const color = cloud.status === 'attention' ? 'warning.main' : saveFailed || cloud.status === 'error' ? 'error.main' : cloudActive && cloud.status === 'offline' ? 'text.disabled' : 'success.main';
+  const icon = saveFailed || (cloudActive && (cloud.status === 'error' || cloud.status === 'offline' || cloud.status === 'unreachable' || cloud.status === 'attention'))
     ? <CloudOffIcon />
     : cloudActive && (cloud.status === 'syncing' || cloud.status === 'connecting') ? <CloudSyncIcon /> : <CloudDoneIcon />;
   return (

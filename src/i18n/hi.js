@@ -841,5 +841,9 @@ export default {
   'Last synced: {time}': 'आख़िरी सिंक: {time}',
   'Not synced yet on this phone.': 'इस फ़ोन में अभी सिंक नहीं हुआ।',
   'Sync now': 'अभी सिंक करें',
-  'Tap to sync now': 'अभी सिंक करने के लिए दबाएँ'
+  'Tap to sync now': 'अभी सिंक करने के लिए दबाएँ',
+  'Some items could not be uploaded. Open Settings to see which.': 'कुछ चीज़ें अपलोड नहीं हो सकीं। कौन सी, यह देखने के लिए सेटिंग खोलें।',
+  'Some items could not be uploaded.': 'कुछ चीज़ें अपलोड नहीं हो सकीं।',
+  'These items could not be uploaded. Everything else is synced.': 'ये चीज़ें अपलोड नहीं हो सकीं। बाकी सब कुछ सिंक है।',
+  'the server refused it (a required detail is missing, or only the admin can change it)': 'सर्वर ने इसे मना कर दिया (कोई ज़रूरी जानकारी छूटी है, या इसे सिर्फ़ एडमिन बदल सकते हैं)'
 };

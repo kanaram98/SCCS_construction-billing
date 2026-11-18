@@ -53,6 +53,8 @@ const LOCAL_ONLY = Object.freeze({
   pending: 0,
   syncing: false,
   lastSynced: null,
+  problems: [],
+  retryProblems: () => {},
   syncNow: async () => {},
   can: () => true,
   canEditDate: () => true,
@@ -109,6 +111,7 @@ function ConnectedCloud({ children }) {
   const [unsent, setUnsent] = useState(0);
   const [syncing, setSyncing] = useState(false);
   const [lastSynced, setLastSynced] = useState(null);
+  const [problems, setProblems] = useState([]);
   const membersRef = useRef([]);
   const noticeRef = useRef({ lastOthers: 0, syncingSince: 0, wasOffline: false, firstOnlineCheck: true });
   // A phone signed in before restores its session on start: treat it as signed in meanwhile.
@@ -178,10 +181,17 @@ function ConnectedCloud({ children }) {
           notices.syncingSince = 0;
           notices.wasOffline = false;
         }
+        if (next === 'attention') {
+          if (!notices.attentionShown) notifyRef.current(t('Some items could not be uploaded. Open Settings to see which.'), 'warning');
+          notices.attentionShown = true;
+        } else {
+          notices.attentionShown = false;
+        }
         if (next === 'error') notifyRef.current(t('Sync problem. Changes are kept on this device; try again later.'), 'warning');
         setStatus(next);
       },
       onPending: setInFlight,
+      onProblems: setProblems,
       onRefused: () => notifyRef.current(t('Only the admin can make that change. It was undone.'), 'warning')
     });
     engineRef.current = engine;
@@ -378,6 +388,8 @@ function ConnectedCloud({ children }) {
     syncing,
     lastSynced,
     syncNow,
+    problems,
+    retryProblems: () => engineRef.current?.retryBlocked(),
     can: (action) => (effectiveRole ? roleCan(effectiveRole, action) : true),
     /** Timesheet day: contractors only today and the 2 days before. */
     canEditDate: (date) => (effectiveRole ? canEditAttendanceDate(effectiveRole, date) : true),
@@ -390,7 +402,7 @@ function ConnectedCloud({ children }) {
     retry,
     refreshMembers,
     firebase: firebaseRef.current
-  }), [access, status, online, user, lastUser, role, effectiveRole, members, switchInfo, noAccessReason, unsent, inFlight, syncing, lastSynced, syncNow, signIn, signOut, pendingChanges, continueSwitch, retry, refreshMembers]);
+  }), [access, status, online, user, lastUser, role, effectiveRole, members, switchInfo, noAccessReason, unsent, inFlight, syncing, lastSynced, syncNow, problems, signIn, signOut, pendingChanges, continueSwitch, retry, refreshMembers]);
 
   return <CloudContext.Provider value={value}>{children}</CloudContext.Provider>;
 }

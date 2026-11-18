@@ -71,7 +71,7 @@ function setIn(object, path, value) {
  * from the recycle bin and unlocked months are deleted.
  * @returns {{ ops: Array, sent: object, marks: object }} `sent`/`marks` describe the cloud after the ops succeed
  */
-export function planUpload(raw, syncState, { by }) {
+export function planUpload(raw, syncState, { by, blocked = {} }) {
   const docs = toDocuments(raw, { by });
   const ops = [];
   const sent = { ...syncState.sent };
@@ -84,6 +84,7 @@ export function planUpload(raw, syncState, { by }) {
     const print = fingerprint(doc.collection, doc.data);
     if (sent[key] === print) continue;
     if (LOGS[doc.collection] && sent[key]) continue; // history entries never change once sent
+    if (blocked[key] === print) continue; // refused by the server; tried again only after it changes
     ops.push({ kind: 'set', collection: doc.collection, id: doc.id, data: doc.data });
     sent[key] = print;
   }

@@ -20,12 +20,22 @@ import { adoptCloud, applyIncoming, createSyncState, keyOf, planUpload } from '.
 
 const DATA_COLLECTIONS = Object.values(COLLECTIONS).filter((name) => name !== 'members' && name !== 'invites');
 
+/** What an item is called, for the list of items that could not be uploaded. */
+function itemName(raw, collection, id) {
+  const list = RECORD_PATHS[collection]?.reduce((value, key) => value?.[key], raw) || [];
+  const item = list.find((entry) => entry.id === id);
+  if (collection === 'bills' && item) return `${item.kind === 'estimate' ? 'Estimate' : 'Bill'} ${item.number}${item.projectName ? ` · ${item.projectName}` : ''}`;
+  if (collection === 'labourPayments') return 'Labour payment';
+  return item?.name || id;
+}
+
 export const SYNC_STATUS = Object.freeze({
   connecting: 'connecting',
   syncing: 'syncing',
   synced: 'synced',
   offline: 'offline',
-  error: 'error'
+  error: 'error',
+  attention: 'attention'
 });
 
 /** Where each versioned record list lives in the app state. */
@@ -48,7 +58,7 @@ function baseOf(state, doc) {
 /** Firestore Timestamp | ISO string → ISO string. */
 const toIso = (value) => (value?.toDate ? value.toDate().toISOString() : value || null);
 
-export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState, saveState, onStatus = () => {}, onRefused = () => {}, onPending = () => {} }) {
+export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState, saveState, onStatus = () => {}, onRefused = () => {}, onPending = () => {}, onProblems = () => {} }) {
   let syncState = loadState() || createSyncState();
   let inFlight = 0; // uploads sent to the server and not yet confirmed (they wait while offline)
   let unsubscribers = [];
@@ -57,6 +67,21 @@ export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState
   let stopped = false;
 
   const persist = () => saveState(syncState);
+  const blockedPrints = () => Object.fromEntries(Object.entries(syncState.blocked || {}).map(([key, value]) => [key, value.print]));
+  const plan_ = () => planUpload(getRaw(), syncState, { by: uid, blocked: blockedPrints() });
+
+  /** Items the server refused, with a readable name and the reason code. */
+  function problems() {
+    return Object.entries(syncState.blocked || {}).map(([key, value]) => {
+      const [collection, id] = key.split('/');
+      return { collection, id, code: value.code, name: collection === 'settings' ? id : itemName(getRaw(), collection, id) };
+    });
+  }
+  const settle = () => {
+    const list = problems();
+    onProblems(list);
+    status(list.length ? SYNC_STATUS.attention : SYNC_STATUS.synced);
+  };
   const status = (value, detail) => { if (!stopped) onStatus(value, detail); };
 
   function snapshotDoc(collection, snap) {
@@ -99,8 +124,8 @@ export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState
   }
 
   async function pushNow() {
-    const plan = planUpload(getRaw(), syncState, { by: uid });
-    if (!plan.ops.length) { status(SYNC_STATUS.synced); return; }
+    const plan = plan_();
+    if (!plan.ops.length) { settle(); return; }
     status(SYNC_STATUS.syncing, plan.ops.length);
     const previous = syncState;
     syncState = { ...syncState, sent: plan.sent, marks: plan.marks };
@@ -113,9 +138,12 @@ export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState
     onPending(inFlight);
     const rejected = [];
     results.forEach((result, index) => {
-      if (result.status === 'fulfilled') return;
       const op = plan.ops[index];
       const key = keyOf(op.collection, op.id);
+      if (result.status === 'fulfilled') {
+        if (syncState.blocked?.[key]) { const { [key]: _fixed, ...rest } = syncState.blocked; syncState = { ...syncState, blocked: rest }; }
+        return;
+      }
       // Not sent: forget it so the next push tries again (or the conflict below resolves it).
       if (previous.sent[key] === undefined) delete syncState.sent[key];
       else syncState.sent[key] = previous.sent[key];
@@ -126,8 +154,10 @@ export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState
     if (rejected.length) {
       // Fetch the cloud copies. A newer version there is a conflict (merge rules);
       // otherwise this person may not make that change: the cloud copy is put back.
+      let cannotRead = false; // not even reading is allowed: this account was removed from the workspace
       const fresh = (await Promise.all(rejected.map(({ op }) => fs.getDocFromServer(fs.doc(db, docPath(wid, op.collection, op.id)))
-        .then((snap) => snapshotDoc(op.collection, snap)).catch(() => null)))).filter((doc) => doc?.exists);
+        .then((snap) => snapshotDoc(op.collection, snap))
+        .catch((error) => { if (error?.code === 'permission-denied') cannotRead = true; return null; })))).filter((doc) => doc?.exists);
       const newer = fresh.filter((doc) => doc.data.version === undefined || doc.data.version > baseOf(previous, doc));
       const refused = fresh.filter((doc) => !newer.includes(doc));
       receive(newer);
@@ -137,12 +167,24 @@ export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState
       }
       const unresolved = rejected.filter(({ op }) => !fresh.some((doc) => doc.collection === op.collection && doc.id === op.id));
       if (unresolved.length) {
+        // The server refuses these items and nobody has a newer copy: remember them (so they are not
+        // sent again and again) and show them to the user until they are changed.
         console.error('Sync: some changes were refused.', unresolved);
+        if (cannotRead) { status(SYNC_STATUS.error, 'permission-denied'); return; }
+        const blocked = { ...(syncState.blocked || {}) };
+        for (const { op, error } of unresolved) {
+          const key = keyOf(op.collection, op.id);
+          if (op.kind === 'set' && plan.sent[key] !== undefined) blocked[key] = { print: plan.sent[key], code: error?.code || 'refused' };
+        }
+        syncState = { ...syncState, blocked };
+        persist();
+        if (Object.keys(blocked).length) { settle(); return; }
         status(SYNC_STATUS.error, unresolved[0].error?.code || 'refused');
         return;
       }
     }
-    status(SYNC_STATUS.synced);
+    persist();
+    settle();
   }
 
   /** Sends local changes; calls made while a push runs are folded into one more push. */
@@ -183,7 +225,7 @@ export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState
     return docs.length;
   }
 
-  const unsentCount = () => planUpload(getRaw(), syncState, { by: uid }).ops.length;
+  const unsentCount = () => plan_().ops.length;
 
   function listen() {
     const since = syncState.pulledAt ? fs.Timestamp.fromDate(new Date(syncState.pulledAt)) : fs.Timestamp.fromMillis(0);
@@ -213,6 +255,15 @@ export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState
     pendingCount: () => unsentCount() + inFlight,
     /** Changes not yet sent to the server (excludes writes waiting for confirmation). */
     unsentCount,
+    /** Items the server refused (shown to the user). */
+    problems,
+    /** Try the refused items again (after the user changed something or on request). */
+    retryBlocked() {
+      syncState = { ...syncState, blocked: {} };
+      persist();
+      onProblems([]);
+      return push();
+    },
     /**
      * "Sync now": sends everything, waits (up to `timeout` ms) for the server to
      * confirm it, then downloads what others changed.
@@ -224,7 +275,7 @@ export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState
       if (pending > 0) return { ok: false, pending };
       try {
         const downloaded = await pullNow();
-        status(SYNC_STATUS.synced);
+        settle();
         return { ok: true, pending: 0, downloaded };
       } catch (error) {
         if (error?.code !== 'unavailable') console.error('Sync now could not download.', error);
