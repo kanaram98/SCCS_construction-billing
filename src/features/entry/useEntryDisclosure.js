@@ -7,6 +7,7 @@ import { useState } from 'react';
 export function useEntryDisclosure(sections) {
   const [selectedSectionId, setSelectedSectionId] = useState('');
   const [openAreas, setOpenAreas] = useState({});
+  const [renameId, setRenameId] = useState(''); // a just-made copy (floor or room) that should ask for its name
 
   const activeSection = sections.find((section) => section.id === selectedSectionId) || sections[0] || null;
   const isAreaOpen = (areaId, index) => openAreas[areaId] ?? index === 0;
@@ -25,6 +26,8 @@ export function useEntryDisclosure(sections) {
   return {
     activeSection,
     selectSection: setSelectedSectionId,
+    renameId,
+    askToRename: setRenameId,
     isAreaOpen,
     reveal,
     setAreaOpen: (areaId, open) => setOpenAreas((current) => ({ ...current, [areaId]: open }))

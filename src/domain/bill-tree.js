@@ -200,3 +200,68 @@ export function applyTemplate(bill, template, targetSectionId) {
   }
   return null;
 }
+
+const insertAfter = (list, id, entry) => {
+  const index = list.findIndex((item) => item.id === id);
+  return index < 0 ? [...list, entry] : [...list.slice(0, index + 1), entry, ...list.slice(index + 1)];
+};
+
+/**
+ * A copy of an area (all its entries) right after it, in the same section: for rooms that are
+ * alike ("Bedroom 1", "Bedroom 2"). The copy is named "<name> (copy)" so it only needs renaming.
+ */
+export function duplicateArea(bill, sectionId, areaId) {
+  const source = findSection(bill, sectionId)?.areas.find((area) => area.id === areaId);
+  if (!source) return null;
+  const copy = createArea(tr('{name} (copy)', { name: source.name }), cloneItems(source.items));
+  return {
+    apply: (current) => updateSection(current, sectionId, (section) => ({ ...section, areas: insertAfter(section.areas, areaId, copy) })),
+    result: { sectionId, areaIds: [copy.id], areaId: copy.id, message: tr('Copied {source} as {name}. Give it its own name.', { source: source.name, name: copy.name }) }
+  };
+}
+
+/** A copy of a whole section (all rooms and entries) right after it, e.g. "First floor" → "First floor (copy)". */
+export function duplicateSection(bill, sectionId) {
+  const source = findSection(bill, sectionId);
+  if (!source) return null;
+  const copy = createSection(
+    tr('{name} (copy)', { name: source.name }),
+    source.areas.map((area) => createArea(area.name, cloneItems(area.items)))
+  );
+  return {
+    apply: (current) => ({ ...current, sections: insertAfter(current.sections, sectionId, copy) }),
+    result: { sectionId: copy.id, areaIds: [], message: tr('Copied {source} as {name}. Give it its own name.', { source: source.name, name: copy.name }) }
+  };
+}
+
+/**
+ * Copies several areas of one section into several other sections at once. Each goes into the
+ * target's area of the same name when there is one, or becomes a new area there (as the single copy does).
+ */
+export function copyAreasToSections(bill, sourceSectionId, areaIds, targetSectionIds) {
+  const source = findSection(bill, sourceSectionId);
+  const areas = (source?.areas || []).filter((area) => areaIds.includes(area.id));
+  const targets = targetSectionIds.filter((id) => id !== sourceSectionId && findSection(bill, id));
+  if (!areas.length || !targets.length) return null;
+  return {
+    apply: (current) => {
+      let next = current;
+      for (const targetId of targets) {
+        for (const area of areas) {
+          const placement = placeItemsInSection(next, area, cloneItems(area.items), targetId);
+          next = placement.apply(next);
+        }
+      }
+      return next;
+    },
+    result: {
+      sectionId: targets[0],
+      areaIds: [],
+      count: areas.length * targets.length,
+      message: tr('Copied {areas} to {sections}.', {
+        areas: areas.length === 1 ? areas[0].name : tr('{count} areas', { count: areas.length }),
+        sections: targets.length === 1 ? findSection(bill, targets[0]).name : tr('{count} sections', { count: targets.length })
+      })
+    }
+  };
+}

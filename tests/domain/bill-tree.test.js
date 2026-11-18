@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import {
   applyTemplate,
   copyAreaToSection,
+  copyAreasToSections,
   copyItemToSection,
+  duplicateArea,
+  duplicateSection,
   createTemplateContent,
   removeItem,
   updateItem
@@ -88,4 +91,62 @@ test('moves sections, areas and items up and down, ignoring moves past the ends'
   const withItems = { ...bill, sections: [{ id: 's1', areas: [{ id: 'a1', items: [{ id: 'p' }, { id: 'q' }, { id: 'r' }] }] }] };
   assert.deepEqual(moveItem(withItems, 's1', 'a1', 'r', -1).sections[0].areas[0].items.map((i) => i.id), ['p', 'r', 'q']);
   assert.deepEqual(moveById([{ id: 1 }], 99, 1), [{ id: 1 }]);
+});
+
+function twoRooms() {
+  return {
+    id: 'bill',
+    sections: [
+      { id: 's1', name: 'Floor 1', areas: [
+        { id: 'a1', name: 'Bedroom 1', items: [{ id: 'i1', name: 'Tiles', rateId: 'tile', count: 1 }, { id: 'i2', name: 'Skirting', rateId: 'skirt', count: 1 }] },
+        { id: 'a2', name: 'Hall', items: [{ id: 'i3', name: 'Tiles', rateId: 'tile', count: 1 }] }
+      ] },
+      { id: 's2', name: 'Floor 2', areas: [{ id: 'a3', name: 'Hall', items: [] }] },
+      { id: 's3', name: 'Floor 3', areas: [] }
+    ]
+  };
+}
+
+test('duplicating a room puts a renamed copy with fresh ids right after it', () => {
+  const bill = twoRooms();
+  const copy = duplicateArea(bill, 's1', 'a1');
+  const next = copy.apply(bill);
+  const areas = next.sections[0].areas;
+  assert.deepEqual(areas.map((area) => area.name), ['Bedroom 1', 'Bedroom 1 (copy)', 'Hall']);
+  assert.equal(areas[1].items.length, 2);
+  assert.notEqual(areas[1].id, 'a1');
+  assert.notEqual(areas[1].items[0].id, 'i1');
+  assert.equal(areas[1].items[0].rateId, 'tile'); // still linked to the same rate
+  assert.equal(copy.result.areaId, areas[1].id);
+  assert.equal(duplicateArea(bill, 's1', 'missing'), null);
+});
+
+test('duplicating a floor copies its rooms and entries right after it', () => {
+  const bill = twoRooms();
+  const copy = duplicateSection(bill, 's1');
+  const next = copy.apply(bill);
+  assert.deepEqual(next.sections.map((section) => section.name), ['Floor 1', 'Floor 1 (copy)', 'Floor 2', 'Floor 3']);
+  const made = next.sections[1];
+  assert.deepEqual(made.areas.map((area) => area.name), ['Bedroom 1', 'Hall']);
+  assert.equal(made.areas[0].items.length, 2);
+  assert.notEqual(made.id, 's1');
+  assert.notEqual(made.areas[0].id, 'a1');
+  assert.equal(copy.result.sectionId, made.id);
+  assert.equal(next.sections[0].areas[0].items.length, 2); // the original is untouched
+});
+
+test('several rooms go into several floors at once, merging into a same-named room', () => {
+  const bill = twoRooms();
+  const op = copyAreasToSections(bill, 's1', ['a1', 'a2'], ['s2', 's3', 's1']); // copying into its own floor is ignored
+  const next = op.apply(bill);
+  const floor2 = next.sections[1];
+  assert.deepEqual(floor2.areas.map((area) => area.name), ['Hall', 'Bedroom 1']);
+  assert.equal(floor2.areas[0].items.length, 1); // Hall merged into the existing Hall
+  assert.equal(floor2.areas[1].items.length, 2);
+  const floor3 = next.sections[2];
+  assert.deepEqual(floor3.areas.map((area) => area.name), ['Bedroom 1', 'Hall']);
+  assert.equal(next.sections[0].areas.length, 2); // the source floor is unchanged
+  assert.equal(op.result.count, 4);
+  assert.equal(copyAreasToSections(bill, 's1', [], ['s2']), null);
+  assert.equal(copyAreasToSections(bill, 's1', ['a1'], ['s1']), null);
 });

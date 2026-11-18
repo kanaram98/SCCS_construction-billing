@@ -113,6 +113,52 @@ describe('Entry screen', () => {
     await waitFor(() => expect(savedState().bills[0].sections[0].areas[0].items.find((item) => item.type === 'area').length).toBe('20'));
   });
 
+  it('duplicates a room in the same floor and asks for its new name', async () => {
+    const { user } = renderApp(SAMPLE_STATE);
+    await goTo(user, 'Entry');
+    await user.click(await screen.findByRole('button', { name: 'Actions for Hall' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Duplicate in this section' }));
+    const dialog = await screen.findByRole('dialog');
+    const input = within(dialog).getByLabelText('Area name');
+    expect(input.value).toBe('Hall (copy)');
+    await user.clear(input);
+    await user.type(input, 'Bedroom 2{Enter}');
+    await waitFor(() => expect(savedState().bills[0].sections[0].areas.map((area) => area.name)).toEqual(['Hall', 'Bedroom 2', 'Kitchen']));
+    const [hall, copy] = savedState().bills[0].sections[0].areas;
+    expect(copy.items).toHaveLength(hall.items.length);
+    expect(copy.items[0].id).not.toBe(hall.items[0].id);
+  });
+
+  it('duplicates a whole floor and asks for its new name', async () => {
+    const { user } = renderApp(SAMPLE_STATE);
+    await goTo(user, 'Entry');
+    await user.click(await screen.findByRole('button', { name: 'Actions for Ground floor' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Duplicate section' }));
+    const dialog = await screen.findByRole('dialog');
+    const input = within(dialog).getByRole('textbox');
+    expect(input.value).toBe('Ground floor (copy)');
+    await user.clear(input);
+    await user.type(input, 'Second floor{Enter}');
+    await waitFor(() => expect(savedState().bills[0].sections.map((section) => section.name)).toEqual(['Ground floor', 'Second floor', 'First floor']));
+    expect(savedState().bills[0].sections[1].areas[0].items.length).toBe(savedState().bills[0].sections[0].areas[0].items.length);
+  });
+
+  it('copies several rooms into other floors at once with tick boxes', async () => {
+    const { user } = renderApp(SAMPLE_STATE);
+    await goTo(user, 'Entry');
+    await user.click(await screen.findByRole('button', { name: 'Actions for Ground floor' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Copy several areas to other sections…' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByRole('button', { name: 'Copy' }).disabled).toBe(true); // nothing ticked yet
+    await user.click(within(dialog).getAllByRole('checkbox', { name: 'Select all' })[0]);
+    await user.click(within(dialog).getByRole('checkbox', { name: 'First floor' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Copy' }));
+    await waitFor(() => expect(savedState().bills[0].sections[1].areas.length).toBeGreaterThan(0));
+    const ground = savedState().bills[0].sections[0].areas;
+    const first = savedState().bills[0].sections[1].areas;
+    expect(first.reduce((sum, area) => sum + area.items.length, 0)).toBeGreaterThanOrEqual(ground.reduce((sum, area) => sum + area.items.length, 0));
+  });
+
   it('renames a room from its menu', async () => {
     const { user } = renderApp(SAMPLE_STATE);
     await goTo(user, 'Entry');

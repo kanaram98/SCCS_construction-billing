@@ -211,6 +211,18 @@ function createEntryActions({ data, bill, setData }) {
     removeItem(sectionId, areaId, itemId) {
       updateBill((current) => tree.removeItem(current, sectionId, areaId, itemId));
     },
+    /** A copy of the room right after it in the same floor. */
+    duplicateArea(sectionId, areaId) {
+      return run(tree.duplicateArea(bill, sectionId, areaId));
+    },
+    /** A copy of the whole floor (rooms and entries) right after it. */
+    duplicateSection(sectionId) {
+      return run(tree.duplicateSection(bill, sectionId));
+    },
+    /** Several rooms of one floor into several other floors at once. */
+    copyAreas(sectionId, areaIds, targetSectionIds) {
+      return run(tree.copyAreasToSections(bill, sectionId, areaIds, targetSectionIds));
+    },
     copyArea(sectionId, areaId, targetSectionId) {
       return run(tree.copyAreaToSection(bill, sectionId, areaId, targetSectionId));
     },

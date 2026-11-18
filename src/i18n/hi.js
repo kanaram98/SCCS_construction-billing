@@ -1137,5 +1137,17 @@ export default {
   '{count} entries are not finished. Fill in their measurements or delete them.': '{count} एंट्रियाँ अधूरी हैं। उनकी नाप भरें या हटाएँ।',
   'Bathroom': 'बाथरूम',
   'Balcony': 'बालकनी',
-  'Add {name}': '{name} जोड़ें'
+  'Add {name}': '{name} जोड़ें',
+  'Copied {source} as {name}. Give it its own name.': '{source} की कॉपी {name} बनी। इसे अपना नाम दें।',
+  'Copied {areas} to {sections}.': '{areas} को {sections} में कॉपी किया।',
+  '{count} sections': '{count} सेक्शन',
+  'Duplicate in this section': 'इसी सेक्शन में दोहराएँ',
+  'Duplicate section': 'सेक्शन दोहराएँ',
+  'Copy several areas to other sections…': 'कई एरिया दूसरे सेक्शन में कॉपी करें…',
+  'Copy several {level}s': 'कई {level} कॉपी करें',
+  'Tick the {level}s of {name} to copy, then the {floor}s they should go to.': '{name} के जो {level} कॉपी करने हैं उन पर टिक करें, फिर जिन {floor} में डालने हैं उन पर।',
+  'Copy these': 'ये कॉपी करें',
+  'Into these': 'इनमें डालें',
+  'Select all': 'सभी चुनें',
+  'Copy': 'कॉपी करें'
 };

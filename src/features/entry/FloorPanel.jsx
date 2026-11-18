@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
@@ -8,7 +8,9 @@ import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import DeleteIcon from '@mui/icons-material/DeleteOutlined';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import EditIcon from '@mui/icons-material/EditOutlined';
+import LibraryAddIcon from '@mui/icons-material/LibraryAddOutlined';
 import { useBilling } from '../../state/BillingContext.jsx';
 import { useUndoable } from '../../hooks/useUndoable.js';
 import { ActionMenu, useConfirm } from '../../components/ui';
@@ -16,19 +18,46 @@ import RenameDialog from '../../components/ui/RenameDialog.jsx';
 import { countSectionItems, getSectionTotal } from '../../domain/calculations.js';
 import { formatCurrency } from '../../domain/formatters.js';
 import { tr as t, trn } from '../../i18n/translate.js';
+import { isFinal } from '../../domain/bill-final.js';
 import AreaPanel from './AreaPanel.jsx';
+import CopyAreasDialog from './CopyAreasDialog.jsx';
 
 /** The usual rooms, one tap to add. */
 const QUICK_ROOMS = ['Hall', 'Kitchen', 'Bedroom', 'Bathroom', 'Balcony'];
 
 /** One floor (section): summary, its rooms, and "Add room". */
 export default function FloorPanel({ section, sections, disclosure, levelName, sublevelName, onAddArea, onCopied, onDeleted }) {
-  const { data, actions } = useBilling();
+  const { data, bill, actions } = useBilling();
+  const [copyingAreas, setCopyingAreas] = useState(false);
   const { entry } = actions;
   const confirm = useConfirm();
   const undoable = useUndoable();
-  const [renaming, setRenaming] = useState(false);
+  const [renaming, setRenaming] = useState(disclosure.renameId === section.id); // a fresh copy opens its rename box at once
+  useEffect(() => { if (disclosure.renameId === section.id) disclosure.askToRename(''); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const index = sections.indexOf(section);
+
+  function locked() {
+    if (!isFinal(bill)) return false;
+    window.dispatchEvent(new CustomEvent('bill-locked'));
+    return true;
+  }
+
+  /** A copy of the whole floor right after it; it opens for renaming. */
+  function duplicateSection() {
+    if (locked()) return;
+    const result = entry.duplicateSection(section.id);
+    if (!result) return;
+    disclosure.askToRename(result.sectionId);
+    disclosure.selectSection(result.sectionId);
+    onCopied(result);
+  }
+
+  function copyAreas(areaIds, targetIds) {
+    if (locked()) return;
+    const result = entry.copyAreas(section.id, areaIds, targetIds);
+    setCopyingAreas(false);
+    if (result) onCopied(result);
+  }
   const itemCount = countSectionItems(section);
 
   async function deleteSection() {
@@ -61,6 +90,8 @@ export default function FloorPanel({ section, sections, disclosure, levelName, s
             { label: t('Rename'), icon: <EditIcon fontSize="small" />, onClick: () => setRenaming(true) },
             { label: t('Move left'), icon: <ArrowBackIcon fontSize="small" />, onClick: () => entry.moveSection(section.id, -1), disabled: index === 0 },
             { label: t('Move right'), icon: <ArrowForwardIcon fontSize="small" />, onClick: () => entry.moveSection(section.id, 1), disabled: index === sections.length - 1 },
+            { label: t('Duplicate section'), icon: <LibraryAddIcon fontSize="small" />, onClick: duplicateSection },
+            { label: t('Copy several areas to other sections…'), icon: <ContentCopyIcon fontSize="small" />, onClick: () => setCopyingAreas(true), disabled: sections.length < 2 || !section.areas.length },
             { label: t('Delete section'), icon: <DeleteIcon fontSize="small" />, onClick: deleteSection, danger: true }
           ]}
         />
@@ -77,6 +108,9 @@ export default function FloorPanel({ section, sections, disclosure, levelName, s
               index={areaIndex}
               sections={sections}
               open={open}
+              autoRename={disclosure.renameId === area.id}
+              onRenameShown={() => disclosure.askToRename('')}
+              onDuplicated={(result) => { disclosure.askToRename(result.areaId); disclosure.reveal(section.id, result.areaIds); onCopied(result); }}
               onToggle={() => disclosure.setAreaOpen(area.id, !open)}
               onCopied={onCopied}
             />
@@ -96,6 +130,7 @@ export default function FloorPanel({ section, sections, disclosure, levelName, s
         {t('Add {level}', { level: sublevelName })}
       </Button>
 
+      <CopyAreasDialog open={copyingAreas} section={section} sections={sections} levelName={levelName} sublevelName={sublevelName} onCopy={copyAreas} onClose={() => setCopyingAreas(false)} />
       <RenameDialog
         open={renaming}
         title={t('Rename {name}', { name: section.name })}

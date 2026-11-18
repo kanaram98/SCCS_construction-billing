@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Accordion from '@mui/material/Accordion';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import AccordionSummary from '@mui/material/AccordionSummary';
@@ -7,6 +7,7 @@ import Typography from '@mui/material/Typography';
 import AddIcon from '@mui/icons-material/Add';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import LibraryAddIcon from '@mui/icons-material/LibraryAddOutlined';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import DeleteIcon from '@mui/icons-material/DeleteOutlined';
@@ -26,7 +27,7 @@ import { tr as t, trn } from '../../i18n/translate.js';
 
 /** One area: its entries, the add/edit dialog, and copy/delete actions. */
 /** @param {object[] | null} visibleItems search results to show instead of every entry */
-export default function AreaPanel({ section, area, index, sections, open, visibleItems = null, onToggle, onCopied }) {
+export default function AreaPanel({ section, area, index, sections, open, visibleItems = null, autoRename = false, onToggle, onCopied, onDuplicated, onRenameShown }) {
   const searching = Boolean(visibleItems);
   const shownItems = visibleItems || area.items;
   const { data, bill, actions } = useBilling();
@@ -34,7 +35,8 @@ export default function AreaPanel({ section, area, index, sections, open, visibl
   const confirm = useConfirm();
   const undoable = useUndoable();
   const [editorOpen, setEditorOpen] = useState(false);
-  const [renaming, setRenaming] = useState(false);
+  const [renaming, setRenaming] = useState(autoRename); // a fresh copy opens its rename box at once
+  useEffect(() => { if (autoRename) onRenameShown?.(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   /** null, `{ type: 'area' }` or `{ type: 'item', itemId }` while choosing a copy target. */
   const [copyRequest, setCopyRequest] = useState(null);
 
@@ -67,6 +69,16 @@ export default function AreaPanel({ section, area, index, sections, open, visibl
     undoable(t('{name} deleted.', { name: area.name }), () => entry.removeArea(section.id, area.id));
   }
 
+  /** A copy of this room right after it, opened for renaming. */
+  function duplicateArea() {
+    if (isFinal(bill)) {
+      window.dispatchEvent(new CustomEvent('bill-locked'));
+      return;
+    }
+    const result = entry.duplicateArea(section.id, area.id);
+    if (result) onDuplicated?.(result);
+  }
+
   function copyTo(targetSectionId) {
     const result = copyRequest.type === 'area'
       ? entry.copyArea(section.id, area.id, targetSectionId)
@@ -92,6 +104,7 @@ export default function AreaPanel({ section, area, index, sections, open, visibl
               { label: t('Rename'), icon: <EditIcon fontSize="small" />, onClick: () => setRenaming(true) },
               { label: t('Move up'), icon: <ArrowUpwardIcon fontSize="small" />, onClick: () => entry.moveArea(section.id, area.id, -1), disabled: index === 0 },
               { label: t('Move down'), icon: <ArrowDownwardIcon fontSize="small" />, onClick: () => entry.moveArea(section.id, area.id, 1), disabled: index === section.areas.length - 1 },
+              { label: t('Duplicate in this section'), icon: <LibraryAddIcon fontSize="small" />, onClick: duplicateArea },
               { label: t('Copy area to section…'), icon: <ContentCopyIcon fontSize="small" />, onClick: () => setCopyRequest({ type: 'area' }), disabled: sections.length < 2 },
               { label: t('Delete area'), icon: <DeleteIcon fontSize="small" />, onClick: deleteArea, danger: true }
             ]}

@@ -5,6 +5,7 @@ import IconButton from '@mui/material/IconButton';
 import Link from '@mui/material/Link';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { alpha } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DeleteIcon from '@mui/icons-material/DeleteOutlined';
@@ -256,7 +257,19 @@ function SheetBody({ section, area, focusItemId, onClose }) {
               <Box
                 key={row.key}
                 onBlur={(event) => onRowBlur(event, row)}
-                sx={{ border: 1, borderColor: showIssue || (shake && unfinished.includes(row)) ? 'error.main' : 'divider', borderRadius: 2, p: 1.25, bgcolor: row.itemId ? 'background.paper' : 'action.hover' }}
+                sx={(theme) => {
+                  const flagged = showIssue || (shake && unfinished.includes(row));
+                  return {
+                    border: 1,
+                    borderStyle: row.itemId ? 'solid' : 'dashed', // a saved entry is solid, a row still to fill is dashed
+                    borderColor: flagged ? 'error.main' : 'divider',
+                    borderRadius: 2,
+                    p: 1.25,
+                    bgcolor: row.itemId ? alpha(theme.palette.primary.main, 0.05) : 'action.hover',
+                    // dark mode: the sheet and the rows were the same dark; lift the rows and strengthen their edge
+                    ...theme.applyStyles('dark', { bgcolor: alpha('#ffffff', row.itemId ? 0.08 : 0.04), borderColor: flagged ? theme.palette.error.main : alpha('#ffffff', 0.3) })
+                  };
+                }}
               >
                 <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
                   <Typography variant="caption" color="text.secondary" sx={{ pt: 1.25, minWidth: 18, fontWeight: 700 }}>{index + 1}</Typography>
