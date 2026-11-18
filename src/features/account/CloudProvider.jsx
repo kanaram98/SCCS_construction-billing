@@ -52,6 +52,7 @@ const LOCAL_ONLY = Object.freeze({
   signOut: async () => {},
   pendingChanges: async () => 0,
   continueSwitch: async () => {},
+  retry: async () => {},
   refreshMembers: async () => {},
   firebase: null
 });
@@ -172,6 +173,7 @@ function ConnectedCloud({ children }) {
       return;
     }
     if (!isCurrent()) return;
+    if (access.status === 'unreachable') { setStatus('unreachable'); return; }
     if (access.status !== 'member') { setNoAccessReason(access.reason || ''); setStatus('no-access'); return; }
 
     // Another account's changes still waiting on this phone? Don't overwrite them.
@@ -257,12 +259,18 @@ function ConnectedCloud({ children }) {
     return notSent + (confirmed ? 0 : 1);
   }, [user]);
 
+  /** Tries joining again (e.g. after the connection was down). */
+  const retry = useCallback(async () => {
+    const firebase = firebaseRef.current;
+    if (firebase?.auth.currentUser) await handleUser(firebase.auth.currentUser);
+  }, [handleUser]);
+
   const continueSwitch = useCallback(async () => {
     if (switchInfo) await switchInfo.resume();
   }, [switchInfo]);
 
   const signedIn = Boolean(user) || status === 'connecting';
-  const access = signedIn && status !== 'no-access' && status !== 'switch-blocked'
+  const access = signedIn && status !== 'no-access' && status !== 'switch-blocked' && status !== 'unreachable'
     ? 'full'
     : !user && lastUser ? 'labour' : 'signin';
   // Signed out, the last role on this phone still applies (e.g. a contractor can't unlock months).
@@ -287,9 +295,10 @@ function ConnectedCloud({ children }) {
     signOut,
     pendingChanges,
     continueSwitch,
+    retry,
     refreshMembers,
     firebase: firebaseRef.current
-  }), [access, status, online, user, lastUser, role, effectiveRole, members, switchInfo, noAccessReason, signIn, signOut, pendingChanges, continueSwitch, refreshMembers]);
+  }), [access, status, online, user, lastUser, role, effectiveRole, members, switchInfo, noAccessReason, signIn, signOut, pendingChanges, continueSwitch, retry, refreshMembers]);
 
   return <CloudContext.Provider value={value}>{children}</CloudContext.Provider>;
 }

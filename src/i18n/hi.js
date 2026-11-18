@@ -823,5 +823,7 @@ export default {
   'This day is more than {days} days old. Only the admin can change it.': 'यह दिन {days} दिन से पुराना है। इसे सिर्फ़ एडमिन बदल सकते हैं।',
   'You can add rates. Only the admin can change or delete them.': 'आप दरें जोड़ सकते हैं। बदलना या हटाना सिर्फ़ एडमिन कर सकते हैं।',
   'You can add workers and mark them as left. Only the admin can change wages or details, or delete a worker.': 'आप मज़दूर जोड़ सकते हैं और उन्हें "काम छोड़ा" मार्क कर सकते हैं। मज़दूरी या जानकारी बदलना और मज़दूर हटाना सिर्फ़ एडमिन कर सकते हैं।',
-  'Details: {reason}': 'विवरण: {reason}'
+  'Details: {reason}': 'विवरण: {reason}',
+  'Cannot reach the server. Check the internet connection and try again.': 'सर्वर से नहीं जुड़ पा रहा। इंटरनेट जाँचें और फिर कोशिश करें।',
+  'Try again': 'फिर कोशिश करें'
 };

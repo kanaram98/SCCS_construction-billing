@@ -19,7 +19,8 @@ export const CLOUD_STATUS_TEXT = Object.freeze({
   offline: 'Offline. Changes are saved here and sync when you are back online.',
   error: 'Sync problem. Changes are kept on this device; try again later.',
   'no-access': 'No access',
-  'switch-blocked': 'Waiting: another account has changes on this phone.'
+  'switch-blocked': 'Waiting: another account has changes on this phone.',
+  unreachable: 'Cannot reach the server. Check the internet connection and try again.'
 });
 
 /** Sign in with Google, sync status and sign out. Hidden when the cloud isn't set up. */
@@ -97,7 +98,12 @@ export default function AccountCard() {
             { name: switchInfo.previous.name, email: switchInfo.previous.email })}
         </Alert>
       )}
-      {status !== 'no-access' && status !== 'switch-blocked' && (
+      {status === 'unreachable' && (
+        <Alert severity="warning" sx={{ mb: 1.5 }} action={<Button color="inherit" size="small" onClick={cloud.retry}>{t('Try again')}</Button>}>
+          {t(CLOUD_STATUS_TEXT.unreachable)}
+        </Alert>
+      )}
+      {status !== 'no-access' && status !== 'switch-blocked' && status !== 'unreachable' && (
         <Typography variant="body2" sx={{ mb: 1.5 }} color={status === 'error' ? 'error' : 'text.primary'}>{t(CLOUD_STATUS_TEXT[status] || status)}</Typography>
       )}
       <Button size="small" startIcon={<LogoutIcon />} onClick={signOut}>{t('Sign out')}</Button>
