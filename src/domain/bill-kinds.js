@@ -74,6 +74,7 @@ export function createNextRunningBill(bills, source) {
   const raNumber = Math.max(...series.map((entry) => entry.raNumber || 1)) + 1;
   const bill = {
     ...createBill(nextNumberFor(bills, 'bill'), { gstEnabled: source.gstEnabled !== false }),
+    projectId: source.projectId || '',
     projectName: source.projectName,
     clientId: source.clientId,
     client: source.client,
