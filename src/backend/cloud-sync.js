@@ -108,9 +108,10 @@ export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState
     if (merged.conflicts.length) push();
   }
 
-  async function writeOp(op) {
+  /** What to write for an op: the document, and either a delete or a (merged) set. */
+  function describeOp(op) {
     const ref = fs.doc(db, docPath(wid, op.collection, op.id));
-    if (op.kind === 'delete') return fs.deleteDoc(ref);
+    if (op.kind === 'delete') return { ref, remove: true };
     if (op.kind === 'marks') {
       const marks = {};
       for (const [path, mark] of Object.entries(op.set)) {
@@ -121,9 +122,25 @@ export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState
         const [day, workerId] = path.split('.');
         marks[day] = { ...(marks[day] || {}), [workerId]: fs.deleteField() };
       }
-      return fs.setDoc(ref, { id: op.id, marks, syncedAt: fs.serverTimestamp() }, { merge: true });
+      return { ref, data: { id: op.id, marks, syncedAt: fs.serverTimestamp() }, options: { merge: true } };
     }
-    return fs.setDoc(ref, { ...op.data, syncedAt: fs.serverTimestamp() });
+    return { ref, data: { ...op.data, syncedAt: fs.serverTimestamp() } };
+  }
+
+  async function writeOp(op) {
+    const { ref, remove, data, options } = describeOp(op);
+    return remove ? fs.deleteDoc(ref) : fs.setDoc(ref, data, options);
+  }
+
+  async function writeBatch(ops) {
+    const batch = fs.writeBatch(db);
+    for (const op of ops) {
+      const { ref, remove, data, options } = describeOp(op);
+      if (remove) batch.delete(ref);
+      else if (options) batch.set(ref, data, options);
+      else batch.set(ref, data);
+    }
+    return batch.commit();
   }
 
   async function pushNow() {
@@ -131,12 +148,13 @@ export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState
     if (!plan.ops.length) { settle(); return; }
     status(SYNC_STATUS.syncing, plan.ops.length);
     const previous = syncState;
+    const printsSent = { ...plan.sent }; // fingerprints of what is being sent (plan.sent is edited below when a write fails)
     syncState = { ...syncState, sent: plan.sent, marks: plan.marks };
     persist();
     inFlight += plan.ops.length;
     onPending(inFlight);
     // Each write is confirmed only when the server has it, so this waits while offline.
-    const results = await runInPhases(plan.ops, writeOp);
+    const results = await runInPhases(plan.ops, writeOp, typeof fs.writeBatch === 'function' ? writeBatch : null);
     inFlight -= plan.ops.length;
     onPending(inFlight);
     const rejected = [];
@@ -184,7 +202,7 @@ export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState
         const blocked = { ...(syncState.blocked || {}) };
         for (const { op, error } of unresolved) {
           const key = keyOf(op.collection, op.id);
-          if (op.kind === 'set' && plan.sent[key] !== undefined) blocked[key] = { print: plan.sent[key], code: error?.code || 'refused' };
+          if (op.kind === 'set' && printsSent[key] !== undefined) blocked[key] = { print: printsSent[key], code: error?.code || 'refused' };
         }
         syncState = { ...syncState, blocked };
         persist();

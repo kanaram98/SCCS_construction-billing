@@ -229,11 +229,11 @@ function ProjectDetail({ project, onBack, onNavigate }) {
 }
 
 /** Projects (sites): the list, and one project's advances and expenses. */
-export default function ProjectsPage({ onNavigate }) {
+export default function ProjectsPage({ onNavigate, focus = {} }) {
   const { data, actions } = useBilling();
   const confirm = useConfirm();
   const notify = useNotify();
-  const [selectedId, setSelectedId] = useState('');
+  const [selectedId, setSelectedId] = useState(focus.projectId || '');
   const [adding, setAdding] = useState(false);
   const selected = data.projects.find((project) => project.id === selectedId);
 

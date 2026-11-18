@@ -134,6 +134,13 @@ export function planUpload(raw, syncState, { by, blocked = {} }) {
   return { ops, sent, marks };
 }
 
+/** Where a new bill goes in a newest-first list. */
+function newestFirstIndex(list, item) {
+  const at = String(item.createdAt || '');
+  const index = list.findIndex((other) => String(other.createdAt || '') < at);
+  return index < 0 ? list.length : index;
+}
+
 /**
  * Uploads go in three steps so the server's closed-month rule is never tripped by our own order:
  * 0 unlocking a month first, 1 everything else (marks, payments, records), 2 closing a month last.
@@ -144,16 +151,33 @@ export function opPhase(op) {
 }
 
 /** Runs run(op) for every op, one phase after the other. Returns the settled results in the order of ops. */
-export async function runInPhases(ops, run) {
+export async function runInPhases(ops, run, runBatch = null) {
   const results = new Array(ops.length);
   for (const phase of [0, 1, 2]) {
     const indexes = ops.map((_op, index) => index).filter((index) => opPhase(ops[index]) === phase);
     if (!indexes.length) continue;
-    const settled = await Promise.allSettled(indexes.map((index) => run(ops[index])));
-    settled.forEach((result, position) => { results[indexes[position]] = result; });
+    if (!runBatch || indexes.length < 2) {
+      const settled = await Promise.allSettled(indexes.map((index) => run(ops[index])));
+      settled.forEach((result, position) => { results[indexes[position]] = result; });
+      continue;
+    }
+    // Many writes at once: send them in a few batches (one round trip each). If a batch is refused,
+    // its items are sent one by one, so only the ones the server really refuses fail.
+    for (let start = 0; start < indexes.length; start += BATCH_SIZE) {
+      const chunk = indexes.slice(start, start + BATCH_SIZE);
+      try {
+        await runBatch(chunk.map((index) => ops[index]));
+        chunk.forEach((index) => { results[index] = { status: 'fulfilled', value: undefined }; });
+      } catch {
+        const settled = await Promise.allSettled(chunk.map((index) => run(ops[index])));
+        settled.forEach((result, position) => { results[chunk[position]] = result; });
+      }
+    }
   }
   return results;
 }
+
+export const BATCH_SIZE = 100;
 
 // ── Download ──────────────────────────────────────────────────────────
 
@@ -210,6 +234,7 @@ export function applyIncoming(raw, docs, syncState, now = new Date(), { by = '',
       }
       const updated = [...list];
       if (index >= 0) updated[index] = data;
+      else if (doc.collection === 'bills') updated.splice(newestFirstIndex(updated, data), 0, data);
       else updated.splice(Math.min(doc.data.order ?? updated.length, updated.length), 0, data);
       next = setIn(next, path, updated);
       state.sent[key] = `v${data.version}`;

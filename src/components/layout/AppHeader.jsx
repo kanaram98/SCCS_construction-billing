@@ -18,9 +18,10 @@ import IconButton from '@mui/material/IconButton';
 import Badge from '@mui/material/Badge';
 import SettingsIcon from '@mui/icons-material/SettingsOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
+import SearchIcon from '@mui/icons-material/Search';
 import { tr as t } from '../../i18n/translate.js';
 
-export default function AppHeader({ subtitle, saveStatus, canInstall, onInstall, onOpenSettings, onOpenMenu }) {
+export default function AppHeader({ subtitle, saveStatus, canInstall, onInstall, onOpenSettings, onOpenMenu, onOpenSearch }) {
   const saveFailed = saveStatus === SAVE_STATUS.failed;
   const cloud = useCloud();
   const cloudActive = cloud.configured && cloud.user && cloud.status !== 'no-access';
@@ -63,6 +64,11 @@ export default function AppHeader({ subtitle, saveStatus, canInstall, onInstall,
             <Box role="status" aria-label={t(statusText)} sx={{ display: 'flex', color }}>
               {icon}
             </Box>
+          </Tooltip>
+        )}
+        {onOpenSearch && (
+          <Tooltip title={t('Search')}>
+            <IconButton aria-label={t('Search')} onClick={onOpenSearch}><SearchIcon /></IconButton>
           </Tooltip>
         )}
         <Tooltip title={t('App settings')}>

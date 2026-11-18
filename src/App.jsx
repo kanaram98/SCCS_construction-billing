@@ -9,6 +9,7 @@ import SignedOutBanner from './features/account/SignedOutBanner.jsx';
 import { FeedbackProvider } from './components/ui';
 import { useInstallPrompt } from './hooks/useInstallPrompt.js';
 import { NAVIGATION, VIEWS } from './config/app.js';
+import GlobalSearch from './features/search/GlobalSearch.jsx';
 import { BOTTOM_NAV_HEIGHT, DRAWER_WIDTH } from './theme.js';
 import AppHeader from './components/layout/AppHeader.jsx';
 import MainNav from './components/layout/MainNav.jsx';
@@ -80,7 +81,7 @@ const LIMITED_VIEWS = { labour: [VIEWS.labour, VIEWS.settings], signin: [VIEWS.s
 
 function AppShell({ view: chosenView, setView }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const { data, bill, saveStatus, storageError } = useBilling();
+  const { data, bill, saveStatus, storageError, actions } = useBilling();
   const installer = useInstallPrompt();
   const cloud = useCloud();
   const allowed = LIMITED_VIEWS[cloud.access] || (cloud.can('viewReports') ? null : [...NAVIGATION.map(({ id }) => id), VIEWS.settings].filter((id) => id !== VIEWS.reports));
@@ -88,9 +89,19 @@ function AppShell({ view: chosenView, setView }) {
   const Page = PAGES[view];
   usePrefetchPages();
 
-  function navigate(nextView) {
+  const [focus, setFocus] = useState({});
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  function navigate(nextView, nextFocus = {}) {
+    setFocus(nextFocus);
     setView(nextView);
     window.scrollTo({ top: 0 });
+  }
+
+  /** A search result: open the bill first when it is one, then go to its screen. */
+  function openResult(result) {
+    if (result.focus?.billId) actions.bills.open(result.focus.billId);
+    navigate(result.view, result.focus);
   }
 
   return (
@@ -102,7 +113,9 @@ function AppShell({ view: chosenView, setView }) {
         onInstall={installer.install}
         onOpenSettings={() => navigate(VIEWS.settings)}
         onOpenMenu={() => setMenuOpen(true)}
+        onOpenSearch={allowed ? undefined : () => setSearchOpen(true)}
       />
+      {!allowed && <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} onOpenResult={openResult} />}
       <MainNav activeView={view} onNavigate={navigate} views={allowed} open={menuOpen} onClose={() => setMenuOpen(false)} />
       {!data.meta?.onboarded && cloud.access === 'full' && <WelcomeDialog onNavigate={navigate} />}
       <Box
@@ -119,7 +132,7 @@ function AppShell({ view: chosenView, setView }) {
           <AppNotices storageError={storageError} isInstalled={installer.isInstalled} installMessage={installer.message} />
           <ScreenErrorBoundary resetKey={view} onGoHome={() => navigate(VIEWS.home)}>
             <Suspense fallback={<LinearProgress sx={{ my: 2 }} aria-label={t('Loading')} />}>
-              <Page onNavigate={navigate} />
+              <Page onNavigate={navigate} focus={focus} />
             </Suspense>
           </ScreenErrorBoundary>
           <Typography className="no-print" variant="caption" color="text.secondary" component="footer" sx={{ display: 'block', textAlign: 'center', mt: 3 }}>

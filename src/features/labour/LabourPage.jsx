@@ -14,9 +14,9 @@ import SheetTab from './SheetTab.jsx';
 import HistoryDialog from './HistoryDialog.jsx';
 
 /** Labour: daily attendance (A / 0.5P / 1P / 1.5P / 2P), workers and monthly wages. */
-export default function LabourPage() {
+export default function LabourPage({ focus = {} }) {
   const { data } = useBilling();
-  const [tab, setTab] = useState(() => (data.labour.workers.length ? 'attendance' : 'workers'));
+  const [tab, setTab] = useState(() => (focus.workerId || !data.labour.workers.length ? 'workers' : 'attendance'));
   const [month, setMonth] = useState(() => monthOf(localToday()));
   const [history, setHistory] = useState(null); // null, 'all' or a worker id
 

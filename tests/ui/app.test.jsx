@@ -551,3 +551,27 @@ describe('Payment receipt', () => {
     expect(within(dialog).getByText('Payment for bill 1')).toBeTruthy();
   });
 });
+
+describe('Search everything', () => {
+  it('finds a project from the header search and opens it', async () => {
+    const stamp = { createdAt: '2026-11-01T00:00:00.000Z', updatedAt: '2026-11-01T00:00:00.000Z', version: 1 };
+    const project = { id: 'p1', name: 'Lake villa', clientId: '', client: 'Mehta', clientPhone: '', clientAddress: '', clientGstin: '', address: '', status: 'running', agreedAmount: '', notes: '', ...stamp };
+    const { user } = renderApp({ ...SAMPLE_STATE, projects: [project] });
+    await user.click(await screen.findByRole('button', { name: 'Search' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.type(within(dialog).getByLabelText('Search everything'), 'mehta');
+    await user.click(await within(dialog).findByText('Lake villa'));
+    expect(await screen.findByRole('heading', { name: 'Lake villa' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Back to projects' })).toBeTruthy();
+  });
+});
+
+describe('To do today', () => {
+  it('reminds about attendance and can be set aside for the day', async () => {
+    const { user } = renderApp({ ...SAMPLE_STATE, labour: { workers: [{ id: 'w1', name: 'Ramesh', dailyWage: 600, role: '', phone: '', active: true, joinedOn: '2026-01-01', leftOn: '' }], attendance: {}, payments: [] } });
+    expect(await screen.findByText('To do today')).toBeTruthy();
+    expect(screen.getByText('Attendance is not marked today for 1 of 1 workers.')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: /^Later: Attendance/ }));
+    await waitFor(() => expect(screen.queryByText('Attendance is not marked today for 1 of 1 workers.')).toBeNull());
+  });
+});

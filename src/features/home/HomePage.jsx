@@ -25,6 +25,7 @@ import { formatCurrency, todayIso } from '../../domain/formatters.js';
 import { VIEWS } from '../../config/app.js';
 import { tr as t, trn } from '../../i18n/translate.js';
 import BackupReminder from '../backup/BackupReminder.jsx';
+import RemindersCard from './RemindersCard.jsx';
 
 /** A KPI tile: label, big value, optional small note. */
 function Kpi({ label, value, note, color = 'primary' }) {
@@ -83,6 +84,7 @@ export default function HomePage({ onNavigate }) {
       </Stack>
 
       <BackupReminder />
+      <RemindersCard onNavigate={onNavigate} />
 
       <Grid container spacing={1.25} sx={{ mb: 1.5 }}>
         <Grid size={6}><Kpi label={t('Outstanding')} value={formatCurrency(summary.outstanding)} color="warning.dark" note={trn(summary.unpaidCount + summary.partialCount, '{count} bill to collect', '{count} bills to collect')} /></Grid>

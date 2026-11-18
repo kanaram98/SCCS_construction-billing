@@ -49,15 +49,15 @@ function MonthNav({ month, onChange }) {
 }
 
 /** Site expenses day by day: add (also offline), edit, export as PDF or CSV. */
-export default function ExpensesPage({ onNavigate }) {
+export default function ExpensesPage({ onNavigate, focus = {} }) {
   const { data, actions } = useBilling();
   const cloud = useCloud();
   const notify = useNotify();
   const confirm = useConfirm();
   const undoable = useUndoable();
   const sheetRef = useRef(null);
-  const [projectId, setProjectId] = useState('');
-  const [month, setMonth] = useState(() => monthOf(localToday()));
+  const [projectId, setProjectId] = useState(focus.projectId || '');
+  const [month, setMonth] = useState(() => focus.month || monthOf(localToday()));
   const [view, setView] = useState('calendar'); // calendar | table | pdf
   const [editing, setEditing] = useState(null); // an expense, 'new' or null
   const [newDate, setNewDate] = useState(''); // the day a new expense starts on

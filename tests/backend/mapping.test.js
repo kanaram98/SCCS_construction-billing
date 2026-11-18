@@ -41,7 +41,9 @@ test('state → documents → state keeps everything; device-only settings come 
   const raw = buildSampleState();
   const local = { preferences: { language: 'hi', textSize: 'large' }, meta: { lastBackupAt: '', onboarded: true }, activeBillId: 'est-1' };
   const back = fromDocuments(toDocuments(raw, { by: BY }), { local }, now);
-  assert.deepEqual(back.bills.map((bill) => bill.id), raw.bills.map((bill) => bill.id));
+  // Bills come back newest first (the same on every phone), whatever order they were stored in.
+  const newestFirst = [...raw.bills].sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')) || a.id.localeCompare(b.id));
+  assert.deepEqual(back.bills.map((bill) => bill.id), newestFirst.map((bill) => bill.id));
   assert.equal(back.bills.find((bill) => bill.id === 'bill-3').deletedAt, raw.bills.find((bill) => bill.id === 'bill-3').deletedAt);
   assert.deepEqual(back.bills[0].sections, raw.bills[0].sections);
   assert.deepEqual(back.bills[0].payments, raw.bills[0].payments);

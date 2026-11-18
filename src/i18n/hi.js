@@ -1056,5 +1056,20 @@ export default {
   'Towards bill {number}': 'बिल {number} के लिए',
   '{amount} received from {client} on {date}': '{client} से {date} को {amount} मिले',
   'Warning: {count} change on this phone has not reached the cloud yet and will be replaced. ': 'चेतावनी: इस फ़ोन का {count} बदलाव अभी क्लाउड तक नहीं पहुँचा है और बदल जाएगा। ',
-  'Warning: {count} changes on this phone have not reached the cloud yet and will be replaced. ': 'चेतावनी: इस फ़ोन के {count} बदलाव अभी क्लाउड तक नहीं पहुँचे हैं और बदल जाएँगे। '
+  'Warning: {count} changes on this phone have not reached the cloud yet and will be replaced. ': 'चेतावनी: इस फ़ोन के {count} बदलाव अभी क्लाउड तक नहीं पहुँचे हैं और बदल जाएँगे। ',
+  'Bill number, client, project, worker, note…': 'बिल नंबर, क्लाइंट, प्रोजेक्ट, मज़दूर, नोट…',
+  'Nothing found': 'कुछ नहीं मिला',
+  'Search': 'खोजें',
+  'Search everything': 'सब कुछ खोजें',
+  'Try a bill number, a client or project name, a worker, or a word from a note.': 'बिल नंबर, क्लाइंट या प्रोजेक्ट का नाम, मज़दूर, या नोट का कोई शब्द आज़माएँ।',
+  'Attendance is not marked today for {missing} of {total} workers.': 'आज {total} में से {missing} मज़दूरों की हाज़िरी नहीं लगी है।',
+  'Later': 'बाद में',
+  'Later: {text}': 'बाद में: {text}',
+  'Mark attendance': 'हाज़िरी लगाएँ',
+  'Open Bills': 'बिल खोलें',
+  'Open Labour': 'मज़दूर खोलें',
+  'To do today': 'आज के काम',
+  '{count} bill is not linked to a project, so reports leave it out.': '{count} बिल किसी प्रोजेक्ट से नहीं जुड़ा, इसलिए रिपोर्ट में नहीं आता।',
+  '{count} bills are not linked to a project, so reports leave them out.': '{count} बिल किसी प्रोजेक्ट से नहीं जुड़े, इसलिए रिपोर्ट में नहीं आते।',
+  '{month} is not closed yet. Check the wages, then close it.': '{month} अभी बंद नहीं हुआ। मज़दूरी जाँचें, फिर बंद करें।'
 };

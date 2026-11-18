@@ -90,6 +90,8 @@ export function toDocuments(raw, { by }) {
 }
 
 const byOrder = (a, b) => (a.order ?? 0) - (b.order ?? 0);
+/** Newest first; the same on every phone. */
+const byNewest = (a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')) || String(a.id).localeCompare(String(b.id));
 const byTime = (a, b) => String(a.at).localeCompare(String(b.at));
 const withoutOrder = ({ order: _order, ...rest }) => rest;
 const withoutId = ({ id: _id, ...rest }) => rest;
@@ -106,7 +108,7 @@ export function fromDocuments(docs, { local } = {}, now = new Date()) {
     for (const [day, marks] of Object.entries(monthDoc.marks || {})) attendance[`${monthDoc.id}-${day}`] = marks;
   }
   const saved = {
-    bills: of(COLLECTIONS.bills).sort(byOrder).map(withoutOrder),
+    bills: of(COLLECTIONS.bills).sort(byNewest).map(withoutOrder),
     rates: of(COLLECTIONS.rates).sort(byOrder).map(withoutOrder),
     clients: of(COLLECTIONS.clients).sort(byOrder).map(withoutOrder),
     templates: of(COLLECTIONS.templates).sort(byOrder).map(withoutOrder),

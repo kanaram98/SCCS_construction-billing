@@ -287,3 +287,28 @@ test('uploads unlock a month first, send marks and payments next, and close a mo
   assert.equal(order.at(-1), 'set:closedMonths');
   assert.deepEqual(results.map((result) => result.status), ['fulfilled', 'fulfilled', 'fulfilled', 'rejected']); // aligned with ops
 });
+
+test('batches many writes, and falls back to single writes when a batch is refused', async () => {
+  const { runInPhases, BATCH_SIZE } = await import('../../src/backend/sync-core.js');
+  const many = Array.from({ length: BATCH_SIZE + 5 }, (_unused, index) => ({ kind: 'set', collection: 'history', id: `h${index}` }));
+  const batches = [];
+  const single = [];
+  const results = await runInPhases(many, async (op) => { single.push(op.id); }, async (chunk) => { batches.push(chunk.length); });
+  assert.deepEqual(batches, [BATCH_SIZE, 5]);
+  assert.equal(single.length, 0);
+  assert.ok(results.every((result) => result.status === 'fulfilled'));
+
+  // One bad item: its batch is refused, then each item is tried alone and only the bad one fails.
+  const some = [{ kind: 'set', collection: 'bills', id: 'good' }, { kind: 'set', collection: 'bills', id: 'bad' }];
+  const outcome = await runInPhases(some, async (op) => { if (op.id === 'bad') throw new Error('refused'); }, async () => { throw new Error('batch refused'); });
+  assert.deepEqual(outcome.map((result) => result.status), ['fulfilled', 'rejected']);
+});
+
+test('a new bill from the cloud is placed newest first, and cloud bills load newest first', () => {
+  const state = createInitialState();
+  const mk = (id, createdAt) => ({ ...state.bills[0], id, createdAt, updatedAt: createdAt, version: 1 });
+  const base = { ...state, bills: [mk('b-new', '2026-11-10T00:00:00.000Z'), mk('b-old', '2026-11-01T00:00:00.000Z')] };
+  const incoming = [{ collection: 'bills', id: 'b-mid', exists: true, data: { ...mk('b-mid', '2026-11-05T00:00:00.000Z'), order: 0, syncedAt: 1 } }];
+  const merged = applyIncoming(base, incoming, createSyncState(), new Date('2026-11-18T00:00:00Z'), { by: 'u' });
+  assert.deepEqual(merged.raw.bills.map((bill) => bill.id), ['b-new', 'b-mid', 'b-old']);
+});
