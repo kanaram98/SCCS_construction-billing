@@ -1,11 +1,14 @@
-import BottomNavigation from '@mui/material/BottomNavigation';
-import BottomNavigationAction from '@mui/material/BottomNavigationAction';
+import Avatar from '@mui/material/Avatar';
+import Box from '@mui/material/Box';
+import Divider from '@mui/material/Divider';
 import Drawer from '@mui/material/Drawer';
+import IconButton from '@mui/material/IconButton';
+import Typography from '@mui/material/Typography';
+import CloseIcon from '@mui/icons-material/Close';
 import List from '@mui/material/List';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
-import Paper from '@mui/material/Paper';
 import Toolbar from '@mui/material/Toolbar';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import StraightenIcon from '@mui/icons-material/Straighten';
@@ -15,9 +18,9 @@ import SettingsIcon from '@mui/icons-material/SettingsOutlined';
 import BusinessIcon from '@mui/icons-material/BusinessOutlined';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdfOutlined';
 import EngineeringIcon from '@mui/icons-material/EngineeringOutlined';
-import { NAVIGATION, VIEWS } from '../../config/app.js';
+import { APP_NAME, NAVIGATION, VIEWS } from '../../config/app.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
-import { BOTTOM_NAV_HEIGHT, DRAWER_WIDTH } from '../../theme.js';
+import { DRAWER_WIDTH } from '../../theme.js';
 import { tr as t } from '../../i18n/translate.js';
 
 const ICONS = {
@@ -31,28 +34,50 @@ const ICONS = {
   [VIEWS.labour]: <EngineeringIcon />
 };
 
-/** Bottom tab bar on phones/tablets, permanent sidebar on desktop. */
-/** `views`: limit the tabs (e.g. Labour only while signed out); null shows all. */
-export default function MainNav({ activeView, onNavigate, views = null }) {
+/**
+ * Navigation: a slide-in side drawer on phones and tablets (opened with the menu
+ * button in the top bar), a permanent sidebar on desktop.
+ * `views`: limit the tabs (e.g. Labour only while signed out); null shows all.
+ */
+export default function MainNav({ activeView, onNavigate, views = null, open = false, onClose = () => {} }) {
   const tabs = NAVIGATION.filter(({ id }) => !views || views.includes(id));
   const isMobile = useIsMobile();
+  const items = [...tabs, { id: VIEWS.settings, label: 'Settings' }];
+
+  const list = (
+    <List component="nav" aria-label={t('Main navigation')} sx={{ px: 1 }}>
+      {items.map(({ id, label }) => (
+        <ListItemButton
+          key={id}
+          selected={activeView === id}
+          onClick={() => { onNavigate(id); onClose(); }}
+          sx={{ mb: 0.5, '&.Mui-selected': { bgcolor: 'rgba(245, 168, 0, 0.2)' }, '&.Mui-selected:hover': { bgcolor: 'rgba(245, 168, 0, 0.3)' } }}
+        >
+          <ListItemIcon sx={{ minWidth: 40 }}>{ICONS[id]}</ListItemIcon>
+          <ListItemText primary={t(label)} />
+        </ListItemButton>
+      ))}
+    </List>
+  );
 
   if (isMobile) {
-    if (!tabs.length) return null;
     return (
-      <Paper
-        elevation={8}
+      <Drawer
+        variant="temporary"
+        open={open}
+        onClose={onClose}
         className="no-print"
-        component="nav"
-        aria-label={t('Main navigation')}
-        sx={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: (theme) => theme.zIndex.appBar + 1, pb: 'env(safe-area-inset-bottom)' }}
+        ModalProps={{ keepMounted: false }}
+        sx={{ '& .MuiDrawer-paper': { width: 'min(82vw, 300px)', boxSizing: 'border-box', pt: 'env(safe-area-inset-top)' } }}
       >
-        <BottomNavigation showLabels value={activeView} onChange={(_event, view) => onNavigate(view)} sx={{ height: BOTTOM_NAV_HEIGHT }}>
-          {tabs.map(({ id, shortLabel, label }) => (
-            <BottomNavigationAction key={id} value={id} label={t(shortLabel || label)} icon={ICONS[id]} sx={{ minWidth: 0, px: 0.25, '& .MuiBottomNavigationAction-label': { fontSize: '0.7rem', '&.Mui-selected': { fontSize: '0.72rem' } } }} />
-          ))}
-        </BottomNavigation>
-      </Paper>
+        <Toolbar sx={{ gap: 1.5, minHeight: 64 }}>
+          <Avatar variant="rounded" sx={{ bgcolor: 'primary.main', fontWeight: 800, width: 38, height: 38 }}>₹</Avatar>
+          <Typography variant="subtitle1" noWrap sx={{ flex: 1 }}>{t(APP_NAME)}</Typography>
+          <IconButton aria-label={t('Close menu')} onClick={onClose} edge="end"><CloseIcon /></IconButton>
+        </Toolbar>
+        <Divider />
+        <Box sx={{ pt: 1, overflowY: 'auto', pb: 'env(safe-area-inset-bottom)' }}>{list}</Box>
+      </Drawer>
     );
   }
 
@@ -63,19 +88,7 @@ export default function MainNav({ activeView, onNavigate, views = null }) {
       sx={{ width: DRAWER_WIDTH, flexShrink: 0, '& .MuiDrawer-paper': { width: DRAWER_WIDTH, boxSizing: 'border-box' } }}
     >
       <Toolbar />
-      <List component="nav" aria-label={t('Main navigation')} sx={{ px: 1 }}>
-        {[...tabs, { id: VIEWS.settings, label: 'Settings' }].map(({ id, label }) => (
-          <ListItemButton
-            key={id}
-            selected={activeView === id}
-            onClick={() => onNavigate(id)}
-            sx={{ mb: 0.5, '&.Mui-selected': { bgcolor: 'rgba(245, 168, 0, 0.2)' }, '&.Mui-selected:hover': { bgcolor: 'rgba(245, 168, 0, 0.3)' } }}
-          >
-            <ListItemIcon sx={{ minWidth: 40 }}>{ICONS[id]}</ListItemIcon>
-            <ListItemText primary={t(label)} />
-          </ListItemButton>
-        ))}
-      </List>
+      {list}
     </Drawer>
   );
 }

@@ -17,9 +17,10 @@ import { DRAWER_WIDTH } from '../../theme.js';
 import IconButton from '@mui/material/IconButton';
 import Badge from '@mui/material/Badge';
 import SettingsIcon from '@mui/icons-material/SettingsOutlined';
+import MenuIcon from '@mui/icons-material/Menu';
 import { tr as t } from '../../i18n/translate.js';
 
-export default function AppHeader({ subtitle, saveStatus, canInstall, onInstall, onOpenSettings }) {
+export default function AppHeader({ subtitle, saveStatus, canInstall, onInstall, onOpenSettings, onOpenMenu }) {
   const saveFailed = saveStatus === SAVE_STATUS.failed;
   const cloud = useCloud();
   const cloudActive = cloud.configured && cloud.user && cloud.status !== 'no-access';
@@ -37,6 +38,9 @@ export default function AppHeader({ subtitle, saveStatus, canInstall, onInstall,
       sx={{ borderBottom: 1, borderColor: 'divider', pl: { md: `${DRAWER_WIDTH}px` } }}
     >
       <Toolbar sx={{ gap: 1.5, pt: 'env(safe-area-inset-top)' }}>
+        <IconButton aria-label={t('Menu')} onClick={onOpenMenu} edge="start" sx={{ display: { md: 'none' }, mr: -0.5 }}>
+          <MenuIcon />
+        </IconButton>
         <Avatar variant="rounded" sx={{ bgcolor: 'primary.main', fontWeight: 800, width: 38, height: 38 }}>₹</Avatar>
         <Box sx={{ minWidth: 0, flex: 1 }}>
           <Typography variant="subtitle1" noWrap sx={{ lineHeight: 1.2 }}>{t(APP_NAME)}</Typography>

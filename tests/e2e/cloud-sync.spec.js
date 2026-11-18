@@ -24,8 +24,20 @@ async function resetEmulators(request) {
   expect(created.ok()).toBeTruthy();
 }
 
-/** A tab in the bottom navigation bar. */
-const nav = (page, name) => page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name });
+/** Opens the side menu and returns the navigation list. */
+const menu = async (page) => {
+  await page.getByRole('button', { name: 'Menu' }).click();
+  return page.getByRole('navigation', { name: 'Main navigation' });
+};
+/** Opens the side menu and taps a tab. */
+const goTo = async (page, name) => (await menu(page)).getByRole('button', { name }).click();
+/** Opens the side menu, checks a tab is absent or present, and closes it again. */
+const expectTab = async (page, name, count) => {
+  const list = await menu(page);
+  await expect(list.getByRole('button', { name })).toHaveCount(count);
+  await page.keyboard.press('Escape');
+  await expect(list).toHaveCount(0);
+};
 
 async function openSettings(page) {
   await page.getByRole('button', { name: 'App settings' }).click();
@@ -63,8 +75,8 @@ test('admin creates the workspace, invites the father, and changes sync both way
   await admin.goto('/');
   // A phone that never signed in shows only sign-in: no tabs, no bills, no labour.
   await expect(admin.getByText('Sign in with Google to open the app.')).toBeVisible();
-  await expect(admin.getByRole('button', { name: 'Labour' })).toHaveCount(0);
-  await expect(admin.getByRole('button', { name: 'Bills' })).toHaveCount(0);
+  await expectTab(admin, 'Labour', 0);
+  await expectTab(admin, 'Bills', 0);
   await openSettings(admin);
   await signIn(admin, ADMIN);
   await expect(admin.getByText('Workspace created. You are the admin.')).toBeVisible();
@@ -92,18 +104,18 @@ test('admin creates the workspace, invites the father, and changes sync both way
   await father.getByRole('button', { name: 'Sync now' }).click();
   await expect(father.getByText('All changes are uploaded and this phone is up to date.')).toBeVisible();
   await father.screenshot({ path: 'test-results/screens/6-father-sync-now.png' });
-  await nav(father, 'Bills').click();
+  await goTo(father, 'Bills');
   await expect(father.getByText(/Sample: 2BHK flat/).first()).toBeVisible();
   await father.getByText(/Sample: 2BHK flat/).first().click(); // the open bill is per phone
 
   // Rates: he can add, not change.
-  await nav(father, 'Rates').click();
+  await goTo(father, 'Rates');
   await expect(father.getByText('You can add rates. Only the admin can change or delete them.')).toBeVisible();
   await expect(father.getByRole('button', { name: /^Actions for / })).toHaveCount(0);
   await expect(father.getByRole('button', { name: 'Add item' })).toBeVisible();
 
   // Firm details are read-only for him.
-  await nav(father, 'Project').click();
+  await goTo(father, 'Project');
   await expect(father.getByText('Only the admin can change these details.')).toBeVisible();
   await expect(father.getByLabel(/Firm name/)).toBeDisabled();
   await father.screenshot({ path: 'test-results/screens/2-father-project.png' });
@@ -111,7 +123,7 @@ test('admin creates the workspace, invites the father, and changes sync both way
   // ── He edits the bill; it arrives on your phone ──
   const project = father.getByLabel(/Project \/ site/);
   await project.fill('Sharma house');
-  await nav(admin, 'Project').click();
+  await goTo(admin, 'Project');
   await expect(admin.getByLabel(/Project \/ site/)).toHaveValue('Sharma house', { timeout: 20000 });
 
   // ── You change the firm name; it arrives on his phone ──
@@ -135,7 +147,7 @@ test('admin creates the workspace, invites the father, and changes sync both way
     await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(dialog).toHaveCount(0);
   };
-  await nav(father, 'Labour').click();
+  await goTo(father, 'Labour');
   await addWorker('Ramu', '650');
   await father.getByRole('tab', { name: 'Attendance' }).click();
   await father.getByRole('button', { name: /Mark today/ }).click();
@@ -166,9 +178,9 @@ test('admin creates the workspace, invites the father, and changes sync both way
   await expect(father.getByText(SYNCED)).toBeVisible({ timeout: 20000 }); // uploaded (else sign-out asks first)
   await father.getByRole('button', { name: 'Sign out' }).click();
   await expect(father.getByText(/Signed out: only Labour is available/)).toBeVisible();
-  await expect(father.getByRole('button', { name: 'Bills' })).toHaveCount(0);
-  await expect(father.getByRole('button', { name: 'Project' })).toHaveCount(0);
-  await nav(father, 'Labour').click();
+  await expectTab(father, 'Bills', 0);
+  await expectTab(father, 'Project', 0);
+  await goTo(father, 'Labour');
   await father.getByRole('button', { name: 'Ramu', exact: true }).click(); // his calendar
   await expect(father.getByRole('button', { name: /: 1P$/ }).first()).toBeVisible();
   await father.screenshot({ path: 'test-results/screens/4-father-signed-out-labour.png' });
@@ -178,9 +190,9 @@ test('admin creates the workspace, invites the father, and changes sync both way
   await openSettings(father);
   await signIn(father, FATHER);
   await expect(father.getByText(SYNCED)).toBeVisible({ timeout: 20000 });
-  await expect(father.getByRole('button', { name: 'Bills' })).toBeVisible();
+  await expectTab(father, 'Bills', 1);
   await admin.getByRole('button', { name: 'Close' }).click();
-  await nav(admin, 'Labour').click();
+  await goTo(admin, 'Labour');
   await admin.getByRole('tab', { name: 'Workers' }).click();
   await expect(admin.getByText('Shyam').first()).toBeVisible({ timeout: 20000 });
   await expect(admin.getByText('Ramu').first()).toBeVisible();

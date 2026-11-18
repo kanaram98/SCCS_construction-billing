@@ -26,8 +26,11 @@ test('never signed in on this phone: only sign-in, and Settings opens', async ({
   }, [STATE_KEY, localState()]);
   await page.goto('/');
   await expect(page.getByText('Sign in with Google to open the app.')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Labour' })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Bills' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Menu' }).click();
+  const list = page.getByRole('navigation', { name: 'Main navigation' });
+  await expect(list.getByRole('button', { name: 'Labour' })).toHaveCount(0);
+  await expect(list.getByRole('button', { name: 'Bills' })).toHaveCount(0);
+  await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'App settings' }).click();
   await expect(page.getByRole('button', { name: 'Sign in with Google' })).toBeVisible();
   await page.getByRole('button', { name: 'Settings', exact: true }).click(); // the banner's button works too

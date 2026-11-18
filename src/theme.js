@@ -59,4 +59,5 @@ export default theme;
 /** Width of the desktop navigation drawer. */
 export const DRAWER_WIDTH = 220;
 /** Height reserved for the mobile bottom navigation bar. */
-export const BOTTOM_NAV_HEIGHT = 64;
+/** Height reserved at the bottom of phone screens. Navigation is in the side drawer, so none. */
+export const BOTTOM_NAV_HEIGHT = 0;

@@ -67,6 +67,7 @@ const PAGES = {
 const LIMITED_VIEWS = { labour: [VIEWS.labour, VIEWS.settings], signin: [VIEWS.settings] };
 
 function AppShell({ view: chosenView, setView }) {
+  const [menuOpen, setMenuOpen] = useState(false);
   const { data, bill, saveStatus, storageError } = useBilling();
   const installer = useInstallPrompt();
   const cloud = useCloud();
@@ -88,8 +89,9 @@ function AppShell({ view: chosenView, setView }) {
         canInstall={installer.canInstall}
         onInstall={installer.install}
         onOpenSettings={() => navigate(VIEWS.settings)}
+        onOpenMenu={() => setMenuOpen(true)}
       />
-      <MainNav activeView={view} onNavigate={navigate} views={allowed} />
+      <MainNav activeView={view} onNavigate={navigate} views={allowed} open={menuOpen} onClose={() => setMenuOpen(false)} />
       {!data.meta?.onboarded && cloud.access === 'full' && <WelcomeDialog onNavigate={navigate} />}
       <Box
         component="main"

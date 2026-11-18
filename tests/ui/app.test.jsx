@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import { SAMPLE_STATE, renderApp, savedState } from './render-app.jsx';
 
-const nav = (name) => within(screen.getByRole('navigation', { name: 'Main navigation' })).getByRole('button', { name });
+/** Opens the side menu and taps a tab. */
+const goTo = async (user, name) => {
+  await user.click(screen.getByRole('button', { name: 'Menu' }));
+  await user.click(within(await screen.findByRole('navigation', { name: 'Main navigation' })).getByRole('button', { name }));
+};
 const openSettings = (user) => user.click(screen.getByRole('button', { name: 'App settings' }));
 
 describe('Home', () => {
@@ -18,7 +22,7 @@ describe('Home', () => {
 describe('Bills screen', () => {
   it('lists bills only', async () => {
     const { user } = renderApp(SAMPLE_STATE);
-    await user.click(nav('Bills'));
+    await goTo(user, 'Bills');
     await screen.findByRole('heading', { name: 'Bills' });
     expect(await screen.findByText('Bill 1 · Lake View Villa')).toBeTruthy();
     expect(screen.getByText('Bill 2 · Office fitout')).toBeTruthy();
@@ -27,7 +31,7 @@ describe('Bills screen', () => {
 
   it('deletes a bill after confirmation and can undo it', async () => {
     const { user } = renderApp(SAMPLE_STATE);
-    await user.click(nav('Bills'));
+    await goTo(user, 'Bills');
     await screen.findByRole('heading', { name: 'Bills' });
     await user.click(await screen.findByRole('button', { name: 'Actions for bill 2' }));
     await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
@@ -43,7 +47,7 @@ describe('Bills screen', () => {
 describe('Entry screen', () => {
   it('shows one floor at a time and adds a measured entry', async () => {
     const { user } = renderApp(SAMPLE_STATE);
-    await user.click(nav('Entry'));
+    await goTo(user, 'Entry');
     expect(await screen.findByRole('tab', { name: 'Ground floor' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'First floor' })).toBeTruthy();
 
@@ -60,7 +64,7 @@ describe('Entry screen', () => {
 
   it('rejects inches above 11', async () => {
     const { user } = renderApp(SAMPLE_STATE);
-    await user.click(nav('Entry'));
+    await goTo(user, 'Entry');
     await user.click((await screen.findAllByRole('button', { name: 'Add entry' }))[0]);
     const dialog = await screen.findByRole('dialog');
     await user.type(within(dialog).getByLabelText(/Length \(ft\.in\)/), '10.13');
@@ -70,7 +74,7 @@ describe('Entry screen', () => {
 
   it('renames a room from its menu', async () => {
     const { user } = renderApp(SAMPLE_STATE);
-    await user.click(nav('Entry'));
+    await goTo(user, 'Entry');
     await user.click(await screen.findByRole('button', { name: 'Actions for Hall' }));
     await user.click(screen.getByRole('menuitem', { name: 'Rename' }));
     const dialog = await screen.findByRole('dialog');
@@ -82,7 +86,7 @@ describe('Entry screen', () => {
 
   it('filters entries with search', async () => {
     const { user } = renderApp(SAMPLE_STATE);
-    await user.click(nav('Entry'));
+    await goTo(user, 'Entry');
     await user.click(await screen.findByRole('button', { name: 'Search entries' }));
     await user.type(await screen.findByRole('searchbox', { name: 'Search entries' }), 'gas');
     expect(await screen.findByText('1 matching entry')).toBeTruthy();
@@ -91,7 +95,7 @@ describe('Entry screen', () => {
 
   it('records a payment on the Amounts & payments tab', async () => {
     const { user } = renderApp(SAMPLE_STATE);
-    await user.click(nav('Entry'));
+    await goTo(user, 'Entry');
     await user.click(await screen.findByRole('tab', { name: 'Amounts & payments' }));
     await user.click(await screen.findByRole('button', { name: 'Record payment' }));
     const dialog = await screen.findByRole('dialog');
@@ -108,7 +112,7 @@ describe('Entry screen', () => {
 describe('Settings', () => {
   it('validates and adds a work item rate on the Rates tab', async () => {
     const { user } = renderApp(SAMPLE_STATE);
-    await user.click(nav('Rates'));
+    await goTo(user, 'Rates');
     await user.click(await screen.findByRole('button', { name: 'Add item' }));
     const dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByRole('button', { name: 'Add item' }));
@@ -123,7 +127,7 @@ describe('Settings', () => {
 
   it('shows the rate quotation with editable terms', async () => {
     const { user } = renderApp(SAMPLE_STATE);
-    await user.click(nav('Rates'));
+    await goTo(user, 'Rates');
     const quotation = await waitFor(() => document.querySelector('.quotation-document'));
     expect(within(quotation).getByText('Rate quotation')).toBeTruthy();
     expect(within(quotation).getByText('Floor tiles')).toBeTruthy();
@@ -140,7 +144,8 @@ describe('Settings', () => {
     await openSettings(user);
     await user.click(await screen.findByRole('button', { name: 'हिंदी' }));
     expect(await screen.findByRole('heading', { name: 'सेटिंग्स' })).toBeTruthy();
-    expect(within(screen.getByRole('navigation', { name: 'मुख्य मेनू' })).getByRole('button', { name: 'होम' })).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'मेनू' }));
+    expect(within(await screen.findByRole('navigation', { name: 'मुख्य मेनू' })).getByRole('button', { name: 'होम' })).toBeTruthy();
     expect(savedState().preferences.language).toBe('hi');
   });
 });
@@ -148,7 +153,7 @@ describe('Settings', () => {
 describe('Project and PDF', () => {
   it('Project shows only client and firm details', async () => {
     const { user } = renderApp(SAMPLE_STATE);
-    await user.click(nav('Project'));
+    await goTo(user, 'Project');
     expect(await screen.findByText('Bill details')).toBeTruthy();
     expect(screen.getByText('Your firm')).toBeTruthy();
     expect(screen.queryByText('Payments')).toBeNull();
@@ -157,7 +162,7 @@ describe('Project and PDF', () => {
 
   it('PDF opens on the preview with the amount in words', async () => {
     const { user } = renderApp(SAMPLE_STATE);
-    await user.click(nav('PDF'));
+    await goTo(user, 'PDF / Print');
     expect((await screen.findByRole('tab', { name: 'Preview' })).getAttribute('aria-selected')).toBe('true');
     const preview = document.querySelector('.print-preview');
     expect(within(preview).getByText(/Rupees Thirteen Thousand Eight Hundred Ninety-Five Only/)).toBeTruthy();
@@ -184,7 +189,7 @@ describe('First use', () => {
 describe('Labour screen', () => {
   it('adds a worker, marks 2P / 1.5P attendance and shows the monthly wages', async () => {
     const { user } = renderApp(SAMPLE_STATE);
-    await user.click(nav('Labour'));
+    await goTo(user, 'Labour');
     await screen.findByRole('heading', { name: 'Labour' });
 
     await user.click(screen.getByRole('button', { name: 'Add worker' }));
@@ -248,7 +253,7 @@ describe('Labour safety: history, recycle bin, closed months', () => {
 
   it('deletes a payment to the recycle bin, restores it, and closes the month', async () => {
     const { user } = renderApp(LABOUR_STATE);
-    await user.click(nav('Labour'));
+    await goTo(user, 'Labour');
     await user.click(await screen.findByRole('tab', { name: 'Report' }));
 
     // Delete asks first, then the payment can be restored from History.
@@ -283,7 +288,7 @@ describe('Labour safety: history, recycle bin, closed months', () => {
 describe('History and recycle bin', () => {
   it('restores a deleted bill and undoes a bill edit', async () => {
     const { user } = renderApp(SAMPLE_STATE);
-    await user.click(nav('Bills'));
+    await goTo(user, 'Bills');
     await screen.findByRole('heading', { name: 'Bills' });
 
     // Deleting moves the bill to Recently deleted.
@@ -309,7 +314,7 @@ describe('History and recycle bin', () => {
 
   it('undoes an edit to firm details from Settings', async () => {
     const { user } = renderApp(SAMPLE_STATE);
-    await user.click(nav('Project'));
+    await goTo(user, 'Project');
     const name = await screen.findByLabelText(/Firm name/);
     await user.clear(name);
     await user.type(name, 'Typo Firm');
