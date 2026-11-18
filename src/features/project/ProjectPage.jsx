@@ -1,16 +1,13 @@
 import { PageHeading } from '../../components/ui';
 import { tr as t } from '../../i18n/translate.js';
 import BillDetailsCard from './BillDetailsCard.jsx';
-import FirmCard from './FirmCard.jsx';
-import AdminOnly from '../account/AdminOnly.jsx';
 
-/** Who the bill is for and who it is from: bill & client details, and your firm. */
-export default function ProjectPage() {
+/** The open bill: its project and client, number, date and level names. */
+export default function ProjectPage({ onNavigate }) {
   return (
     <section>
-      <PageHeading title={t('Project')} description={t('Client and firm details.')} />
-      <BillDetailsCard />
-      <AdminOnly><FirmCard /></AdminOnly>
+      <PageHeading title={t('Bill details')} description={t('Which project this bill is for.')} />
+      <BillDetailsCard onNavigate={onNavigate} />
     </section>
   );
 }

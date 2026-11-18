@@ -32,6 +32,7 @@ const loaders = {
   print: () => import('./features/print/PrintPage.jsx'),
   labour: () => import('./features/labour/LabourPage.jsx'),
   projects: () => import('./features/projects/ProjectsPage.jsx'),
+  firm: () => import('./features/project/FirmPage.jsx'),
   expenses: () => import('./features/expenses/ExpensesPage.jsx')
 };
 const EntryPage = lazy(loaders.entry);
@@ -42,6 +43,7 @@ const ProjectPage = lazy(loaders.project);
 const PrintPage = lazy(loaders.print);
 const LabourPage = lazy(loaders.labour);
 const ProjectsPage = lazy(loaders.projects);
+const FirmPage = lazy(loaders.firm);
 const ExpensesPage = lazy(loaders.expenses);
 
 function usePrefetchPages() {
@@ -66,6 +68,7 @@ const PAGES = {
   [VIEWS.print]: PrintPage,
   [VIEWS.labour]: LabourPage,
   [VIEWS.projects]: ProjectsPage,
+  [VIEWS.firm]: FirmPage,
   [VIEWS.expenses]: ExpensesPage
 };
 

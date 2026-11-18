@@ -151,11 +151,13 @@ describe('Settings', () => {
 });
 
 describe('Project and PDF', () => {
-  it('Project shows only client and firm details', async () => {
+  it('Bill details shows the project and client; the firm has its own tab', async () => {
     const { user } = renderApp(SAMPLE_STATE);
     await goTo(user, 'Bill details');
+    expect(await screen.findByRole('heading', { name: 'Bill details' })).toBeTruthy();
+    expect(screen.queryByText('Your firm')).toBeNull();
+    await goTo(user, 'Firm');
     expect(await screen.findByText('Your firm')).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'Bill details' })).toBeTruthy();
     expect(screen.queryByText('Payments')).toBeNull();
     expect(screen.queryByText('Backup & restore')).toBeNull();
   });
@@ -314,7 +316,7 @@ describe('History and recycle bin', () => {
 
   it('undoes an edit to firm details from Settings', async () => {
     const { user } = renderApp(SAMPLE_STATE);
-    await goTo(user, 'Bill details');
+    await goTo(user, 'Firm');
     const name = await screen.findByLabelText(/Firm name/);
     await user.clear(name);
     await user.type(name, 'Typo Firm');
@@ -338,6 +340,7 @@ describe('Projects, advances and expenses', () => {
     await user.click(await screen.findByRole('button', { name: 'Add project' }));
     let dialog = await screen.findByRole('dialog');
     await user.type(within(dialog).getByLabelText(/Project \/ site name/), 'Sharma house');
+    await user.type(within(dialog).getByLabelText(/Client name/), 'Sharma ji');
     await user.click(within(dialog).getByRole('button', { name: 'Save' }));
     expect(await screen.findByRole('heading', { name: 'Sharma house' })).toBeTruthy();
 
@@ -389,6 +392,7 @@ describe('New bill and projects', () => {
     await user.click(within(dialog).getByRole('combobox', { name: /Project/ }));
     await user.click(await screen.findByRole('option', { name: 'Add a new project…' }));
     await user.type(within(dialog).getByLabelText(/Project \/ site name/), 'Green Park');
+    await user.type(within(dialog).getByLabelText(/Client name/), 'Mehta');
     await user.click(within(dialog).getByRole('button', { name: 'Create' }));
     expect((await screen.findAllByText(/Green Park/)).length).toBeGreaterThan(0);
   });

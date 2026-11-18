@@ -115,19 +115,21 @@ test('admin creates the workspace, invites the father, and changes sync both way
   await expect(father.getByRole('button', { name: 'Add item' })).toBeVisible();
 
   // Firm details are read-only for him.
-  await goTo(father, 'Bill details');
+  await goTo(father, 'Firm');
   await expect(father.getByText('Only the admin can change these details.')).toBeVisible();
   await expect(father.getByLabel(/Firm name/)).toBeDisabled();
   await father.screenshot({ path: 'test-results/screens/2-father-project.png' });
 
   // ── He edits the bill; it arrives on your phone ──
-  const project = father.getByLabel(/Project \/ site/);
-  await project.fill('Sharma house');
+  await goTo(father, 'Bill details');
+  await father.getByLabel(/Bill number/).fill('77');
   await goTo(admin, 'Bill details');
-  await expect(admin.getByLabel(/Project \/ site/)).toHaveValue('Sharma house', { timeout: 20000 });
+  await expect(admin.getByLabel(/Bill number/)).toHaveValue('77', { timeout: 20000 });
 
   // ── You change the firm name; it arrives on his phone ──
+  await goTo(admin, 'Firm');
   await admin.getByLabel(/Firm name/).fill('SCCS Builders');
+  await goTo(father, 'Firm');
   await expect(father.getByLabel(/Firm name/)).toHaveValue('SCCS Builders', { timeout: 20000 });
 
   // ── History on your phone shows his change, with his name ──

@@ -54,9 +54,8 @@ test('export errors include missing details and duplicate bill numbers', () => {
   assert.deepEqual(errors, [
     'Add at least one work item before exporting a bill.',
     'Bill number is already used by another bill.',
-    'Enter a project or site name in Project details.',
-    'Enter a client name in Project details.',
-    'Enter your firm name in Project details.'
+    'Choose the project in Bill details.',
+    'Enter your firm name in the Firm tab.'
   ]);
 });
 

@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { hydrateState, selectActiveBill } from '../../src/domain/app-state.js';
-import { getClientProfileState, getClientSaveError } from '../../src/domain/clients.js';
 import { filterBills, getBillClientNames } from '../../src/domain/bill-filters.js';
 import { EMPTY_BILL_FILTERS } from '../../src/domain/bill-filters.js';
 
@@ -12,16 +11,6 @@ test('hydrating saved state fills defaults and repairs the active bill id', () =
   assert.equal(state.printSettings.paper, 'a4');
   assert.equal(selectActiveBill(state).id, 'b1');
   assert.equal(hydrateState({ bills: [] }), null);
-});
-
-test('client profile state detects duplicates by case-insensitive name', () => {
-  const clients = [{ id: 'c1', name: 'Asha Builders' }];
-  const typed = getClientProfileState({ client: ' asha builders ', clientId: '' }, clients);
-  assert.equal(typed.duplicateClient, true);
-  assert.equal(typed.canSaveNew, false);
-  assert.match(getClientSaveError({ client: 'Asha Builders' }, clients, false), /already saved/);
-  assert.equal(getClientSaveError({ client: 'New Co' }, clients, false), '');
-  assert.match(getClientSaveError({ client: 'New Co' }, clients, true), /Select a saved client/);
 });
 
 test('filters bills by search, client, date range and status', () => {

@@ -5,7 +5,8 @@
  * (later) timesheets point at it, so a report can total money in and out per
  * project and per client.
  *
- *   project:  { id, name, clientId, client, address, status, agreedAmount, notes }
+ *   project:  { id, name, client, clientPhone, clientAddress, clientGstin, address, status, agreedAmount, notes }
+ *             a project IS the client's job: it holds the client's details (clientId is only kept for old data)
  *   advance:  { id, projectId, date, amount, mode, note }      money received from the client
  *   expense:  { id, projectId, date, amount, category, note }  money spent on site (food, travel…)
  *
@@ -31,7 +32,7 @@ export const EXPENSE_CATEGORIES = Object.freeze({
 export const DEFAULT_EXPENSE_CATEGORY = 'food';
 
 export function createProject(values = {}) {
-  return { id: newId(), name: '', clientId: '', client: '', address: '', status: 'running', agreedAmount: '', notes: '', ...values };
+  return { id: newId(), name: '', clientId: '', client: '', clientPhone: '', clientAddress: '', clientGstin: '', address: '', status: 'running', agreedAmount: '', notes: '', ...values };
 }
 
 export function createAdvance(values = {}) {
@@ -48,6 +49,7 @@ export function getProjectErrors(values) {
   const agreed = text(values.agreedAmount);
   return {
     name: text(values.name) ? '' : tr('Enter the project or site name.'),
+    client: text(values.client) ? '' : tr('Enter the client name.'),
     agreedAmount: agreed && (!Number.isFinite(Number(agreed)) || Number(agreed) < 0) ? tr('Enter a valid amount.') : ''
   };
 }
@@ -109,7 +111,11 @@ export function billFieldsFromProject(project) {
   return {
     projectId: project.id,
     projectName: project.name,
-    ...(project.client ? { client: project.client, clientId: project.clientId || '' } : {})
+    client: project.client || '',
+    clientId: project.clientId || '',
+    clientPhone: project.clientPhone || '',
+    clientAddress: project.clientAddress || '',
+    clientGstin: project.clientGstin || ''
   };
 }
 
@@ -129,7 +135,7 @@ export function projectsFromBills(bills, projects) {
     const client = norm(bill.client);
     let project = find(name, client);
     if (!project) {
-      project = createProject({ name: text(bill.projectName), client: text(bill.client), clientId: bill.clientId || '' });
+      project = createProject({ name: text(bill.projectName), client: text(bill.client), clientId: bill.clientId || '', clientPhone: text(bill.clientPhone), clientAddress: text(bill.clientAddress), clientGstin: text(bill.clientGstin) });
       created.push(project);
     }
     links[bill.id] = project.id;

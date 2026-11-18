@@ -2,8 +2,8 @@ import { useState } from 'react';
 import Button from '@mui/material/Button';
 import Grid from '@mui/material/Grid';
 import { ResponsiveDialog, SelectField, TextAreaField, TextField } from '../../components/ui';
+import { gstinWarning, phoneWarning } from '../../domain/warnings.js';
 import { PROJECT_STATUSES, getProjectErrors, hasErrors } from '../../domain/projects.js';
-import { useBilling } from '../../state/BillingContext.jsx';
 import { tr as t } from '../../i18n/translate.js';
 
 /** Add or edit a project (site). */
@@ -16,22 +16,16 @@ export default function ProjectDialog({ open, project, onSave, onClose }) {
 }
 
 function ProjectForm({ initial, onSave, onClose }) {
-  const { data } = useBilling();
-  const [values, setValues] = useState(() => ({ name: '', clientId: '', client: '', address: '', status: 'running', agreedAmount: '', notes: '', ...initial }));
+  const [values, setValues] = useState(() => ({ name: '', clientId: '', client: '', clientPhone: '', clientAddress: '', clientGstin: '', address: '', status: 'running', agreedAmount: '', notes: '', ...initial }));
   const [submitted, setSubmitted] = useState(false);
   const errors = getProjectErrors(values);
   const update = (field) => (value) => setValues((current) => ({ ...current, [field]: value }));
-
-  function chooseClient(clientId) {
-    const saved = data.clients.find((client) => client.id === clientId);
-    setValues((current) => ({ ...current, clientId, client: saved ? saved.name : current.client, address: current.address || saved?.address || '' }));
-  }
 
   function save(event) {
     event.preventDefault();
     setSubmitted(true);
     if (hasErrors(errors)) return;
-    onSave({ ...values, name: values.name.trim(), client: values.client.trim(), agreedAmount: String(values.agreedAmount ?? '').trim() });
+    onSave({ ...values, name: values.name.trim(), client: values.client.trim(), clientPhone: values.clientPhone.trim(), clientAddress: values.clientAddress.trim(), clientGstin: values.clientGstin.trim().toUpperCase(), agreedAmount: String(values.agreedAmount ?? '').trim() });
   }
 
   return (
@@ -39,13 +33,17 @@ function ProjectForm({ initial, onSave, onClose }) {
       <Grid size={12}>
         <TextField label={t('Project / site name')} required value={values.name} error={submitted ? errors.name : ''} onChange={update('name')} autoFocus />
       </Grid>
-      {data.clients.length > 0 && (
-        <Grid size={12}>
-          <SelectField label={t('Saved client')} value={values.clientId} placeholder={t('Not a saved client')} options={data.clients.map((client) => ({ value: client.id, label: client.name }))} onChange={chooseClient} />
-        </Grid>
-      )}
       <Grid size={12}>
-        <TextField label={t('Client name')} value={values.client} onChange={update('client')} />
+        <TextField label={t('Client name')} required value={values.client} error={submitted ? errors.client : ''} onChange={update('client')} />
+      </Grid>
+      <Grid size={6}>
+        <TextField label={t('Client phone')} type="tel" value={values.clientPhone} warning={phoneWarning(values.clientPhone)} onChange={update('clientPhone')} />
+      </Grid>
+      <Grid size={6}>
+        <TextField label={t('Client GSTIN')} value={values.clientGstin} warning={gstinWarning(values.clientGstin)} onChange={(value) => update('clientGstin')(value.toUpperCase())} />
+      </Grid>
+      <Grid size={12}>
+        <TextField label={t('Client address')} value={values.clientAddress} onChange={update('clientAddress')} />
       </Grid>
       <Grid size={12}>
         <TextField label={t('Site address (optional)')} value={values.address} onChange={update('address')} />

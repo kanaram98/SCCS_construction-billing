@@ -182,9 +182,10 @@ service cloud.firestore {
 
     function validProject(id) {
       let d = data();
-      return fields(recordKeys().concat(['name', 'clientId', 'client', 'address', 'status', 'agreedAmount', 'notes']), ['order'])
+      return fields(recordKeys().concat(['name', 'clientId', 'client', 'address', 'status', 'agreedAmount', 'notes']), ['order', 'clientPhone', 'clientAddress', 'clientGstin'])
         && validMeta(id)
         && str(d.name, 200) && str(d.clientId, 100) && str(d.client, 200) && str(d.address, 5000)
+        && optStr(d, 'clientPhone', 200) && optStr(d, 'clientAddress', 5000) && optStr(d, 'clientGstin', 200)
         && d.status in ['running', 'completed'] && numberish(d.agreedAmount) && str(d.notes, 5000);
     }
 

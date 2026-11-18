@@ -140,10 +140,9 @@ export function getExportErrors({ bill, bills, rates, firm, billErrors = getBill
   const required = getRequiredDetailErrors(bill, firm);
   return [
     ...billErrors,
-    ...(!text(bill.number) ? [tr('Enter a bill number in Project details.')] : []),
+    ...(!text(bill.number) ? [tr('Enter a bill number in Bill details.')] : []),
     ...(isBillNumberTaken(bills, bill) ? [tr('Bill number is already used by another bill.')] : []),
-    ...(required.projectName ? [tr('Enter a project or site name in Project details.')] : []),
-    ...(required.client ? [tr('Enter a client name in Project details.')] : []),
-    ...(required.firmName ? [tr('Enter your firm name in Project details.')] : [])
+    ...(required.projectName || required.client ? [tr('Choose the project in Bill details.')] : []),
+    ...(required.firmName ? [tr('Enter your firm name in the Firm tab.')] : [])
   ];
 }

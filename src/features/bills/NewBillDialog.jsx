@@ -28,7 +28,7 @@ function NewBillForm({ projects, defaultProjectId, onCreate, onClose }) {
     event.preventDefault();
     if (isNew) {
       setSubmitted(true);
-      if (!name.trim()) return;
+      if (!name.trim() || !client.trim()) return;
       onCreate({ newProject: { name: name.trim(), client: client.trim() } });
     } else {
       onCreate({ project: projects.find((project) => project.id === choice) });
@@ -53,7 +53,7 @@ function NewBillForm({ projects, defaultProjectId, onCreate, onClose }) {
             <TextField label={t('Project / site name')} required value={name} error={submitted && !name.trim() ? t('Enter the project or site name.') : ''} onChange={setName} autoFocus />
           </Grid>
           <Grid size={12}>
-            <TextField label={t('Client name')} value={client} onChange={setClient} />
+            <TextField label={t('Client name')} required value={client} error={submitted && !client.trim() ? t('Enter the client name.') : ''} onChange={setClient} />
           </Grid>
         </>
       )}

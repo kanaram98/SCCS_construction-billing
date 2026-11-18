@@ -17,7 +17,6 @@ import {
 import { createRate } from '../domain/rates.js';
 import { billFieldsFromProject, createAdvance, createExpense, createProject, projectsFromBills } from '../domain/projects.js';
 import { newId } from '../domain/ids.js';
-import { clientDetailsPatch, clientFromBill, getClientSaveError, getClientProfileState } from '../domain/clients.js';
 import { createTemplate } from '../domain/templates.js';
 import { createPayment } from '../domain/payments.js';
 import { createSampleBill } from '../domain/sample-bill.js';
@@ -195,42 +194,6 @@ function createTemplateActions({ data, bill, setData }) {
       if (!operation) return null;
       setData((current) => updateActiveBill(current, operation.apply));
       return operation.result;
-    }
-  };
-}
-
-function createClientActions({ data, bill, setData }) {
-  return {
-    /** Links a saved profile to the bill, or unlinks it when `clientId` is empty. */
-    select(clientId) {
-      const client = data.clients.find((entry) => entry.id === clientId);
-      setData((current) => updateActiveBill(current, client ? clientDetailsPatch(client) : { clientId: '' }));
-    },
-    /** @returns {{ ok: boolean, message: string }} */
-    saveProfile(updateExisting) {
-      const error = getClientSaveError(bill, data.clients, updateExisting);
-      if (error) return { ok: false, message: error };
-
-      const { selectedClient } = getClientProfileState(bill, data.clients);
-      const client = clientFromBill(bill, updateExisting ? selectedClient.id : newId());
-      setData((current) => updateActiveBill({
-        ...current,
-        clients: updateExisting
-          ? current.clients.map((entry) => entry.id === client.id ? client : entry)
-          : [...current.clients, client]
-      }, clientDetailsPatch(client)));
-      return {
-        ok: true,
-        message: updateExisting ? tr('Saved client profile updated.') : tr('Client profile saved for future bills.')
-      };
-    },
-    /** Deletes a saved profile; bills keep their copied client details. */
-    removeProfile(clientId) {
-      setData((current) => ({
-        ...current,
-        clients: current.clients.filter((entry) => entry.id !== clientId),
-        bills: current.bills.map((entry) => entry.clientId === clientId ? { ...entry, clientId: '' } : entry)
-      }));
     }
   };
 }
@@ -452,10 +415,23 @@ export function createActions(context) {
     bills: createBillActions(context),
     entry: createEntryActions(context),
     templates: createTemplateActions(context),
-    clients: createClientActions(context),
     rates: createRateActions(context),
     projects: {
       ...createListActions(context, 'projects', createProject),
+      /** Changes a project; its bills follow the new project name and client details. */
+      update(id, patch) {
+        context.setData((current) => {
+          const projects = current.projects.map((item) => (item.id === id ? { ...item, ...patch } : item));
+          const project = projects.find((item) => item.id === id);
+          const fields = billFieldsFromProject(project);
+          const changed = (bill) => Object.entries(fields).some(([key, value]) => (bill[key] ?? '') !== value);
+          return {
+            ...current,
+            projects,
+            bills: current.bills.map((bill) => (bill.projectId === id && changed(bill) ? { ...bill, ...fields } : bill))
+          };
+        });
+      },
       /** Makes projects for bills that have none yet and links them. Returns how many bills were linked. */
       linkBills() {
         let linked = 0;

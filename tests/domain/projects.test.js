@@ -11,7 +11,8 @@ const rates = [{ id: 'r', type: 'count', rate: 1000 }];
 const bill = (extra) => ({ id: 'b1', number: '1', projectId: 'p1', advance: '500', payments: [{ id: 'x', amount: 300 }], sections: [{ areas: [{ items: [{ rateId: 'r', count: 2 }] }] }], ...extra });
 
 test('validators ask for a project, a date and an amount', () => {
-  assert.equal(hasErrors(getProjectErrors(createProject({ name: 'Villa' }))), false);
+  assert.equal(hasErrors(getProjectErrors(createProject({ name: 'Villa', client: 'Asha' }))), false);
+  assert.ok(getProjectErrors(createProject({ name: 'Villa' })).client);
   assert.ok(getProjectErrors(createProject({ name: '  ' })).name);
   assert.ok(getProjectErrors(createProject({ name: 'V', agreedAmount: '-5' })).agreedAmount);
   assert.deepEqual(Object.keys(getExpenseErrors(createExpense({ projectId: '', amount: 0 }))).filter((key) => getExpenseErrors(createExpense({ projectId: '', amount: 0 }))[key]).sort(), ['amount', 'projectId']);
@@ -71,4 +72,12 @@ test('projects, advances and expenses use the same history and recycle bin as bi
   assert.deepEqual(recycleBin(raw).map((item) => item.entity), ['expenses']);
   raw = restoreRecord(raw, 'expenses', 'e1', new Date(Date.UTC(2026, 10, 18, 9, 3)));
   assert.equal(liveState(raw).expenses.length, 1);
+});
+
+test('billFieldsFromProject copies the client details, and projects made from bills keep them', () => {
+  const project = createProject({ id: 'p9', name: 'Villa', client: 'Asha', clientPhone: '98', clientAddress: 'Jaipur', clientGstin: 'G1' });
+  assert.deepEqual(billFieldsFromProject(project), { projectId: 'p9', projectName: 'Villa', client: 'Asha', clientId: '', clientPhone: '98', clientAddress: 'Jaipur', clientGstin: 'G1' });
+  const made = projectsFromBills([{ id: 'b', projectName: 'Shop', client: 'Ravi', clientPhone: '70', clientAddress: 'Kota', clientGstin: 'G2' }], []);
+  assert.equal(made.projects[0].clientPhone, '70');
+  assert.equal(made.projects[0].clientGstin, 'G2');
 });

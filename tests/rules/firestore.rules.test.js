@@ -172,6 +172,14 @@ describe('what the contractor (your father) can and cannot do', () => {
     await assertSucceeds(put(admin, advance, { ...advance.data, version: advance.data.version + 1, updatedBy: ADMIN.uid, amount: 60000 }));
   });
 
+  it('a project holds the client details (optional fields, size limited)', async () => {
+    const project = find(sampleDocs(FATHER), 'projects');
+    const withClient = { ...project.data, clientPhone: '98765', clientAddress: 'Jaipur', clientGstin: '08ABCDE1234F1Z5' };
+    await assertSucceeds(put(as(FATHER), project, withClient));
+    await assertFails(put(as(FATHER), project, { ...withClient, clientGstin: 'x'.repeat(201) }));
+    await assertFails(put(as(FATHER), project, { ...withClient, clientEmail: 'a@b.c' }));
+  });
+
   it('can move things to the recycle bin and restore them (both are edits)', async () => {
     const bill = find(sampleDocs(FATHER), 'bills', 'bill-1');
     const db = as(FATHER);

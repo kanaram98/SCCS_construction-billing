@@ -19,6 +19,7 @@ export const VIEWS = Object.freeze({
   home: 'home',
   projects: 'projects',
   expenses: 'expenses',
+  firm: 'firm',
   bills: 'bills',
   entry: 'entry',
   rates: 'rates',
@@ -37,6 +38,7 @@ export const NAVIGATION = Object.freeze([
   { id: VIEWS.labour, label: 'Labour' },
   { id: VIEWS.expenses, label: 'Expenses' },
   { id: VIEWS.rates, label: 'Rates' },
+  { id: VIEWS.firm, label: 'Firm' },
   { id: VIEWS.project, label: 'Bill details' },
   { id: VIEWS.print, label: 'PDF / Print', shortLabel: 'PDF' }
 ]);
