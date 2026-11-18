@@ -198,6 +198,9 @@ test('a record deleted forever by the admin disappears on the other phone; unloc
   sync(father, cloud);
   assert.equal(father.raw.bills.some((bill) => bill.id === binned.id), false);
   assert.deepEqual(father.raw.labour.closedMonths, {});
+  // The contractor's phone must not try to delete them from the cloud itself (only an admin may).
+  const retry = planUpload(father.raw, father.sync, { by: 'father' });
+  assert.deepEqual(retry.ops.filter((op) => op.kind === 'delete'), []);
 });
 
 test('a labour payment changed on both phones keeps the other version in the labour History', () => {
@@ -235,6 +238,8 @@ test('a permanent delete and a month unlock reach the other phone through Histor
   sync(father, cloud);
   assert.equal(father.raw.bills.some((bill) => bill.id === binned.id), false);
   assert.deepEqual(father.raw.labour.closedMonths, {});
+  // The contractor's phone must not try to delete them from the cloud itself (only an admin may).
+  assert.deepEqual(planUpload(father.raw, father.sync, { by: 'father' }).ops.filter((op) => op.kind === 'delete'), []);
 });
 
 test('joining a workspace keeps what this phone already had (labour entries, bills) and uploads it', () => {

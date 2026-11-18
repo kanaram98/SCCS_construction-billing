@@ -165,7 +165,14 @@ export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState
         receive(refused, { force: true });
         onRefused(refused.map((doc) => ({ collection: doc.collection, id: doc.id })));
       }
-      const unresolved = rejected.filter(({ op }) => !fresh.some((doc) => doc.collection === op.collection && doc.id === op.id));
+      let unresolved = rejected.filter(({ op }) => !fresh.some((doc) => doc.collection === op.collection && doc.id === op.id));
+      if (!cannotRead) {
+        // A delete that was refused but whose target no longer exists in the cloud is already done.
+        const alreadyGone = unresolved.filter(({ op }) => op.kind === 'delete');
+        for (const { op } of alreadyGone) delete syncState.sent[keyOf(op.collection, op.id)];
+        unresolved = unresolved.filter(({ op }) => op.kind !== 'delete');
+        if (alreadyGone.length) persist();
+      }
       if (unresolved.length) {
         // The server refuses these items and nobody has a newer copy: remember them (so they are not
         // sent again and again) and show them to the user until they are changed.

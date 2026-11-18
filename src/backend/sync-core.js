@@ -198,7 +198,7 @@ export function applyIncoming(raw, docs, syncState, now = new Date(), { by = '',
       const log = getIn(next, path) || [];
       if (!log.some((entry) => entry.id === doc.id)) {
         next = setIn(next, path, [...log, data].sort((a, b) => String(a.at).localeCompare(String(b.at))));
-        next = applyLoggedRemoval(next, doc.collection, data);
+        next = applyLoggedRemoval(next, doc.collection, data, state);
       }
       state.sent[key] = '1';
       continue;
@@ -249,10 +249,16 @@ export function applyIncoming(raw, docs, syncState, now = new Date(), { by = '',
  * Permanent deletes and month unlocks done on another device remove a
  * document from the cloud, which a change feed may not report. Their history
  * entries always arrive, so they are applied from there.
+ *
+ * The removed documents are also forgotten in `state` (what this phone
+ * believes the cloud holds). Otherwise the phone would think it had deleted
+ * them and try to delete them from the cloud, which only an admin may do.
  */
-function applyLoggedRemoval(raw, collection, entry) {
+function applyLoggedRemoval(raw, collection, entry, state) {
+  const forget = (...keys) => keys.forEach((key) => { delete state.sent[key]; });
   if (collection === 'history' && entry.action === 'purge' && RECORD_LISTS[entry.entity]) {
     const path = RECORD_LISTS[entry.entity];
+    forget(keyOf(entry.entity, entry.refId));
     return setIn(raw, path, (getIn(raw, path) || []).filter((item) => !(item.id === entry.refId && item.deletedAt)));
   }
   if (collection !== 'labourLog') return raw;
@@ -260,14 +266,20 @@ function applyLoggedRemoval(raw, collection, entry) {
     const closed = raw.labour?.closedMonths?.[entry.month];
     if (closed && String(closed.closedAt) <= String(entry.at)) {
       const { [entry.month]: _unlocked, ...rest } = raw.labour.closedMonths;
+      forget(keyOf('closedMonths', entry.month));
       return setIn(raw, ['labour', 'closedMonths'], rest);
     }
   }
   if (entry.entity === 'payment' && entry.action === 'purge') {
+    forget(keyOf('labourPayments', entry.refId));
     return setIn(raw, ['labour', 'payments'], (raw.labour?.payments || []).filter((item) => !(item.id === entry.refId && item.deletedAt)));
   }
   if (entry.entity === 'worker' && entry.action === 'purge') {
     const labour = raw.labour || {};
+    forget(keyOf('workers', entry.refId), ...(labour.payments || []).filter((item) => item.workerId === entry.refId).map((item) => keyOf('labourPayments', item.id)));
+    for (const marks of Object.values(state.marks || {})) {
+      for (const workers of Object.values(marks)) delete workers[entry.refId];
+    }
     const attendance = Object.fromEntries(Object.entries(labour.attendance || {})
       .map(([date, marks]) => [date, Object.fromEntries(Object.entries(marks).filter(([workerId]) => workerId !== entry.refId))])
       .filter(([, marks]) => Object.keys(marks).length));
