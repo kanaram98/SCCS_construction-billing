@@ -165,3 +165,19 @@ export function projectsFromBills(bills, projects) {
   }
   return { projects: created, links };
 }
+
+/**
+ * What still belongs to a project. A project with any of these is not deleted
+ * (that would leave bills, advances or expenses pointing at nothing).
+ * @param {{ bills: object[], advances: object[], expenses: object[], labour?: { attendance?: object } }} data live data
+ */
+export function projectUsage(data, projectId) {
+  const labourDays = Object.values(data.labour?.attendance || {})
+    .reduce((sum, day) => sum + Object.values(day || {}).filter((mark) => mark?.projectId === projectId).length, 0);
+  return {
+    bills: data.bills.filter((bill) => bill.projectId === projectId).length,
+    advances: data.advances.filter((advance) => advance.projectId === projectId).length,
+    expenses: data.expenses.filter((expense) => expense.projectId === projectId).length,
+    labourMarks: labourDays
+  };
+}

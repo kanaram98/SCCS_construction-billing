@@ -13,12 +13,13 @@ import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import DeleteIcon from '@mui/icons-material/DeleteOutlined';
 import EditIcon from '@mui/icons-material/EditOutlined';
 import { EmptyState, PageHeading, StatCard, useConfirm, useNotify } from '../../components/ui';
 import { useBilling } from '../../state/BillingContext.jsx';
 import { useUndoable } from '../../hooks/useUndoable.js';
 import { PAYMENT_MODES, advanceApplied } from '../../domain/payments.js';
-import { PROJECT_STATUSES } from '../../domain/projects.js';
+import { PROJECT_STATUSES, projectUsage } from '../../domain/projects.js';
 import { projectSummary } from '../../domain/project-report.js';
 import { billLabel, isEstimate } from '../../domain/bill-kinds.js';
 import { getBillTotals } from '../../domain/calculations.js';
@@ -70,6 +71,26 @@ function ProjectDetail({ project, onBack, onNavigate }) {
   const projectBills = data.bills.filter((bill) => bill.projectId === project.id);
   const canEditAdvance = cloud.can('editAdvance');
   const canEditProject = cloud.can('editProject');
+  const canDeleteProject = cloud.can('deleteProject');
+
+  /** Only a project with nothing under it can be deleted; otherwise says what is still there. */
+  async function removeProject() {
+    const used = projectUsage(data, project.id);
+    const parts = [
+      used.bills && trn(used.bills, '{count} bill', '{count} bills'),
+      used.advances && trn(used.advances, '{count} advance', '{count} advances'),
+      used.expenses && trn(used.expenses, '{count} expense', '{count} expenses'),
+      used.labourMarks && trn(used.labourMarks, '{count} attendance mark', '{count} attendance marks')
+    ].filter(Boolean);
+    if (parts.length) {
+      notify(t('This project still has {things}. Delete or move those first, or mark the project Completed.', { things: parts.join(', ') }), 'error');
+      return;
+    }
+    const ok = await confirm({ title: t('Delete this project?'), message: project.name, confirmLabel: t('Delete'), danger: true });
+    if (!ok) return;
+    onBack();
+    undoable(t('Project deleted.'), () => actions.projects.remove(project.id));
+  }
 
   async function removeAdvance(advance) {
     if (advanceApplied(advance, data.bills) > 0) {
@@ -91,6 +112,7 @@ function ProjectDetail({ project, onBack, onNavigate }) {
           <Typography variant="body2" color="text.secondary" noWrap>{[project.client, t(PROJECT_STATUSES[project.status])].filter(Boolean).join(' · ')}</Typography>
         </Box>
         {canEditProject && <IconButton aria-label={t('Edit project')} onClick={() => setProjectDialog(true)}><EditIcon /></IconButton>}
+        {canDeleteProject && <IconButton aria-label={t('Delete project')} onClick={removeProject}><DeleteIcon /></IconButton>}
       </Stack>
 
       <Grid container spacing={1.5} sx={{ mb: 2 }}>

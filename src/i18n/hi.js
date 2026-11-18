@@ -1090,5 +1090,15 @@ export default {
   'Write down each day’s expenses for every project.': 'हर प्रोजेक्ट का रोज़ का खर्च लिखें।',
   'Project reports': 'प्रोजेक्ट रिपोर्ट',
   'Billed, received, expenses and labour cost in one statement.': 'बिल, मिली रकम, खर्च और मज़दूरी एक ही स्टेटमेंट में।',
-  'Maybe later': 'बाद में'
+  'Maybe later': 'बाद में',
+  'This project still has {things}. Delete or move those first, or mark the project Completed.': 'इस प्रोजेक्ट में अभी {things} हैं। पहले उन्हें हटाएँ या बदलें, या प्रोजेक्ट को पूरा हुआ चिह्नित करें।',
+  'Delete this project?': 'यह प्रोजेक्ट हटाएँ?',
+  'Project deleted.': 'प्रोजेक्ट हटाया गया।',
+  'Delete project': 'प्रोजेक्ट हटाएँ',
+  '{count} advance': '{count} एडवांस',
+  '{count} advances': '{count} एडवांस',
+  '{count} expense': '{count} खर्च',
+  '{count} expenses': '{count} खर्च',
+  '{count} attendance mark': '{count} हाज़िरी',
+  '{count} attendance marks': '{count} हाज़िरी'
 };

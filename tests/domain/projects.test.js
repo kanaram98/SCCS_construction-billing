@@ -95,3 +95,15 @@ test('a day is green, then amber over 5000, then red over 10000', () => {
   assert.equal(expenseDayTone(10000), 'amber');
   assert.equal(expenseDayTone(10001), 'absent');
 });
+
+test('projectUsage counts what still belongs to a project', async () => {
+  const { projectUsage } = await import('../../src/domain/projects.js');
+  const data = {
+    bills: [{ projectId: 'p1' }, { projectId: 'p2' }],
+    advances: [{ projectId: 'p1' }],
+    expenses: [{ projectId: 'p1' }, { projectId: 'p1' }],
+    labour: { attendance: { '2026-11-02': { w1: { projectId: 'p1' }, w2: {} }, '2026-11-03': { w1: { projectId: 'p2' } } } }
+  };
+  assert.deepEqual(projectUsage(data, 'p1'), { bills: 1, advances: 1, expenses: 2, labourMarks: 1 });
+  assert.deepEqual(projectUsage(data, 'none'), { bills: 0, advances: 0, expenses: 0, labourMarks: 0 });
+});

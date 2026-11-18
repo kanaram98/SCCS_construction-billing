@@ -354,6 +354,34 @@ describe('History and recycle bin', () => {
 });
 
 describe('Projects, advances and expenses', () => {
+  it('deletes an empty project but refuses one that still has records', async () => {
+    const { user } = renderApp(SAMPLE_STATE);
+    await goTo(user, 'Projects');
+    const addProject = async (name) => {
+      await user.click(await screen.findByRole('button', { name: 'Add project' }));
+      const dialog = await screen.findByRole('dialog');
+      await user.type(within(dialog).getByLabelText(/Project \/ site name/), name);
+      await user.type(within(dialog).getByLabelText(/Client name/), 'Some client');
+      await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+      await screen.findByRole('heading', { name });
+    };
+
+    await addProject('Empty site');
+    await user.click(screen.getByRole('button', { name: 'Delete project' }));
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete' }));
+    await waitFor(() => expect(savedState().projects.find((entry) => entry.name === 'Empty site').deletedAt).toBeTruthy());
+
+    await addProject('Busy site');
+    await user.click(screen.getByRole('button', { name: 'Add advance' }));
+    const advance = await screen.findByRole('dialog');
+    await user.type(within(advance).getByLabelText(/Amount/), '1000');
+    await user.click(within(advance).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await user.click(screen.getByRole('button', { name: 'Delete project' }));
+    expect(await screen.findByText(/still has 1 advance/)).toBeTruthy();
+    expect(savedState().projects.find((entry) => entry.name === 'Busy site').deletedAt).toBeFalsy();
+  });
+
   it('adds a project, an advance from the client and a site expense, and lists the expense day by day', async () => {
     const { user } = renderApp(SAMPLE_STATE);
     await goTo(user, 'Projects');
