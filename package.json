@@ -16,6 +16,7 @@
     "test:rules": "firebase emulators:exec --config firebase.e2e.json --only firestore --project demo-sccs \"vitest run --config vitest.rules.config.js\"",
     "test:e2e": "playwright test",
     "deploy:test": "node scripts/deploy.mjs test",
+    "test:accounts": "node scripts/test-accounts.mjs",
     "deploy:live": "node scripts/deploy.mjs live"
   },
   "dependencies": {

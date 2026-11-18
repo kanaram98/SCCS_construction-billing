@@ -315,6 +315,17 @@ function ConnectedCloud({ children }) {
     }
   }, [connect, notify]);
 
+  /** Test copy only: fake email + password accounts. */
+  const signInWithPassword = useCallback(async (email, password) => {
+    try {
+      const firebase = await connect();
+      await firebase.authFns.signInWithEmailAndPassword(firebase.auth, email, password);
+    } catch (error) {
+      console.error('Test sign-in failed.', error);
+      notify(`Test sign-in failed: ${error.code || error.message}`, 'error');
+    }
+  }, [connect, notify]);
+
   /** "Sync now": uploads everything, waits for the server to confirm, downloads what others changed. */
   const syncNow = useCallback(async () => {
     const engine = engineRef.current;
@@ -405,13 +416,14 @@ function ConnectedCloud({ children }) {
     canUndo: (entry) => (effectiveRole ? canUndo(effectiveRole, entry) : true),
     canRestore: (entity) => (effectiveRole ? canRestore(effectiveRole, entity) : true),
     signIn,
+    signInWithPassword,
     signOut,
     pendingChanges,
     continueSwitch,
     retry,
     refreshMembers,
     firebase: firebaseRef.current
-  }), [access, status, online, user, lastUser, role, effectiveRole, members, switchInfo, noAccessReason, unsent, inFlight, syncing, lastSynced, syncNow, problems, signIn, signOut, pendingChanges, continueSwitch, retry, refreshMembers]);
+  }), [access, status, online, user, lastUser, role, effectiveRole, members, switchInfo, noAccessReason, unsent, inFlight, syncing, lastSynced, syncNow, problems, signIn, signInWithPassword, signOut, pendingChanges, continueSwitch, retry, refreshMembers]);
 
   return <CloudContext.Provider value={value}>{children}</CloudContext.Provider>;
 }

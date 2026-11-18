@@ -11,6 +11,8 @@ import { ROLES } from '../../domain/permissions.js';
 import { getLanguage, tr as t, trn } from '../../i18n/translate.js';
 import { formatLogTime } from '../../domain/labour-log.js';
 import { useCloud } from './CloudProvider.jsx';
+import TestSignIn from './TestSignIn.jsx';
+import { APP_ENV } from '../../config/app.js';
 
 /** What each sync state means, in words. */
 export const CLOUD_STATUS_TEXT = Object.freeze({
@@ -72,6 +74,7 @@ export default function AccountCard() {
         <Button variant="contained" startIcon={<GoogleIcon />} onClick={cloud.signIn} disabled={status === 'connecting'}>
           {t('Sign in with Google')}
         </Button>
+        {APP_ENV === 'test' && <TestSignIn />}
       </Card>
     );
   }
