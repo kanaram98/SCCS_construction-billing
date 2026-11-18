@@ -15,8 +15,9 @@ import { SCHEMA_VERSION, docPath, workspacePath } from './schema.js';
 
 /** @returns {Promise<{ status: 'member'|'no-access', role?: string, created?: boolean, joined?: boolean }>} */
 export async function joinWorkspace({ db, fs }, wid, user, now = new Date()) {
+  const notes = []; // what was tried, shown to the user when there is no access
   const memberRef = fs.doc(db, docPath(wid, 'members', user.uid));
-  const existing = await fs.getDoc(memberRef).catch(() => null);
+  const existing = await fs.getDoc(memberRef).catch((error) => { notes.push(`member read: ${error.code}`); return null; });
   if (existing?.exists()) return { status: 'member', role: existing.data().role };
 
   const at = now.toISOString();
@@ -24,7 +25,8 @@ export async function joinWorkspace({ db, fs }, wid, user, now = new Date()) {
 
   // Invited?
   const inviteRef = fs.doc(db, docPath(wid, 'invites', user.email));
-  const invite = await fs.getDoc(inviteRef).catch(() => null);
+  const invite = await fs.getDoc(inviteRef).catch((error) => { notes.push(`invite read: ${error.code}`); return null; });
+  if (invite && !invite.exists()) notes.push(`no invite for ${user.email}`);
   if (invite?.exists()) {
     const { role } = invite.data();
     await fs.setDoc(memberRef, member(role));
@@ -35,7 +37,8 @@ export async function joinWorkspace({ db, fs }, wid, user, now = new Date()) {
   // Not invited: the first owner creates the workspace. The server decides who
   // is an owner, so just try; anyone else is refused.
   const workspaceRef = fs.doc(db, workspacePath(wid));
-  const workspace = await fs.getDoc(workspaceRef).catch(() => null);
+  const workspace = await fs.getDoc(workspaceRef).catch((error) => { notes.push(`workspace read: ${error.code}`); return null; });
+  if (workspace?.exists()) notes.push('workspace exists');
   if (!workspace?.exists()) {
     try {
       await fs.setDoc(workspaceRef, { name: 'SCCS', schemaVersion: SCHEMA_VERSION, createdAt: at, createdBy: user.uid, syncedAt: fs.serverTimestamp() });
@@ -43,9 +46,11 @@ export async function joinWorkspace({ db, fs }, wid, user, now = new Date()) {
       return { status: 'member', role: 'admin', created: true };
     } catch (error) {
       if (error?.code !== 'permission-denied') throw error;
+      notes.push('workspace create: permission-denied');
     }
   }
-  return { status: 'no-access' };
+  console.warn('Workspace join: no access.', notes);
+  return { status: 'no-access', reason: notes.join('; ') };
 }
 
 /** Members of the workspace, for names in History and the members screen. */

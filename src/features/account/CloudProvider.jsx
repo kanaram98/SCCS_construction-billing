@@ -43,6 +43,7 @@ const LOCAL_ONLY = Object.freeze({
   role: null,
   members: [],
   switchInfo: null,
+  noAccessReason: '',
   can: () => true,
   canEditDate: () => true,
   canUndo: () => true,
@@ -92,6 +93,7 @@ function ConnectedCloud({ children }) {
   const [role, setRole] = useState(null);
   const [members, setMembers] = useState([]);
   const [switchInfo, setSwitchInfo] = useState(null);
+  const [noAccessReason, setNoAccessReason] = useState('');
   // A phone signed in before restores its session on start: treat it as signed in meanwhile.
   const [status, setStatus] = useState(() => (storage.get(SIGNED_IN_FLAG) ? 'connecting' : 'signed-out'));
   const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine !== false));
@@ -170,7 +172,7 @@ function ConnectedCloud({ children }) {
       return;
     }
     if (!isCurrent()) return;
-    if (access.status !== 'member') { setStatus('no-access'); return; }
+    if (access.status !== 'member') { setNoAccessReason(access.reason || ''); setStatus('no-access'); return; }
 
     // Another account's changes still waiting on this phone? Don't overwrite them.
     const previous = storage.getJson(LAST_USER_KEY);
@@ -275,6 +277,7 @@ function ConnectedCloud({ children }) {
     role,
     members,
     switchInfo,
+    noAccessReason,
     can: (action) => (effectiveRole ? roleCan(effectiveRole, action) : true),
     /** Timesheet day: contractors only today and the 2 days before. */
     canEditDate: (date) => (effectiveRole ? canEditAttendanceDate(effectiveRole, date) : true),
@@ -286,7 +289,7 @@ function ConnectedCloud({ children }) {
     continueSwitch,
     refreshMembers,
     firebase: firebaseRef.current
-  }), [access, status, online, user, lastUser, role, effectiveRole, members, switchInfo, signIn, signOut, pendingChanges, continueSwitch, refreshMembers]);
+  }), [access, status, online, user, lastUser, role, effectiveRole, members, switchInfo, noAccessReason, signIn, signOut, pendingChanges, continueSwitch, refreshMembers]);
 
   return <CloudContext.Provider value={value}>{children}</CloudContext.Provider>;
 }

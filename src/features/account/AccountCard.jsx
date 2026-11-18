@@ -82,6 +82,7 @@ export default function AccountCard() {
       {status === 'no-access' && (
         <Alert severity="warning" sx={{ mb: 1.5 }}>
           {t('This Google account is not in the workspace yet. Ask the admin to invite {email}.', { email: user.email })}
+          {cloud.noAccessReason && <Typography variant="caption" component="div" sx={{ mt: 0.5, wordBreak: 'break-word' }}>{t('Details: {reason}', { reason: cloud.noAccessReason })}</Typography>}
         </Alert>
       )}
       {status === 'switch-blocked' && switchInfo && (

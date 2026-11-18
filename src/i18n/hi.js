@@ -822,5 +822,6 @@ export default {
   'Admin only': 'सिर्फ़ एडमिन',
   'This day is more than {days} days old. Only the admin can change it.': 'यह दिन {days} दिन से पुराना है। इसे सिर्फ़ एडमिन बदल सकते हैं।',
   'You can add rates. Only the admin can change or delete them.': 'आप दरें जोड़ सकते हैं। बदलना या हटाना सिर्फ़ एडमिन कर सकते हैं।',
-  'You can add workers and mark them as left. Only the admin can change wages or details, or delete a worker.': 'आप मज़दूर जोड़ सकते हैं और उन्हें "काम छोड़ा" मार्क कर सकते हैं। मज़दूरी या जानकारी बदलना और मज़दूर हटाना सिर्फ़ एडमिन कर सकते हैं।'
+  'You can add workers and mark them as left. Only the admin can change wages or details, or delete a worker.': 'आप मज़दूर जोड़ सकते हैं और उन्हें "काम छोड़ा" मार्क कर सकते हैं। मज़दूरी या जानकारी बदलना और मज़दूर हटाना सिर्फ़ एडमिन कर सकते हैं।',
+  'Details: {reason}': 'विवरण: {reason}'
 };
