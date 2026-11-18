@@ -2,6 +2,7 @@ import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import Drawer from '@mui/material/Drawer';
+import SwipeableDrawer from '@mui/material/SwipeableDrawer';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 import CloseIcon from '@mui/icons-material/Close';
@@ -47,7 +48,7 @@ const ICONS = {
  * button in the top bar), a permanent sidebar on desktop.
  * `views`: limit the tabs (e.g. Labour only while signed out); null shows all.
  */
-export default function MainNav({ activeView, onNavigate, views = null, open = false, onClose = () => {} }) {
+export default function MainNav({ activeView, onNavigate, views = null, open = false, onClose = () => {}, onOpen = () => {} }) {
   const tabs = NAVIGATION.filter(({ id }) => !views || views.includes(id));
   const isMobile = useIsMobile();
   const items = [...tabs, { id: VIEWS.settings, label: 'Settings' }];
@@ -70,10 +71,13 @@ export default function MainNav({ activeView, onNavigate, views = null, open = f
 
   if (isMobile) {
     return (
-      <Drawer
-        variant="temporary"
+      <SwipeableDrawer
         open={open}
         onClose={onClose}
+        onOpen={onOpen}
+        disableBackdropTransition
+        disableDiscovery
+        swipeAreaWidth={24}
         className="no-print"
         ModalProps={{ keepMounted: false }}
         sx={{ '& .MuiDrawer-paper': { width: 'min(82vw, 300px)', boxSizing: 'border-box', pt: 'env(safe-area-inset-top)' } }}
@@ -85,7 +89,7 @@ export default function MainNav({ activeView, onNavigate, views = null, open = f
         </Toolbar>
         <Divider />
         <Box sx={{ pt: 1, overflowY: 'auto', pb: 'env(safe-area-inset-bottom)' }}>{list}</Box>
-      </Drawer>
+      </SwipeableDrawer>
     );
   }
 

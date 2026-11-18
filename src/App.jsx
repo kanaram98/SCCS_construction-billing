@@ -116,7 +116,7 @@ function AppShell({ view: chosenView, setView }) {
         onOpenSearch={allowed ? undefined : () => setSearchOpen(true)}
       />
       {!allowed && <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} onOpenResult={openResult} />}
-      <MainNav activeView={view} onNavigate={navigate} views={allowed} open={menuOpen} onClose={() => setMenuOpen(false)} />
+      <MainNav activeView={view} onNavigate={navigate} views={allowed} open={menuOpen} onClose={() => setMenuOpen(false)} onOpen={() => setMenuOpen(true)} />
       {!data.meta?.onboarded && cloud.access === 'full' && <WelcomeDialog onNavigate={navigate} />}
       <Box
         component="main"
