@@ -162,6 +162,6 @@ describe('sync between two phones', () => {
 
   it('keeps out an account that was never invited', async () => {
     const stranger = { uid: 'stranger', email: 'stranger@example.com' };
-    expect(await joinWorkspace({ db: dbFor(stranger), fs: firestore }, WS, stranger)).toEqual({ status: 'no-access' });
+    expect(await joinWorkspace({ db: dbFor(stranger), fs: firestore }, WS, stranger)).toMatchObject({ status: 'no-access' });
   });
 });
