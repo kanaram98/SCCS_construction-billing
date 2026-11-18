@@ -245,9 +245,9 @@ service cloud.firestore {
       let d = data();
       return fields(['id', 'version', 'updatedBy', 'syncedAt', 'name', 'address', 'phone', 'gstin', 'gstRegistered',
           'bankName', 'accountName', 'accountNumber', 'ifsc', 'upiId', 'logo', 'signature', 'signatureLayout'],
-          ['createdAt', 'updatedAt', 'brandingApplied'])
+          ['createdAt', 'updatedAt', 'brandingApplied', 'tagline'])
         && d.version is int && d.version >= 1 && versionGoesUp() && byMe('updatedBy')
-        && str(d.name, 200) && str(d.address, 5000) && str(d.phone, 30) && str(d.gstin, 20)
+        && str(d.name, 200) && optStr(d, 'tagline', 200) && str(d.address, 5000) && str(d.phone, 30) && str(d.gstin, 20)
         && d.gstRegistered is bool && str(d.bankName, 200) && str(d.accountName, 200)
         && str(d.accountNumber, 40) && str(d.ifsc, 20) && str(d.upiId, 100)
         && image(d.logo) && image(d.signature) && d.signatureLayout is map;

@@ -86,7 +86,7 @@ function textPdf(quotation, rates, firm) {
  * @param {Element|null} rendered the on-screen quotation (needed for Hindi)
  */
 export async function exportQuotationPdf({ quotation, rates, firm, language, rendered, shareText }) {
-  const needsImage = language === 'hi' || containsDevanagari({ quotation, rates, firm: { name: firm.name, address: firm.address } });
+  const needsImage = language === 'hi' || containsDevanagari({ quotation, rates, firm: { name: firm.name, address: firm.address, tagline: firm.tagline } });
   const doc = needsImage && rendered
     ? await createImagePdf([rendered], { paper: 'a4', orientation: 'portrait', margin: 10, pageNumbers: false })
     : textPdf(quotation, rates, firm);

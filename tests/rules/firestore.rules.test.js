@@ -223,6 +223,8 @@ describe('validation of every write', () => {
     await assertFails(put(db, rate, { ...rate.data, type: 'weight' }));
     const adminFirm = find(sampleDocs(ADMIN), 'settings', 'firm');
     await assertFails(put(as(ADMIN), adminFirm, { ...adminFirm.data, logo: 'https://example.com/logo.png' }));
+    await assertSucceeds(put(as(ADMIN), adminFirm, { ...adminFirm.data, version: adminFirm.data.version + 1, tagline: 'Specialist in marble' }));
+    await assertFails(put(as(ADMIN), adminFirm, { ...adminFirm.data, version: adminFirm.data.version + 2, tagline: 'x'.repeat(201) }));
     await assertFails(put(db, { collection: 'settings', id: 'preferences' }, { id: 'preferences', language: 'hi' }));
     await assertFails(setDoc(doc(as(ADMIN), docPath(WS, 'invites', STRANGER.email)), stamp({ email: STRANGER.email, role: 'boss', invitedAt: NOW, invitedBy: ADMIN.uid })));
   });

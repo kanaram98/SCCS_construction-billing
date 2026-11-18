@@ -397,3 +397,27 @@ describe('New bill and projects', () => {
     expect((await screen.findAllByText(/Green Park/)).length).toBeGreaterThan(0);
   });
 });
+
+describe('Link a bill to a project from the Bills list', () => {
+  it('links an unlinked bill by adding its project, without opening it', async () => {
+    const { user } = renderApp({ ...SAMPLE_STATE, bills: SAMPLE_STATE.bills.map((bill) => ({ ...bill, isSample: false, projectId: '' })) });
+    await goTo(user, 'Bills');
+    await screen.findByRole('heading', { name: 'Bills' });
+    await user.click((await screen.findAllByRole('button', { name: 'Link to a project' }))[0]);
+    const dialog = await screen.findByRole('dialog');
+    // The bill's own project and client names are suggested.
+    expect(within(dialog).getByLabelText(/Project \/ site name/).value).not.toBe('');
+    await user.click(within(dialog).getByRole('button', { name: 'Link' }));
+    await waitFor(() => expect(savedState().projects).toHaveLength(1));
+    expect(savedState().bills.filter((bill) => bill.projectId === savedState().projects[0].id)).toHaveLength(1);
+  });
+});
+
+describe('Firm tag line', () => {
+  it('saves the tag line from the Firm tab', async () => {
+    const { user } = renderApp(SAMPLE_STATE);
+    await goTo(user, 'Firm');
+    await user.type(await screen.findByLabelText('Tag line'), 'Specialist in marble');
+    await waitFor(() => expect(savedState().firm.tagline).toBe('Specialist in marble'));
+  });
+});

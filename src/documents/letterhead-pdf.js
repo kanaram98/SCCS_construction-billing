@@ -39,15 +39,23 @@ export function drawLetterhead(doc, { firm, title, meta, billTo, margin, fontSiz
     doc.setTextColor(58);
     doc.text(firm.name || 'Firm name', margin, top + 7);
     logoHeight = 9;
+    if (firm.tagline) {
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(fontSize);
+      doc.setTextColor(85);
+      doc.text(doc.splitTextToSize(firm.tagline, (pageWidth - margin * 2) * 0.5), margin, top + 12.5);
+      logoHeight = 14;
+    }
   }
   const details = [
     firm.logo && firm.name ? { text: firm.name, bold: true, size: fontSize + 3 } : null,
+    firm.logo && firm.tagline ? { text: firm.tagline, italic: true } : null,
     firm.address ? { text: firm.address } : null,
     [firm.phone && `Ph: ${firm.phone}`, firm.gstRegistered && firm.gstin && `GSTIN: ${firm.gstin}`].filter(Boolean).join('   ') ? { text: [firm.phone && `Ph: ${firm.phone}`, firm.gstRegistered && firm.gstin && `GSTIN: ${firm.gstin}`].filter(Boolean).join('   ') } : null
   ].filter(Boolean);
   let detailY = top + 4;
   details.forEach((line) => {
-    doc.setFont('helvetica', line.bold ? 'bold' : 'normal');
+    doc.setFont('helvetica', line.bold ? 'bold' : line.italic ? 'italic' : 'normal');
     doc.setFontSize(line.size || fontSize - 1);
     doc.setTextColor(line.bold ? 43 : 68);
     const wrapped = doc.splitTextToSize(line.text, (pageWidth - margin * 2) * 0.48);

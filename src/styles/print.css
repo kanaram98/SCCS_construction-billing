@@ -29,6 +29,7 @@
 .lh-logo { display: block; max-width: 48%; max-height: 22mm; object-fit: contain; }
 .lh-name-only { font-size: calc(var(--print-font-size, 9pt) + 8pt); font-weight: 800; color: #3a3a3a; }
 .lh-firm { text-align: right; line-height: 1.45; color: #444; }
+.lh-tagline { font-style: italic; color: #555; font-size: calc(var(--print-font-size, 9pt) + 0.5pt); }
 .lh-firm-name { font-weight: 800; font-size: calc(var(--print-font-size, 9pt) + 3pt); color: #2b2b2b; }
 .lh-stripe { height: 5px; margin: 8px 0 8px; border-radius: 3px; background: linear-gradient(90deg, #f7a547 0%, #ec6b35 55%, #9fc140 80%, #5a8f3c 100%); print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 .lh-title { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }

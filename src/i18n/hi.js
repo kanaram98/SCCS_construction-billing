@@ -948,5 +948,10 @@ export default {
   'The project brings the client details. Change them in Projects.': 'क्लाइंट की जानकारी प्रोजेक्ट से आती है। उसे प्रोजेक्ट में बदलें।',
   'This bill is not linked to a project. Choose one above, or add the project in Projects first.': 'यह बिल किसी प्रोजेक्ट से नहीं जुड़ा। ऊपर से चुनें, या पहले प्रोजेक्ट में प्रोजेक्ट जोड़ें।',
   'Which project this bill is for.': 'यह बिल किस प्रोजेक्ट का है।',
-  'Your own business details.': 'आपके अपने व्यवसाय की जानकारी।'
+  'Your own business details.': 'आपके अपने व्यवसाय की जानकारी।',
+  'Link': 'जोड़ें',
+  'Link to a project': 'प्रोजेक्ट से जोड़ें',
+  'Shown under the firm name on every bill and PDF, e.g. Specialist in marble and stone work': 'हर बिल और PDF में फर्म के नाम के नीचे दिखता है, जैसे मार्बल और पत्थर के काम के विशेषज्ञ',
+  'Tag line': 'टैग लाइन',
+  '{bill} linked to {project}.': '{bill} को {project} से जोड़ा गया।'
 };

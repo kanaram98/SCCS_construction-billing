@@ -53,6 +53,11 @@ function createBillActions({ data, setData }) {
       const bill = { ...createBill(nextNumberFor(data.bills, kind), { gstEnabled: Boolean(data.firm.gstRegistered) }), ...billFieldsFromProject(project) };
       insertAndOpen(kind === 'estimate' ? { ...bill, kind } : bill);
     },
+    /** Links any bill to a project (copies the project's name and client into it). */
+    linkProject(billId, project) {
+      const fields = billFieldsFromProject(project);
+      setData((current) => ({ ...current, bills: current.bills.map((entry) => (entry.id === billId ? { ...entry, ...fields } : entry)) }));
+    },
     /** Creates a bill from an estimate and marks the estimate as converted. Returns the new bill. */
     convertEstimate(estimateId) {
       const estimate = data.bills.find((entry) => entry.id === estimateId);

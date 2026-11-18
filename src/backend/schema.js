@@ -231,6 +231,7 @@ export const firmSchema = z.strictObject({
   version: z.int().min(1),
   updatedBy: id,
   name: short,
+  tagline: short.optional(),
   address: long,
   phone: z.string().max(30),
   gstin: z.string().max(20),

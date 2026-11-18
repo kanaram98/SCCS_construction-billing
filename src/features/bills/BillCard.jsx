@@ -9,6 +9,8 @@ import DeleteIcon from '@mui/icons-material/DeleteOutlined';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import PostAddIcon from '@mui/icons-material/PostAdd';
+import LinkIcon from '@mui/icons-material/AddLinkOutlined';
+import Button from '@mui/material/Button';
 import { ActionMenu } from '../../components/ui';
 import { formatCurrency } from '../../domain/formatters.js';
 import { paymentStatusLabel } from '../../domain/calculations.js';
@@ -18,13 +20,15 @@ import { tr as t } from '../../i18n/translate.js';
 const STATUS_COLORS = { paid: 'success', partial: 'warning', unpaid: 'default' };
 
 /** Tap the card to open the bill or estimate; other actions live in the ⋮ menu. */
-export default function BillCard({ bill, summary, selected, note, needsProject = false, onOpen, onDuplicate, onDelete, onRemind, onConvert, onNextRunningBill }) {
+export default function BillCard({ bill, summary, selected, note, onOpen, onLinkProject, onDuplicate, onDelete, onRemind, onConvert, onNextRunningBill }) {
   const estimate = isEstimate(bill);
+  const unlinked = !bill.projectId && !bill.isSample;
   return (
     <Card
       sx={{
         mb: 1.25,
         display: 'flex',
+        flexWrap: 'wrap',
         alignItems: 'stretch',
         borderLeft: selected ? 4 : 1,
         borderLeftColor: selected ? 'secondary.main' : 'divider'
@@ -51,13 +55,14 @@ export default function BillCard({ bill, summary, selected, note, needsProject =
               variant={summary.status === 'unpaid' ? 'outlined' : 'filled'}
             />
           )}
-          {needsProject && !bill.projectId && <Chip size="small" variant="outlined" color="warning" label={t('No project linked')} />}
+          {unlinked && <Chip size="small" variant="outlined" color="warning" label={t('No project linked')} />}
         </Stack>
       </CardActionArea>
       <Box sx={{ display: 'flex', alignItems: 'flex-start', pt: 0.5, pr: 0.5 }}>
         <ActionMenu
           label={t('Actions for bill {number}', { number: bill.number })}
           items={[
+            { label: t('Link to a project'), icon: <LinkIcon fontSize="small" />, onClick: onLinkProject, hidden: !unlinked },
             { label: t('Convert to bill'), icon: <ReceiptLongIcon fontSize="small" />, onClick: onConvert, hidden: !estimate },
             { label: t('Next running bill'), icon: <PostAddIcon fontSize="small" />, onClick: onNextRunningBill, hidden: estimate },
             { label: t('Payment reminder'), icon: <WhatsAppIcon fontSize="small" />, onClick: onRemind, hidden: estimate || !(summary.totals.balance > 0) },
@@ -66,6 +71,11 @@ export default function BillCard({ bill, summary, selected, note, needsProject =
           ]}
         />
       </Box>
+      {unlinked && (
+        <Box sx={{ width: '100%', px: 1, pb: 0.75 }}>
+          <Button size="small" color="warning" startIcon={<LinkIcon />} onClick={onLinkProject}>{t('Link to a project')}</Button>
+        </Box>
+      )}
     </Card>
   );
 }

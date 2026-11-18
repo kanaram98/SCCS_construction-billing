@@ -30,6 +30,8 @@ export default function BillsPage({ onNavigate }) {
   const undoable = useUndoable();
   const [historyOpen, setHistoryOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  /** The bill being linked to a project from the list, if any. */
+  const [linking, setLinking] = useState(null);
   const reminder = useWhatsAppReminder();
   const { rates } = data;
   /** 'bill' or 'estimate': which list is shown, and what "New" creates. */
@@ -52,6 +54,15 @@ export default function BillsPage({ onNavigate }) {
     actions.bills.create(kind, { project: target });
     setCreating(false);
     onNavigate(VIEWS.entry);
+  }
+
+  /** Links a bill from the list to a project (existing or new) without opening it. */
+  function linkProject(bill, { project, newProject } = {}) {
+    const target = newProject ? actions.projects.add(newProject) : project;
+    if (!target) return;
+    actions.bills.linkProject(bill.id, target);
+    setLinking(null);
+    notify(t('{bill} linked to {project}.', { bill: billLabel(bill, t), project: target.name }));
   }
 
   function openBill(billId) {
@@ -132,12 +143,13 @@ export default function BillsPage({ onNavigate }) {
 
       {filteredBills.map((bill) => (
         <BillCard
-          needsProject={data.projects.length > 0} key={bill.id}
+          key={bill.id}
           bill={bill}
           summary={summaries.get(bill.id)}
           selected={bill.id === activeBill.id}
           note={convertedLabel(bill)}
           onOpen={() => openBill(bill.id)}
+          onLinkProject={() => setLinking(bill)}
           onDuplicate={() => duplicateBill(bill)}
           onDelete={() => deleteBill(bill)}
           onRemind={() => reminder.remind(bill)}
@@ -170,6 +182,7 @@ export default function BillsPage({ onNavigate }) {
         )
       )}
       <HistoryDialog open={historyOpen} filter="bills" onClose={() => setHistoryOpen(false)} />
+      <NewBillDialog open={Boolean(linking)} kind={kind} projects={data.projects} linking={linking} onCreate={(choice) => linkProject(linking, choice)} onClose={() => setLinking(null)} />
       <NewBillDialog open={creating} kind={kind} projects={data.projects} defaultProjectId={activeBill.projectId || ''} onCreate={create} onClose={() => setCreating(false)} />
     </section>
   );

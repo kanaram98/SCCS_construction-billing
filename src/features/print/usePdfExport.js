@@ -27,7 +27,7 @@ export function usePdfExport({ bill, rates, firm, printSettings, exportErrors, s
   async function createPdf(options = {}) {
     // jsPDF's fonts have no Hindi letters, so a Hindi bill — or one with Hindi names in it —
     // is exported from the rendered preview instead.
-    if (billLanguage === 'hi' || containsDevanagari({ bill, firm: { name: firm.name, address: firm.address } })) {
+    if (billLanguage === 'hi' || containsDevanagari({ bill, firm: { name: firm.name, address: firm.address, tagline: firm.tagline } })) {
       const { exportImagePdf } = await import('../../documents/pdf-image-export.js');
       await exportImagePdf(bill, renderedDocuments(), printSettings, options);
     } else {

@@ -32,6 +32,9 @@ export default function FirmCard() {
           <TextField label={t('Firm name')} required value={firm.name} error={nameError} onChange={(name) => update({ name })} />
         </Grid>
         <Grid size={12}>
+          <TextField label={t('Tag line')} helperText={t('Shown under the firm name on every bill and PDF, e.g. Specialist in marble and stone work')} value={firm.tagline || ''} onChange={(tagline) => update({ tagline })} />
+        </Grid>
+        <Grid size={12}>
           <TextField label={t('Address')} value={firm.address} onChange={(address) => update({ address })} />
         </Grid>
         <Grid size={6}>

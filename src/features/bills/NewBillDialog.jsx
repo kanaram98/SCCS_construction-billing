@@ -5,22 +5,31 @@ import { ResponsiveDialog, SelectField, TextField } from '../../components/ui';
 import { tr as t } from '../../i18n/translate.js';
 
 const NEW = '__new__';
+const same = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
 
-/** "New bill / estimate": pick the project it belongs to, or add a new project right here. */
-export default function NewBillDialog({ open, kind, projects, defaultProjectId = '', onCreate, onClose }) {
-  const title = kind === 'estimate' ? t('New estimate') : t('New bill');
+/**
+ * Pick the project a bill belongs to, or add a new project right here.
+ * Used for "New bill / estimate" and for "Link to a project" on an existing bill
+ * (`linking`: a project is required, and the bill's own project and client names are suggested).
+ */
+export default function NewBillDialog({ open, kind, projects, defaultProjectId = '', linking = null, onCreate, onClose }) {
+  const title = linking ? t('Link to a project') : kind === 'estimate' ? t('New estimate') : t('New bill');
   return (
     <ResponsiveDialog open={open} title={title} onClose={onClose} maxWidth="xs">
-      {open && <NewBillForm projects={projects} defaultProjectId={defaultProjectId} onCreate={onCreate} onClose={onClose} />}
+      {open && <NewBillForm key={linking?.id || 'new'} projects={projects} defaultProjectId={defaultProjectId} linking={linking} onCreate={onCreate} onClose={onClose} />}
     </ResponsiveDialog>
   );
 }
 
-function NewBillForm({ projects, defaultProjectId, onCreate, onClose }) {
+function NewBillForm({ projects, defaultProjectId, linking, onCreate, onClose }) {
+  const sameName = linking ? projects.find((project) => same(project.name, linking.projectName) && (!linking.client || same(project.client, linking.client))) : null;
   const known = projects.some((project) => project.id === defaultProjectId);
-  const [choice, setChoice] = useState(known ? defaultProjectId : (projects.length ? '' : NEW));
-  const [name, setName] = useState('');
-  const [client, setClient] = useState('');
+  const start = linking
+    ? (sameName ? sameName.id : NEW)
+    : known ? defaultProjectId : (projects.length ? '' : NEW);
+  const [choice, setChoice] = useState(start);
+  const [name, setName] = useState(linking?.projectName || '');
+  const [client, setClient] = useState(linking?.client || '');
   const [submitted, setSubmitted] = useState(false);
   const isNew = choice === NEW;
 
@@ -41,7 +50,7 @@ function NewBillForm({ projects, defaultProjectId, onCreate, onClose }) {
         <SelectField
           label={t('Project')}
           value={choice}
-          placeholder={t('No project (link it later)')}
+          placeholder={linking ? undefined : t('No project (link it later)')}
           options={[...projects.map((project) => ({ value: project.id, label: project.name })), { value: NEW, label: t('Add a new project…') }]}
           helperText={t('Bills under a project appear in its report.')}
           onChange={setChoice}
@@ -59,7 +68,7 @@ function NewBillForm({ projects, defaultProjectId, onCreate, onClose }) {
       )}
       <Grid size={12} sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
         <Button onClick={onClose}>{t('Cancel')}</Button>
-        <Button type="submit" variant="contained">{t('Create')}</Button>
+        <Button type="submit" variant="contained" disabled={Boolean(linking) && !choice}>{linking ? t('Link') : t('Create')}</Button>
       </Grid>
     </Grid>
   );

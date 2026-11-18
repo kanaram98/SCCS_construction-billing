@@ -10,9 +10,15 @@ export default function Letterhead({ firm, t, title, meta = [], billTo }) {
       <div className="lh-top">
         {firm.logo
           ? <img className="lh-logo" src={firm.logo} alt="" />
-          : <div className="lh-name-only">{firm.name || t('Firm name')}</div>}
+          : (
+            <div>
+              <div className="lh-name-only">{firm.name || t('Firm name')}</div>
+              {firm.tagline && <div className="lh-tagline">{firm.tagline}</div>}
+            </div>
+          )}
         <div className="lh-firm">
           {firm.logo && firm.name && <div className="lh-firm-name">{firm.name}</div>}
+          {firm.logo && firm.tagline && <div className="lh-tagline">{firm.tagline}</div>}
           {firm.address && <div>{firm.address}</div>}
           {contact.length > 0 && <div>{contact.join(' · ')}</div>}
         </div>
