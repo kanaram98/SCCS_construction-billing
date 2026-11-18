@@ -67,8 +67,7 @@ export default function HomePage({ onNavigate }) {
   }
 
   function create(kind) {
-    actions.bills.create(kind);
-    onNavigate(VIEWS.entry);
+    onNavigate(VIEWS.bills, { newBill: kind }); // the project is chosen first
   }
 
   return (

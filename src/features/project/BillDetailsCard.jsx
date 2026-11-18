@@ -10,7 +10,6 @@ import { getRequiredDetailErrors, isBillNumberTaken } from '../../domain/validat
 import { text } from '../../domain/formatters.js';
 import { billFieldsFromProject } from '../../domain/projects.js';
 import { hasGst } from '../../domain/calculations.js';
-import { futureDateWarning } from '../../domain/warnings.js';
 import { tr as t } from '../../i18n/translate.js';
 
 /** Which project (and so which client) this bill is for, its number, date and level names. */
@@ -52,6 +51,13 @@ export default function BillDetailsCard({ onNavigate }) {
   return (
     <Card title={t('About this bill')}>
       <Grid container spacing={2}>
+        {bill.projectId ? (
+          <Grid size={12}>
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>{t('Project')}</Typography>
+            <Typography variant="body1">{bill.projectName || project?.name}</Typography>
+            <Typography variant="caption" color="text.secondary">{t('Fixed when the bill is made. To use another project, make a new bill.')}</Typography>
+          </Grid>
+        ) : (
         <Grid size={12}>
           <SelectField
             label={t('Project')}
@@ -67,6 +73,7 @@ export default function BillDetailsCard({ onNavigate }) {
             }}
           />
         </Grid>
+        )}
         {project ? (
           <Grid size={12}>
             <Typography variant="body2" sx={{ fontWeight: 600 }}>{t('Client')}</Typography>
@@ -85,7 +92,7 @@ export default function BillDetailsCard({ onNavigate }) {
           <TextField label={t('Bill number')} required value={bill.number} error={numberError} onChange={(number) => update({ number })} />
         </Grid>
         <Grid size={6}>
-          <TextField label={t('Date')} type="date" value={bill.date} warning={futureDateWarning(bill.date)} onChange={(date) => update({ date })} />
+          <TextField label={t('Date')} type="date" value={bill.date} disabled helperText={t('Fixed when the bill is made.')} onChange={() => {}} />
         </Grid>
         {!isEstimate(bill) && (
           <Grid size={12}>

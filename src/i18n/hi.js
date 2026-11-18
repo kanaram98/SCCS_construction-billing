@@ -1113,5 +1113,8 @@ export default {
   'Delete all expenses of this day?': 'इस दिन का पूरा खर्च हटाएँ?',
   'Delete all': 'सब हटाएँ',
   '{count} expense deleted.': '{count} खर्च हटाया गया।',
-  '{count} expenses deleted.': '{count} खर्च हटाए गए।'
+  '{count} expenses deleted.': '{count} खर्च हटाए गए।',
+  'Every bill belongs to a project. Its client details are copied in and cannot be changed on the bill.': 'हर बिल किसी प्रोजेक्ट का होता है। क्लाइंट की जानकारी उसी से आती है और बिल पर बदली नहीं जा सकती।',
+  'Fixed when the bill is made. To use another project, make a new bill.': 'बिल बनते समय तय होता है। दूसरे प्रोजेक्ट के लिए नया बिल बनाएँ।',
+  'Fixed when the bill is made.': 'बिल बनते समय तय होता है।'
 };

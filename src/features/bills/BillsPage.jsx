@@ -24,20 +24,20 @@ import NewBillDialog from './NewBillDialog.jsx';
 import { tr as t } from '../../i18n/translate.js';
 
 /** List of all bills and estimates: search, filter, sort and per-bill actions. */
-export default function BillsPage({ onNavigate }) {
+export default function BillsPage({ onNavigate, focus = {} }) {
   const { data, bill: activeBill, actions } = useBilling();
   const confirm = useConfirm();
   const notify = useNotify();
   const undoable = useUndoable();
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState(Boolean(focus.newBill)); // opened from Home or the welcome with "New bill"
   /** The bill being linked to a project from the list, if any. */
   const [linking, setLinking] = useState(null);
   const [renaming, setRenaming] = useState(null);
   const reminder = useWhatsAppReminder();
   const { rates } = data;
   /** 'bill' or 'estimate': which list is shown, and what "New" creates. */
-  const [kind, setKind] = useState(() => billKind(activeBill));
+  const [kind, setKind] = useState(() => focus.newBill || billKind(activeBill));
   const isEstimates = kind === 'estimate';
   const bills = useMemo(() => billsOfKind(data.bills, kind), [data.bills, kind]);
   const estimateCount = useMemo(() => billsOfKind(data.bills, 'estimate').length, [data.bills]);

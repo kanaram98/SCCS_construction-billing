@@ -162,6 +162,17 @@ describe('Project and PDF', () => {
     expect(screen.queryByText('Backup & restore')).toBeNull();
   });
 
+  it('a bill linked to a project cannot change its project or date', async () => {
+    const linked = { ...SAMPLE_STATE, projects: [{ id: 'pa', name: 'Alpha site', client: 'Mr Alpha', status: 'running', version: 1 }] };
+    linked.bills = linked.bills.map((entry, index) => (index === 0 ? { ...entry, projectId: 'pa', projectName: 'Alpha site', client: 'Mr Alpha' } : entry));
+    const { user } = renderApp(linked);
+    await goTo(user, 'Bill details');
+    await screen.findByRole('heading', { name: 'Bill details' });
+    expect(screen.queryByRole('combobox', { name: /Project/ })).toBeNull(); // shown as text, not a dropdown
+    expect(screen.getAllByText('Alpha site').length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('Date').disabled).toBe(true);
+  });
+
   it('PDF opens on the preview with the amount in words', async () => {
     const { user } = renderApp(SAMPLE_STATE);
     await goTo(user, 'PDF / Print');
@@ -189,10 +200,20 @@ describe('First use', () => {
     expect(savedState().meta.onboarded).toBe(true);
   });
 
-  it('opens an empty bill without a getting-started checklist', async () => {
+  it('asks for the project before the first bill is made, and replaces the empty starter bill', async () => {
     const { user } = renderApp();
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Start my first bill' }));
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('New bill')).toBeTruthy();
+    await user.click(within(dialog).getByRole('button', { name: 'Create' }));
+    expect(await within(dialog).findByText('Enter the project or site name.')).toBeTruthy(); // no bill without a project
+    await user.type(within(dialog).getByLabelText(/Project \/ site name/), 'Sharma house');
+    await user.type(within(dialog).getByLabelText(/Client name/), 'Sharma ji');
+    await user.click(within(dialog).getByRole('button', { name: 'Create' }));
+    await waitFor(() => expect(savedState().bills.filter((entry) => !entry.deletedAt)).toHaveLength(1)); // the empty starter bill went to the recycle bin
+    const [made] = savedState().bills.filter((entry) => !entry.deletedAt);
+    expect(made).toMatchObject({ number: '1', projectName: 'Sharma house', client: 'Sharma ji' });
+    expect(made.projectId).toBeTruthy();
     expect(screen.queryByText('Getting started')).toBeNull();
   });
 });

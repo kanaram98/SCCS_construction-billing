@@ -31,6 +31,20 @@ import { moveDocument, normalizePrintSettings, toggleDocument } from '../domain/
 import { tr } from '../i18n/translate.js';
 
 /** Applies `updater` to the active bill within the full state. */
+const PROJECT_FIELDS = ['projectId', 'projectName', 'client', 'clientId', 'clientPhone', 'clientAddress', 'clientGstin'];
+
+/** The date a bill was made never changes, and neither does its project (and client) once it is linked. */
+function lockBillIdentity(updater, bill) {
+  if (typeof updater !== 'object' || updater === null) return updater;
+  const locked = ['date', ...(bill?.projectId ? PROJECT_FIELDS : [])];
+  return Object.fromEntries(Object.entries(updater).filter(([key]) => !locked.includes(key)));
+}
+
+/** The untouched bill a new install starts with: nothing in it, no project, not a sample. */
+function isBlankStarter(bill) {
+  return !bill.projectId && !bill.projectName && !bill.client && !bill.isSample && !(bill.sections || []).length && !(bill.payments || []).length && !bill.kind;
+}
+
 function updateActiveBill(state, updater) {
   return {
     ...state,
@@ -51,8 +65,13 @@ function createBillActions({ data, setData }) {
      * @param {{ project?: object }} options the project the bill belongs to (its name and client are copied in)
      */
     create(kind = 'bill', { project } = {}) {
-      const bill = { ...createBill(nextNumberFor(data.bills, kind), { gstEnabled: Boolean(data.firm.gstRegistered) }), ...billFieldsFromProject(project) };
-      insertAndOpen(kind === 'estimate' ? { ...bill, kind } : bill);
+      // The empty bill every new install starts with is replaced, not kept beside the first real bill.
+      const starter = kind === 'bill' && data.bills.length === 1 && isBlankStarter(data.bills[0]);
+      const others = starter ? [] : data.bills;
+      const bill = { ...createBill(nextNumberFor(others, kind), { gstEnabled: Boolean(data.firm.gstRegistered) }), ...billFieldsFromProject(project) };
+      const created = kind === 'estimate' ? { ...bill, kind } : bill;
+      if (starter) setData((current) => ({ ...current, bills: [created], activeBillId: created.id }));
+      else insertAndOpen(created);
     },
     /** Gives any bill a name of its own (empty removes it). */
     rename(billId, name) {
@@ -120,7 +139,7 @@ function createBillActions({ data, setData }) {
     },
     /** Patches the active bill with an object or `(bill) => bill` updater. */
     update(updater) {
-      setData((current) => updateActiveBill(current, updater));
+      setData((current) => updateActiveBill(current, lockBillIdentity(updater, current.bills.find((entry) => entry.id === current.activeBillId))));
     }
   };
 }

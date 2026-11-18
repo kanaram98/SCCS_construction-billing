@@ -50,9 +50,8 @@ function NewBillForm({ projects, defaultProjectId, linking, onCreate, onClose })
         <SelectField
           label={t('Project')}
           value={choice}
-          placeholder={linking ? undefined : t('No project (link it later)')}
           options={[...projects.map((project) => ({ value: project.id, label: project.name })), { value: NEW, label: t('Add a new project…') }]}
-          helperText={t('Bills under a project appear in its report.')}
+          helperText={t('Every bill belongs to a project. Its client details are copied in and cannot be changed on the bill.')}
           onChange={setChoice}
         />
       </Grid>
@@ -68,7 +67,7 @@ function NewBillForm({ projects, defaultProjectId, linking, onCreate, onClose })
       )}
       <Grid size={12} sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
         <Button onClick={onClose}>{t('Cancel')}</Button>
-        <Button type="submit" variant="contained" disabled={Boolean(linking) && !choice}>{linking ? t('Link') : t('Create')}</Button>
+        <Button type="submit" variant="contained" disabled={!choice}>{linking ? t('Link') : t('Create')}</Button>
       </Grid>
     </Grid>
   );

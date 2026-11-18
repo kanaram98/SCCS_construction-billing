@@ -38,7 +38,7 @@ export default function WelcomeDialog({ onNavigate }) {
   function finish(withSample) {
     if (withSample) actions.bills.addSample();
     actions.data.setOnboarded(true);
-    onNavigate(VIEWS.entry);
+    onNavigate(withSample ? VIEWS.entry : VIEWS.bills, withSample ? undefined : { newBill: 'bill' });
   }
 
   return (
