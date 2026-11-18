@@ -14,6 +14,7 @@ import { NAVIGATION, VIEWS } from './config/app.js';
 import GlobalSearch from './features/search/GlobalSearch.jsx';
 import { BOTTOM_NAV_HEIGHT, DRAWER_WIDTH } from './theme.js';
 import AppHeader from './components/layout/AppHeader.jsx';
+import TestBanner from './components/layout/TestBanner.jsx';
 import MainNav from './components/layout/MainNav.jsx';
 import AppNotices from './components/layout/AppNotices.jsx';
 import HomePage from './features/home/HomePage.jsx';
@@ -111,6 +112,7 @@ function AppShell({ view: chosenView, setView }) {
 
   return (
     <Box className="app-shell" sx={{ minHeight: '100vh' }}>
+      <TestBanner />
       <AppHeader
         subtitle={cloud.access === 'full' ? bill.projectName : ''}
         saveStatus={saveStatus}

@@ -1,6 +1,7 @@
 {
   "projects": {
     "default": "demo-sccs",
-    "live": "sccs-billing-eb0c7"
+    "live": "sccs-billing-eb0c7",
+    "test": "sccs-billing-test-1"
   }
 }

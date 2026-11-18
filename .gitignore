@@ -15,6 +15,7 @@ playwright-report/
 
 # Real Firebase settings (public identifiers, but kept per machine)
 .env.production
+.env.staging
 
 # Rules generated at deploy time (contain owner emails)
 .firebase-rules/

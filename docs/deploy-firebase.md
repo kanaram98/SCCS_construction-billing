@@ -14,11 +14,11 @@ In the project folder:
 cp .env.production.example .env.production     # fill in the values from step 4
 npx firebase login                              # opens a browser, once
 npx firebase use --add                          # pick the project, alias: live
-npm run deploy                                  # tests + build + deploy rules and hosting
+npm run deploy:live                             # publishes the version already tried on test (see docs/release-flow.md)
 ```
 
 Then open `https://<project-id>.web.app`, Settings > Sign in with Google. The first sign-in by a listed owner creates the workspace and makes that account admin. Invite your father from Settings > People.
 
 **Data already on a phone** stays in that browser's storage for that website address. The Firebase address is a new website, so it starts empty. To bring data across: on the old site use Settings > Backup & restore > Back up now, then on the new site Restore from file.
 
-**Updating later**: `npm run deploy`. Rules and the site are published together.
+**Updating later**: follow docs/release-flow.md (`npm run deploy:test`, then `npm run deploy:live`). Rules and the site are published together.

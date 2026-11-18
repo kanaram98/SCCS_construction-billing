@@ -2,6 +2,9 @@
 
 export const APP_NAME = 'Construction Billing';
 
+/** 'test' in the test copy of the app (built with .env.staging); anything else is the real app. */
+export const APP_ENV = import.meta.env?.VITE_APP_ENV || 'live';
+
 export const STORAGE_KEYS = Object.freeze({
   state: 'construction_billing_react_v1'
 });
