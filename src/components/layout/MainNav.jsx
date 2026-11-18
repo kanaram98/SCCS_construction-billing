@@ -1,4 +1,3 @@
-import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import Drawer from '@mui/material/Drawer';
@@ -27,6 +26,7 @@ import { APP_NAME, NAVIGATION, VIEWS } from '../../config/app.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { DRAWER_WIDTH } from '../../theme.js';
 import { tr as t } from '../../i18n/translate.js';
+import { APP_MARK } from '../../config/brand.js';
 
 const ICONS = {
   [VIEWS.bills]: <ReceiptLongIcon />,
@@ -82,7 +82,7 @@ export default function MainNav({ activeView, onNavigate, views = null, open = f
         sx={{ '& .MuiDrawer-paper': { width: 'min(82vw, 300px)', boxSizing: 'border-box', pt: 'env(safe-area-inset-top)' } }}
       >
         <Toolbar sx={{ gap: 1.5, minHeight: 64 }}>
-          <Avatar variant="rounded" sx={{ bgcolor: 'primary.main', fontWeight: 800, width: 38, height: 38 }}>₹</Avatar>
+          <Box component="img" src={APP_MARK} alt="" sx={{ height: 38, width: 21, objectFit: 'contain' }} />
           <Typography variant="subtitle1" noWrap sx={{ flex: 1 }}>{t(APP_NAME)}</Typography>
           <IconButton aria-label={t('Close menu')} onClick={onClose} edge="end"><CloseIcon /></IconButton>
         </Toolbar>

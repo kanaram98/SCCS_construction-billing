@@ -14,7 +14,7 @@ const TONES = {
 };
 
 /** One day of the month: its number and a short value. Days after `today` are disabled. */
-export function DayTile({ date, today, tone, value, ariaLabel, onClick }) {
+export function DayTile({ date, today, tone, value, note, ariaLabel, onClick }) {
   const future = date > today;
   return (
     <ButtonBase
@@ -36,6 +36,7 @@ export function DayTile({ date, today, tone, value, ariaLabel, onClick }) {
     >
       <Typography variant="caption" sx={{ lineHeight: 1.1, opacity: 0.8 }}>{Number(date.slice(8))}</Typography>
       <Typography variant="caption" sx={{ fontWeight: 700, lineHeight: 1.3, minHeight: '1.3em' }}>{value}</Typography>
+      {note ? <Typography component="span" sx={{ fontSize: '0.62rem', lineHeight: 1.1, opacity: 0.85 }}>{note}</Typography> : null}
     </ButtonBase>
   );
 }

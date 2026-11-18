@@ -446,3 +446,23 @@ function keepLocalExtras(cloudRaw, localRaw) {
   };
   return next;
 }
+
+/**
+ * Closed months are the one thing a phone must never get wrong: a month the
+ * admin has reopened has to open on every phone. The cloud's full list of
+ * closed months is small, so it is treated as the truth: a month that this
+ * phone closed-and-synced earlier but the cloud no longer lists was reopened.
+ * (A month closed on this phone and not yet sent has no `sent` mark and stays.)
+ *
+ * @param cloudIds the ids of every closedMonths document currently in the cloud
+ * @returns {{ raw, syncState, changed: boolean }}
+ */
+export function reconcileClosedMonths(raw, syncState, cloudIds) {
+  const closed = raw.labour?.closedMonths || {};
+  const reopened = Object.keys(closed).filter((month) => syncState.sent?.[keyOf('closedMonths', month)] && !cloudIds.includes(month));
+  if (!reopened.length) return { raw, syncState, changed: false };
+  const state = { ...syncState, sent: { ...syncState.sent } };
+  const rest = { ...closed };
+  for (const month of reopened) { delete rest[month]; delete state.sent[keyOf('closedMonths', month)]; }
+  return { raw: setIn(raw, ['labour', 'closedMonths'], rest), syncState: state, changed: true };
+}

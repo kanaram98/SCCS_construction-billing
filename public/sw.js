@@ -1,4 +1,4 @@
-const CACHE_NAME = 'construction-billing-v1';
+const CACHE_NAME = 'construction-billing-v2';
 const APP_ROOT = new URL('./', self.registration.scope).href;
 const PRECACHE = [
   APP_ROOT,

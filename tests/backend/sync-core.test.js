@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adoptCloud, applyIncoming, createSyncState, keyOf, planUpload } from '../../src/backend/sync-core.js';
+import { adoptCloud, applyIncoming, createSyncState, keyOf, planUpload, reconcileClosedMonths } from '../../src/backend/sync-core.js';
 import { toDocuments } from '../../src/backend/mapping.js';
 import { createInitialState } from '../../src/domain/app-state.js';
 import { liveState, purgeRecord, recordChanges, undoEntry } from '../../src/domain/history.js';
@@ -311,4 +311,16 @@ test('a new bill from the cloud is placed newest first, and cloud bills load new
   const incoming = [{ collection: 'bills', id: 'b-mid', exists: true, data: { ...mk('b-mid', '2026-11-05T00:00:00.000Z'), order: 0, syncedAt: 1 } }];
   const merged = applyIncoming(base, incoming, createSyncState(), new Date('2026-11-18T00:00:00Z'), { by: 'u' });
   assert.deepEqual(merged.raw.bills.map((bill) => bill.id), ['b-new', 'b-mid', 'b-old']);
+});
+
+test('a month the cloud no longer lists was reopened by the admin, a month closed here and not yet sent stays', () => {
+  const raw = { labour: { closedMonths: { '2026-10': { closedAt: 'a' }, '2026-11': { closedAt: 'b' }, '2026-09': { closedAt: 'c' } } } };
+  const state = createSyncState();
+  state.sent[keyOf('closedMonths', '2026-10')] = '1';
+  state.sent[keyOf('closedMonths', '2026-11')] = '1';
+  const result = reconcileClosedMonths(raw, state, ['2026-10']);
+  assert.equal(result.changed, true);
+  assert.deepEqual(Object.keys(result.raw.labour.closedMonths).sort(), ['2026-09', '2026-10']);
+  assert.equal(result.syncState.sent[keyOf('closedMonths', '2026-11')], undefined);
+  assert.equal(reconcileClosedMonths(result.raw, result.syncState, ['2026-10']).changed, false);
 });

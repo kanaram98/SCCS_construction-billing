@@ -16,7 +16,7 @@
  *   when back online.
  */
 import { COLLECTIONS, docPath, workspacePath } from './schema.js';
-import { adoptCloud, applyIncoming, createSyncState, keyOf, planUpload, runInPhases } from './sync-core.js';
+import { adoptCloud, applyIncoming, createSyncState, keyOf, planUpload, reconcileClosedMonths, runInPhases } from './sync-core.js';
 
 const DATA_COLLECTIONS = Object.values(COLLECTIONS).filter((name) => name !== 'members' && name !== 'invites');
 
@@ -107,6 +107,17 @@ export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState
     // Conflicts and merges may leave something to send (e.g. a conflict history entry).
     if (merged.conflicts.length) push();
   }
+
+  /** The cloud's full list of closed months is the truth: a month it no longer lists was reopened by the admin. */
+  function reconcileMonths(ids) {
+    if (pushing || inFlight) { setTimeout(() => !stopped && reconcileMonths(ids), 2000); return; } // our own uploads may not be listed yet
+    const result = reconcileClosedMonths(getRaw(), syncState, ids);
+    if (!result.changed) return;
+    syncState = result.syncState;
+    persist();
+    applyRaw(result.raw, [], {});
+  }
+  const closedMonthsRef = () => fs.collection(db, `${workspacePath(wid)}/closedMonths`);
 
   /** What to write for an op: the document, and either a delete or a (merged) set. */
   function describeOp(op) {
@@ -250,6 +261,8 @@ export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState
         .then((snap) => snap.docs.map((item) => snapshotDoc(collection, item)))));
     const docs = batches.flat();
     receive(docs);
+    const months = await fs.getDocsFromServer(closedMonthsRef());
+    reconcileMonths(months.docs.map((item) => item.id));
     return docs.length;
   }
 
@@ -268,7 +281,14 @@ export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState
         receive(changes);
       },
       (error) => { console.error(`Sync listener (${collection}) stopped.`, error); status(SYNC_STATUS.error, error.code); }
-    ));
+    )).concat(listenClosedMonths());
+  }
+
+  function listenClosedMonths() {
+    return fs.onSnapshot(closedMonthsRef(), { includeMetadataChanges: false }, (snapshot) => {
+      if (snapshot.metadata.fromCache) return; // a cached list may be incomplete
+      reconcileMonths(snapshot.docs.map((item) => item.id));
+    }, (error) => console.error('Sync listener (closedMonths list) stopped.', error));
   }
 
   return {

@@ -1,5 +1,4 @@
 import AppBar from '@mui/material/AppBar';
-import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Toolbar from '@mui/material/Toolbar';
@@ -20,6 +19,7 @@ import SettingsIcon from '@mui/icons-material/SettingsOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
 import SearchIcon from '@mui/icons-material/Search';
 import { tr as t } from '../../i18n/translate.js';
+import { APP_MARK } from '../../config/brand.js';
 
 export default function AppHeader({ subtitle, saveStatus, canInstall, onInstall, onOpenSettings, onOpenMenu, onOpenSearch }) {
   const saveFailed = saveStatus === SAVE_STATUS.failed;
@@ -42,7 +42,7 @@ export default function AppHeader({ subtitle, saveStatus, canInstall, onInstall,
         <IconButton aria-label={t('Menu')} onClick={onOpenMenu} edge="start" sx={{ display: { md: 'none' }, mr: -0.5 }}>
           <MenuIcon />
         </IconButton>
-        <Avatar variant="rounded" sx={{ bgcolor: 'primary.main', fontWeight: 800, width: 38, height: 38 }}>₹</Avatar>
+        <Box component="img" src={APP_MARK} alt="" sx={{ height: 38, width: 21, objectFit: 'contain' }} />
         <Box sx={{ minWidth: 0, flex: 1 }}>
           <Typography variant="subtitle1" noWrap sx={{ lineHeight: 1.2 }}>{t(APP_NAME)}</Typography>
           <Typography variant="caption" color="text.secondary" noWrap component="div">

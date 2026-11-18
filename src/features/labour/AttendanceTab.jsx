@@ -23,6 +23,7 @@ import {
   isDateClosed, localToday, monthOf, shiftDate, workerMonth
 } from '../../domain/labour.js';
 import { formatCurrency } from '../../domain/formatters.js';
+import { compactAmount } from '../../domain/projects.js';
 import { getLanguage, tr as t } from '../../i18n/translate.js';
 import { DayTile, MonthCalendar } from '../../components/DayGrid.jsx';
 import MonthBar from './MonthBar.jsx';
@@ -178,6 +179,9 @@ export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
   const active = useMemo(() => labour.workers.filter((worker) => worker.active), [labour.workers]);
   const worker = labour.workers.find((entry) => entry.id === workerId) || null;
   const workerSummary = worker ? workerMonth(labour, worker.id, month) : null;
+  const todayMarks = labour.attendance[today] || {};
+  const todayUnmarked = workersOn(labour, today).filter((entry) => !todayMarks[entry.id]);
+  const todayMarked = Object.keys(todayMarks).length > 0;
 
   if (!labour.workers.length) {
     return (
@@ -201,7 +205,8 @@ export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
         today={today}
         tone={tone}
         value={summary.marked ? formatUnits(summary.units) : ''}
-        ariaLabel={`${dayLabel(date, getLanguage())}: ${summary.marked ? t('{present} present', { present: summary.present }) : t('Not marked')}`}
+        note={summary.marked && summary.cost > 0 ? compactAmount(summary.cost) : ''}
+        ariaLabel={`${dayLabel(date, getLanguage())}: ${summary.marked ? `${t('{present} present', { present: summary.present })} · ${formatCurrency(summary.cost)}` : t('Not marked')}`}
         onClick={() => setOpenDate(date)}
       />
     );
@@ -278,6 +283,14 @@ export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
             {t('Mark today’s attendance')}
           </Button>
         )
+      )}
+      {!worker && month === monthOf(today) && !closed && todayUnmarked.length > 0 && (
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: 'center', mb: 1 }}>
+          <Typography variant="caption" color="text.secondary">{todayMarked ? t('Fill the rest:') : t('Fill all:')}</Typography>
+          {[0.5, 1, 1.5, 2].map((units) => (
+            <Button key={units} size="small" variant="outlined" onClick={() => actions.markAll(today, todayUnmarked, units, siteId)} aria-label={t('Fill {units} for everyone today', { units: formatUnits(units) })} sx={{ minWidth: 0, px: 1.25 }}>{UNIT_LABELS[units]}</Button>
+          ))}
+        </Stack>
       )}
       <Typography variant="caption" color="text.secondary" component="p">
         {worker

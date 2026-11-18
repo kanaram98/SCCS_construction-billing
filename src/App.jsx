@@ -1,4 +1,6 @@
-import { Suspense, lazy, useEffect, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useState } from 'react';
+import { useEdgeSwipe } from './hooks/useEdgeSwipe.js';
+import { useIsMobile } from './hooks/useIsMobile.js';
 import Box from '@mui/material/Box';
 import LinearProgress from '@mui/material/LinearProgress';
 import Container from '@mui/material/Container';
@@ -81,6 +83,9 @@ const LIMITED_VIEWS = { labour: [VIEWS.labour, VIEWS.expenses, VIEWS.settings], 
 
 function AppShell({ view: chosenView, setView }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const mobile = useIsMobile();
+  const openMenu = useCallback(() => setMenuOpen(true), []);
+  useEdgeSwipe(openMenu, mobile && !menuOpen);
   const { data, bill, saveStatus, storageError, actions } = useBilling();
   const installer = useInstallPrompt();
   const cloud = useCloud();

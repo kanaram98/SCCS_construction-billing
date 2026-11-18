@@ -1076,5 +1076,6 @@ export default {
   'Fill all:': 'सबको भरें:',
   'Fill the rest:': 'बाकी को भरें:',
   'Fill {units} for everyone': 'सबको {units} भरें',
-  'Optional, e.g. Ground floor marble work. Shown in the Bills list.': 'वैकल्पिक, जैसे ग्राउंड फ्लोर का मार्बल काम। बिल सूची में दिखता है।'
+  'Optional, e.g. Ground floor marble work. Shown in the Bills list.': 'वैकल्पिक, जैसे ग्राउंड फ्लोर का मार्बल काम। बिल सूची में दिखता है।',
+  'Fill {units} for everyone today': 'आज सबको {units} भरें'
 };

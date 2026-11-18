@@ -1,4 +1,6 @@
 import Avatar from '@mui/material/Avatar';
+import Box from '@mui/material/Box';
+import { APP_MARK } from '../../config/brand.js';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogContent from '@mui/material/DialogContent';
@@ -32,7 +34,7 @@ export default function WelcomeDialog({ onNavigate }) {
     <Dialog open fullScreen={fullScreen} maxWidth="xs" fullWidth className="no-print" aria-labelledby="welcome-title">
       <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 3, py: 4 }}>
         <Stack spacing={1.5} sx={{ alignItems: 'center', textAlign: 'center' }}>
-          <Avatar variant="rounded" sx={{ bgcolor: 'primary.main', width: 56, height: 56, fontSize: 28, fontWeight: 800 }}>₹</Avatar>
+          <Box component="img" src={APP_MARK} alt="" sx={{ height: 56, width: 31, objectFit: 'contain' }} />
           <Typography id="welcome-title" variant="h5">{t('Welcome to Construction Billing')}</Typography>
           <Typography color="text.secondary">{t('Make measurement bills on your phone, in feet and inches.')}</Typography>
         </Stack>
