@@ -10,7 +10,7 @@ A mobile-first React app (Material UI) for construction measurements, bills, rat
 - **Rates** as a printable, shareable rate quotation with your terms and disclaimer.
 - **PDF and print**: firm letterhead (logo, details), summary, bill, measurement sheet and item totals, bank/UPI details with a UPI QR code, and a signature. Hindi documents are exported from the rendered page so Devanagari prints correctly.
 - **Labour**: daily attendance (A, ½P, 1P, 1½P, 2P) on a month calendar, advances and payments (with mode and description), a monthly report, an all-workers register PDF and a PDF sheet for each worker.
-- **Safety**: undo for deletes; for labour, a full activity log with undo, a 30-day recycle bin and closed (locked) months. Backup files can be saved and restored.
+- **Safety**: undo for deletes; for labour, a full activity log with undo, a 30-day recycle bin and closed (locked) months. Backup files can be saved and restored, and a nightly cloud copy can be set up for free (see docs/backups.md).
 
 All data is stored on each device. With cloud sync (Firebase, free plan) the admin and a contractor share one workspace: sign in with Google in Settings. Cloud sync currently runs on the local emulators (`npm run dev` with `npm run emulators`); going live is Phase B3.
 

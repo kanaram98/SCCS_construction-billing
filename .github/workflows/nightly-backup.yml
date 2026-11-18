@@ -1,0 +1,37 @@
+name: Nightly backup
+
+# Copies the cloud data to a file every night and keeps it for 30 days (Actions → this run → Artifacts).
+# One-time setup: see docs/backups.md. The repository must be private.
+
+on:
+  schedule:
+    - cron: '30 20 * * *' # 02:00 India time
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Stop if the repository is public
+        if: github.repository_visibility != 'private'
+        run: |
+          echo "This repository is not private. Backups hold your business data, so none was made."
+          exit 1
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Copy the cloud data to files
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        run: node scripts/backup-firestore.mjs --out backups
+      - name: Keep the backup for 30 days
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloud-backup-${{ github.run_id }}
+          path: backups/
+          retention-days: 30
+          if-no-files-found: error

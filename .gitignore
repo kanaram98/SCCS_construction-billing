@@ -18,3 +18,6 @@ playwright-report/
 
 # Rules generated at deploy time (contain owner emails)
 .firebase-rules/
+
+# Local copies of cloud backups (they hold business data)
+backups/
