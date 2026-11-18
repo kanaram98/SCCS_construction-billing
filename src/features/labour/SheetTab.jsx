@@ -7,11 +7,12 @@ import DownloadIcon from '@mui/icons-material/Download';
 import PrintIcon from '@mui/icons-material/Print';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import { EmptyState, useNotify } from '../../components/ui';
-import { useLabour } from './useLabour.js';
+import { useLabour, usePdfLanguage } from './useLabour.js';
 import { monthLabel, monthReport } from '../../domain/labour.js';
 import { formatCurrency } from '../../domain/formatters.js';
 import { canSharePdfFiles, isShareCancelled } from '../../services/files.js';
-import { getLanguage, makeTranslator, tr as t } from '../../i18n/translate.js';
+import { makeTranslator, tr as t } from '../../i18n/translate.js';
+import PdfLanguageToggle from './PdfLanguageToggle.jsx';
 import FitToWidth from '../print/preview/FitToWidth.jsx';
 import LabourReportDocument from './LabourReportDocument.jsx';
 import MonthBar from './MonthBar.jsx';
@@ -24,7 +25,7 @@ export default function SheetTab({ month, onMonthChange }) {
   const notify = useNotify();
   const previewRef = useRef(null);
   const [busy, setBusy] = useState(false);
-  const language = getLanguage();
+  const [language, setPdfLanguage] = usePdfLanguage();
   const docT = makeTranslator(language);
   const report = useMemo(() => monthReport(labour, month), [labour, month]);
 
@@ -54,6 +55,7 @@ export default function SheetTab({ month, onMonthChange }) {
   return (
     <>
       <MonthBar month={month} onChange={onMonthChange} />
+      {report.rows.length > 0 && <Stack direction="row" sx={{ justifyContent: "flex-end", mb: 1 }} className="no-print"><PdfLanguageToggle value={language} onChange={setPdfLanguage} /></Stack>}
       {!report.rows.length ? (
         <EmptyState title={t('Nothing this month')} description={t('Mark attendance to see wages here.')} compact />
       ) : (

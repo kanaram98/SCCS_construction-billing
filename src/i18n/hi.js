@@ -1077,5 +1077,12 @@ export default {
   'Fill the rest:': 'बाकी को भरें:',
   'Fill {units} for everyone': 'सबको {units} भरें',
   'Optional, e.g. Ground floor marble work. Shown in the Bills list.': 'वैकल्पिक, जैसे ग्राउंड फ्लोर का मार्बल काम। बिल सूची में दिखता है।',
-  'Fill {units} for everyone today': 'आज सबको {units} भरें'
+  'Fill {units} for everyone today': 'आज सबको {units} भरें',
+  'PDF language': 'PDF की भाषा',
+  'PDF in English': 'PDF अंग्रेज़ी में',
+  'PDF in Hindi': 'PDF हिंदी में',
+  'Hide details': 'विवरण छिपाएँ',
+  'Show details': 'विवरण दिखाएँ',
+  'Search workers': 'मज़दूर खोजें',
+  'No matching workers': 'कोई मज़दूर नहीं मिला'
 };

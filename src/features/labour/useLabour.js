@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useBilling } from '../../state/BillingContext.jsx';
 import { useConfirm } from '../../components/ui';
 import { dayLabel, isMonthClosed, liveLabour, localToday, monthLabel, shiftDate } from '../../domain/labour.js';
@@ -62,4 +62,24 @@ export function useMonthLock() {
       return ok;
     }
   };
+}
+
+const PDF_LANGUAGE_KEY = 'labour_pdf_language';
+
+/**
+ * The language of labour PDFs and WhatsApp messages. It is separate from the app's language:
+ * the contractor may read English while the workers read Hindi. Remembered on this phone.
+ */
+export function usePdfLanguage() {
+  const [language, setState] = useState(() => {
+    try {
+      const saved = window.localStorage.getItem(PDF_LANGUAGE_KEY);
+      return saved === 'en' || saved === 'hi' ? saved : getLanguage();
+    } catch { return getLanguage(); }
+  });
+  function setLanguage(next) {
+    setState(next);
+    try { window.localStorage.setItem(PDF_LANGUAGE_KEY, next); } catch { /* remembering is optional */ }
+  }
+  return [language, setLanguage];
 }

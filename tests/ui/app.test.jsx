@@ -222,6 +222,12 @@ describe('Labour screen', () => {
     expect(screen.getAllByText('₹900').length).toBeGreaterThan(0);
     expect(screen.getAllByText('1½P × 1').length).toBeGreaterThan(0);
 
+    // The language of the worker PDFs is chosen here, separately from the app language, and remembered.
+    await user.click(screen.getByRole('button', { name: 'PDF in Hindi' }));
+    expect(window.localStorage.getItem('labour_pdf_language')).toBe('hi');
+    await user.click(screen.getByRole('button', { name: 'PDF in English' }));
+    expect(window.localStorage.getItem('labour_pdf_language')).toBe('en');
+
     // Advance with date, mode and description; each worker has their own PDF.
     await user.click(screen.getByRole('button', { name: 'Pay Ramesh' }));
     const pay = await screen.findByRole('dialog');
@@ -230,6 +236,7 @@ describe('Labour screen', () => {
     await user.type(within(pay).getByLabelText(/Description/), 'Advance for rent');
     await user.click(within(pay).getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await user.click(screen.getByRole('button', { name: 'Details for Ramesh' }));
     expect(await screen.findByText('₹500 · Cash')).toBeTruthy();
     expect(screen.getAllByText(/Advance for rent/).length).toBeGreaterThan(0);
     expect(savedState().labour.payments[0]).toMatchObject({ amount: 500, mode: 'cash', note: 'Advance for rent' });
@@ -258,6 +265,7 @@ describe('Labour safety: history, recycle bin, closed months', () => {
     const { user } = renderApp(LABOUR_STATE);
     await goTo(user, 'Labour');
     await user.click(await screen.findByRole('tab', { name: 'Report' }));
+    await user.click((await screen.findAllByRole('button', { name: /^Details for / }))[0]);
 
     // Delete asks first, then the payment can be restored from History.
     await user.click(await screen.findByRole('button', { name: 'Delete payment' }));
@@ -278,11 +286,14 @@ describe('Labour safety: history, recycle bin, closed months', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(await screen.findByText('₹2,000 · Cash')).toBeTruthy();
 
-    // Closing the month locks its payments.
-    await user.click(screen.getByRole('button', { name: 'Close month' }));
+    // Closing the month (from the Attendance tab) locks its payments.
+    expect(screen.queryByRole('button', { name: 'Close month' })).toBeNull();
+    await user.click(screen.getByRole('tab', { name: 'Attendance' }));
+    await user.click(await screen.findByRole('button', { name: 'Close month' }));
     const close = await screen.findByRole('dialog');
     await user.click(within(close).getByRole('button', { name: 'Close month' }));
     expect(await screen.findByRole('button', { name: 'Unlock' })).toBeTruthy();
+    await user.click(screen.getByRole('tab', { name: 'Report' }));
     expect(screen.queryByRole('button', { name: 'Delete payment' })).toBeNull();
     expect(Object.keys(savedState().labour.closedMonths)).toHaveLength(1);
   });

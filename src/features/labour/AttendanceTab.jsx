@@ -15,6 +15,7 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import EngineeringIcon from '@mui/icons-material/EngineeringOutlined';
 import EventAvailableIcon from '@mui/icons-material/EventAvailableOutlined';
+import LockIcon from '@mui/icons-material/LockOutlined';
 import { EmptyState, ResponsiveDialog, SelectField } from '../../components/ui';
 import { useBilling } from '../../state/BillingContext.jsx';
 import { useUndoable } from '../../hooks/useUndoable.js';
@@ -168,7 +169,8 @@ function useSite(projects) {
 export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
   const { labour, actions } = useLabour();
   const allowOld = useOldDateGuard();
-  const closed = useMonthLock().isClosed(month);
+  const lock = useMonthLock();
+  const closed = lock.isClosed(month);
   const cloud = useCloud();
   const today = localToday();
   const { data } = useBilling();
@@ -297,6 +299,10 @@ export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
           ? t('Tap a day to choose A, ½P, 1P, 1½P or 2P.')
           : t('Tap a day to fill attendance. Green = everyone marked, yellow = some marked, red = all absent.')}
       </Typography>
+
+      {!closed && (
+        <Button fullWidth variant="outlined" startIcon={<LockIcon />} onClick={() => lock.close(month)} sx={{ mt: 1.5 }}>{t('Close month')}</Button>
+      )}
 
       <DaySheet date={openDate} month={month} siteId={siteId} onDateChange={setOpenDate} onClose={() => setOpenDate(null)} />
 
