@@ -20,12 +20,13 @@ import TableViewIcon from '@mui/icons-material/TableChartOutlined';
 import { EmptyState, PageHeading, SelectField, StatCard, useConfirm, useNotify } from '../../components/ui';
 import { useBilling } from '../../state/BillingContext.jsx';
 import { useUndoable } from '../../hooks/useUndoable.js';
+import { useActiveProject } from '../../hooks/useActiveProject.js';
 import { VIEWS } from '../../config/app.js';
 import { EXPENSE_AMBER_ABOVE, EXPENSE_CATEGORIES, EXPENSE_RED_ABOVE, compactAmount, expenseDayTone, expensesByCategory, expensesByDay, totalAmount } from '../../domain/projects.js';
 import { dayLabel, localToday, monthLabel, monthOf, shiftMonth } from '../../domain/labour.js';
 import { formatCurrency } from '../../domain/formatters.js';
 import { isShareCancelled } from '../../services/files.js';
-import { getLanguage, makeTranslator, tr as t } from '../../i18n/translate.js';
+import { getLanguage, makeTranslator, tr as t, trn } from '../../i18n/translate.js';
 import { useCloud } from '../account/CloudProvider.jsx';
 import { DayTile, MonthCalendar } from '../../components/DayGrid.jsx';
 import FitToWidth from '../print/preview/FitToWidth.jsx';
@@ -56,7 +57,6 @@ export default function ExpensesPage({ onNavigate, focus = {} }) {
   const confirm = useConfirm();
   const undoable = useUndoable();
   const sheetRef = useRef(null);
-  const [projectId, setProjectId] = useState(focus.projectId || '');
   const [month, setMonth] = useState(() => focus.month || monthOf(localToday()));
   const [view, setView] = useState('calendar'); // calendar | table | pdf
   const [editing, setEditing] = useState(null); // an expense, 'new' or null
@@ -64,6 +64,7 @@ export default function ExpensesPage({ onNavigate, focus = {} }) {
   const [openDay, setOpenDay] = useState(''); // the day shown in the day sheet
   const [busy, setBusy] = useState(false);
   const { projects, expenses } = data;
+  const [projectId, setProjectId] = useActiveProject(projects, focus.projectId);
   const language = getLanguage();
   const docT = makeTranslator(language);
 
@@ -72,7 +73,7 @@ export default function ExpensesPage({ onNavigate, focus = {} }) {
   const today = localToday();
   const dayOf = useMemo(() => new Map(days.map((day) => [day.date, day])), [days]);
   const todayTotal = totalAmount(monthItems.filter((expense) => expense.date === today));
-  const projectLabel = projectId ? projects.find((project) => project.id === projectId)?.name || '' : t('All projects');
+  const projectLabel = projects.find((project) => project.id === projectId)?.name || '';
   const dateError = (date) => (cloud.canEditDate(date) ? '' : t('Only the admin can use a date older than 2 days.'));
   const mayChange = (expense) => cloud.canEditDate(expense.date);
 
@@ -114,6 +115,24 @@ export default function ExpensesPage({ onNavigate, focus = {} }) {
     undoable(t('Expense deleted.'), () => actions.expenses.remove(expense.id));
   }
 
+  async function deleteOne(expense) {
+    const ok = await confirm({ title: t('Delete this expense?'), message: `${formatCurrency(expense.amount)} · ${expense.date}`, confirmLabel: t('Delete'), danger: true });
+    if (!ok) return;
+    undoable(t('Expense deleted.'), () => actions.expenses.remove(expense.id));
+  }
+
+  async function deleteDay(day) {
+    const ok = await confirm({
+      title: t('Delete all expenses of this day?'),
+      message: `${dayLabel(day.date, language)} · ${trn(day.items.length, '{count} expense', '{count} expenses')} · ${formatCurrency(day.total)}`,
+      confirmLabel: t('Delete all'),
+      danger: true
+    });
+    if (!ok) return;
+    setOpenDay('');
+    undoable(trn(day.items.length, '{count} expense deleted.', '{count} expenses deleted.'), () => day.items.forEach((expense) => actions.expenses.remove(expense.id)));
+  }
+
   async function exportAs(kind) {
     setBusy(true);
     try {
@@ -152,7 +171,7 @@ export default function ExpensesPage({ onNavigate, focus = {} }) {
       <SelectField
         label={t('Project')}
         value={projectId}
-        placeholder={t('All projects')}
+        helperText={t('You see and add expenses for this project only. Switch project to work on another.')}
         options={projects.map((project) => ({ value: project.id, label: project.name }))}
         onChange={setProjectId}
         sx={{ mb: 1.5 }}
@@ -207,7 +226,7 @@ export default function ExpensesPage({ onNavigate, focus = {} }) {
           </Typography>
         </>
       )}
-      {view === 'table' && <ExpenseDays days={days} projects={projects} showProject={!projectId} onOpen={open} />}
+      {view === 'table' && <ExpenseDays days={days} projects={projects} showProject={!projectId} onOpen={open} onDelete={deleteOne} onDeleteDay={deleteDay} canDelete={mayChange} />}
       {view === 'pdf' && (
         days.length ? (
           <Box ref={sheetRef} sx={{ border: 1, borderColor: 'divider', borderRadius: 1, overflow: 'hidden', bgcolor: '#fff', mb: 1 }}>
@@ -230,7 +249,7 @@ export default function ExpensesPage({ onNavigate, focus = {} }) {
         </Box>
       )}
 
-      <ExpenseDaySheet day={dayOf.get(openDay) || null} projects={projects} showProject={!projectId} onOpen={open} onAdd={startNew} onClose={() => setOpenDay('')} />
+      <ExpenseDaySheet day={dayOf.get(openDay) || null} projects={projects} showProject={!projectId} onOpen={open} onAdd={startNew} onClose={() => setOpenDay('')} onDelete={deleteOne} onDeleteDay={deleteDay} canDelete={mayChange} />
 
       <ExpenseDialog
         open={Boolean(editing)}

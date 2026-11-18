@@ -5,12 +5,12 @@ import { getLanguage, tr as t } from '../../i18n/translate.js';
 import ExpenseDays from './ExpenseDays.jsx';
 
 /** One day's expenses: tap one to edit, or add another for that day. */
-export default function ExpenseDaySheet({ day, projects, showProject, onOpen, onAdd, onClose }) {
+export default function ExpenseDaySheet({ day, projects, showProject, onOpen, onAdd, onClose, onDelete, onDeleteDay, canDelete }) {
   return (
     <ResponsiveDialog open={Boolean(day)} title={day ? dayLabel(day.date, getLanguage()) : ''} onClose={onClose} maxWidth="xs">
       {day && (
         <>
-          <ExpenseDays days={[day]} projects={projects} showProject={showProject} onOpen={onOpen} />
+          <ExpenseDays days={[day]} projects={projects} showProject={showProject} onOpen={onOpen} onDelete={onDelete} onDeleteDay={onDeleteDay} canDelete={canDelete} />
           <Button fullWidth variant="outlined" onClick={() => onAdd(day.date)} sx={{ mb: 1 }}>{t('Add expense')}</Button>
           <Button fullWidth variant="contained" onClick={onClose}>{t('Done')}</Button>
         </>

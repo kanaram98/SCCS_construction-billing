@@ -380,3 +380,24 @@ export function workerMonthMessage({ worker, summary, firm, t, language }) {
     firm?.name && `— ${firm.name}`
   ].filter(Boolean).join('\n');
 }
+
+/**
+ * Attendance seen for one project (site) only: its marks, plus older marks that were saved with
+ * no project (so nothing disappears). Marks of other projects are left out.
+ * With no `siteId` the labour is returned unchanged.
+ */
+export function labourForSite(labour, siteId) {
+  if (!siteId) return labour;
+  const attendance = {};
+  for (const [date, marks] of Object.entries(labour.attendance || {})) {
+    const kept = Object.fromEntries(Object.entries(marks).filter(([, mark]) => !mark.projectId || mark.projectId === siteId));
+    if (Object.keys(kept).length) attendance[date] = kept;
+  }
+  return { ...labour, attendance };
+}
+
+/** The project a worker is already marked at on `date`, when it is not `siteId` ('' when free to mark). */
+export function markedElsewhere(labour, date, workerId, siteId) {
+  const mark = labour.attendance?.[date]?.[workerId];
+  return siteId && mark?.projectId && mark.projectId !== siteId ? mark.projectId : '';
+}

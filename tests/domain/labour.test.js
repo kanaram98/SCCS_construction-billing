@@ -123,3 +123,26 @@ test('calendar weeks start on Sunday with blanks', () => {
   assert.deepEqual(weeks[4].slice(0, 2), ['2026-11-29', '2026-11-30']);
   assert.equal(weeks[4][2], null);
 });
+
+test('a project view keeps its own and unassigned marks and hides other projects, and flags workers marked elsewhere', async () => {
+  const { labourForSite, markedElsewhere, daySummary } = await import('../../src/domain/labour.js');
+  const labour = {
+    workers: [],
+    attendance: {
+      '2026-11-02': {
+        w1: { units: 1, wage: 500, at: 'a', projectId: 'pa' },
+        w2: { units: 2, wage: 500, at: 'a', projectId: 'pb' },
+        w3: { units: 1, wage: 500, at: 'a' }
+      },
+      '2026-11-03': { w2: { units: 1, wage: 500, at: 'a', projectId: 'pb' } }
+    }
+  };
+  const alpha = labourForSite(labour, 'pa');
+  assert.deepEqual(Object.keys(alpha.attendance['2026-11-02']).sort(), ['w1', 'w3']);
+  assert.equal(alpha.attendance['2026-11-03'], undefined);
+  assert.equal(daySummary(alpha, '2026-11-02').cost, 1000);
+  assert.equal(labourForSite(labour, ''), labour);
+  assert.equal(markedElsewhere(labour, '2026-11-02', 'w2', 'pa'), 'pb');
+  assert.equal(markedElsewhere(labour, '2026-11-02', 'w1', 'pa'), '');
+  assert.equal(markedElsewhere(labour, '2026-11-02', 'w3', 'pa'), '');
+});

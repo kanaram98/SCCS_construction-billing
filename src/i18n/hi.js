@@ -1100,5 +1100,18 @@ export default {
   '{count} expense': '{count} खर्च',
   '{count} expenses': '{count} खर्च',
   '{count} attendance mark': '{count} हाज़िरी',
-  '{count} attendance marks': '{count} हाज़िरी'
+  '{count} attendance marks': '{count} हाज़िरी',
+  'Marked at {project}': '{project} पर लगी है',
+  'another project': 'दूसरे प्रोजेक्ट',
+  '{name} is marked at {project} on this day.': '{name} की इस दिन {project} पर हाज़िरी लगी है।',
+  'Project / site': 'प्रोजेक्ट / साइट',
+  'You see and change this project’s attendance only. Switch project to work on another.': 'आप सिर्फ़ इस प्रोजेक्ट की हाज़िरी देखते और बदलते हैं। दूसरे पर काम करने के लिए प्रोजेक्ट बदलें।',
+  'Add a project in Projects to keep attendance and labour cost for each site.': 'हर साइट की हाज़िरी और मज़दूरी का हिसाब रखने के लिए प्रोजेक्ट्स में प्रोजेक्ट जोड़ें।',
+  'You see and add expenses for this project only. Switch project to work on another.': 'आप सिर्फ़ इस प्रोजेक्ट का खर्च देखते और जोड़ते हैं। दूसरे पर काम करने के लिए प्रोजेक्ट बदलें।',
+  'Delete all expenses of {date}': '{date} का पूरा खर्च हटाएँ',
+  'Delete expense {amount}': 'खर्च {amount} हटाएँ',
+  'Delete all expenses of this day?': 'इस दिन का पूरा खर्च हटाएँ?',
+  'Delete all': 'सब हटाएँ',
+  '{count} expense deleted.': '{count} खर्च हटाया गया।',
+  '{count} expenses deleted.': '{count} खर्च हटाए गए।'
 };

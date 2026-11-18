@@ -21,7 +21,7 @@ import { useBilling } from '../../state/BillingContext.jsx';
 import { useUndoable } from '../../hooks/useUndoable.js';
 import {
   ATTENDANCE_UNITS, dayLabel, daySummary, formatUnits,
-  isDateClosed, localToday, monthOf, shiftDate, workerMonth
+  isDateClosed, labourForSite, localToday, markedElsewhere, monthOf, shiftDate, workerMonth
 } from '../../domain/labour.js';
 import { formatCurrency } from '../../domain/formatters.js';
 import { compactAmount } from '../../domain/projects.js';
@@ -31,8 +31,9 @@ import MonthBar from './MonthBar.jsx';
 import ClosedMonthNotice from './ClosedMonthNotice.jsx';
 import { useLabour, useMonthLock, useOldDateGuard } from './useLabour.js';
 import { useCloud } from '../account/CloudProvider.jsx';
+import { useActiveProject } from '../../hooks/useActiveProject.js';
 import { CONTRACTOR_TIMESHEET_DAYS } from '../../domain/permissions.js';
-import { Notice } from '../../components/ui';
+import { Notice, useNotify } from '../../components/ui';
 
 const UNIT_LABELS = { 0: 'A', 0.5: '½P', 1: '1P', 1.5: '1½P', 2: '2P' };
 const unitLabel = (units) => UNIT_LABELS[units] ?? formatUnits(units);
@@ -89,7 +90,9 @@ function WorkerRow({ worker, mark, onMark, disabled }) {
 
 /** Everyone's attendance for one day, with ◀ ▶ to move between days of the month. */
 function DaySheet({ date, month, siteId, onDateChange, onClose }) {
-  const { labour, actions } = useLabour();
+  const { labour: allLabour, actions } = useLabour();
+  const { data } = useBilling();
+  const labour = useMemo(() => labourForSite(allLabour, siteId), [allLabour, siteId]);
   const undoable = useUndoable();
   const allowOld = useOldDateGuard();
   const cloud = useCloud();
@@ -100,7 +103,8 @@ function DaySheet({ date, month, siteId, onDateChange, onClose }) {
   const workers = date ? workersOn(labour, date) : [];
   const marks = (date && labour.attendance[date]) || {};
   const summary = date ? daySummary(labour, date) : null;
-  const unmarked = workers.filter((worker) => !marks[worker.id]);
+  const elsewhere = (worker) => (date ? markedElsewhere(allLabour, date, worker.id, siteId) : '');
+  const unmarked = workers.filter((worker) => !marks[worker.id] && !elsewhere(worker));
   const previous = date && shiftDate(date, -1);
   const next = date && shiftDate(date, 1);
 
@@ -130,34 +134,24 @@ function DaySheet({ date, month, siteId, onDateChange, onClose }) {
               </>
             )}
             {summary.marked > 0 && (
-              <Button size="small" color="inherit" onClick={change(() => undoable(t('Day cleared.'), () => actions.markAll(date, workers, null)))}>
+              <Button size="small" color="inherit" onClick={change(() => undoable(t('Day cleared.'), () => actions.markAll(date, workers.filter((worker) => !elsewhere(worker)), null)))}>
                 {t('Clear')}
               </Button>
             )}
           </Stack>
-          {workers.map((worker) => (
+          {workers.map((worker) => (elsewhere(worker) ? (
+            <Box key={worker.id} sx={{ py: 1.25, borderBottom: 1, borderColor: 'divider' }}>
+              <Typography variant="subtitle2" noWrap>{worker.name}</Typography>
+              <Typography variant="caption" color="text.secondary">{t('Marked at {project}', { project: data.projects.find((project) => project.id === elsewhere(worker))?.name || t('another project') })}</Typography>
+            </Box>
+          ) : (
             <WorkerRow key={worker.id} worker={worker} mark={marks[worker.id]} disabled={closed} onMark={(units) => change(() => actions.mark(date, worker, units, siteId))()} />
-          ))}
+          )))}
           <Button fullWidth variant="contained" onClick={onClose} sx={{ mt: 2 }}>{t('Done')}</Button>
         </>
       )}
     </ResponsiveDialog>
   );
-}
-
-/** The site new marks are saved against: remembered on this phone; the only running project by default. */
-function useSite(projects) {
-  const [stored, setStored] = useState(() => {
-    try { return window.localStorage.getItem('attendance_site') || ''; } catch { return ''; }
-  });
-  const running = projects.filter((project) => project.status === 'running');
-  const valid = projects.some((project) => project.id === stored);
-  const siteId = valid ? stored : (running.length === 1 ? running[0].id : '');
-  function setSite(next) {
-    setStored(next);
-    try { window.localStorage.setItem('attendance_site', next); } catch { /* remembering is optional */ }
-  }
-  return [siteId, setSite];
 }
 
 // ── Tab ───────────────────────────────────────────────────────────────
@@ -175,14 +169,16 @@ export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
   const today = localToday();
   const { data } = useBilling();
   const [workerId, setWorkerId] = useState('all');
-  const [siteId, setSite] = useSite(data.projects);
+  const [siteId, setSite] = useActiveProject(data.projects);
+  const notify = useNotify();
+  const siteLabour = useMemo(() => labourForSite(labour, siteId), [labour, siteId]);
   const [openDate, setOpenDate] = useState(null);
   const [picker, setPicker] = useState(null); // { anchor, date } in single-worker view
   const active = useMemo(() => labour.workers.filter((worker) => worker.active), [labour.workers]);
   const worker = labour.workers.find((entry) => entry.id === workerId) || null;
-  const workerSummary = worker ? workerMonth(labour, worker.id, month) : null;
-  const todayMarks = labour.attendance[today] || {};
-  const todayUnmarked = workersOn(labour, today).filter((entry) => !todayMarks[entry.id]);
+  const workerSummary = worker ? workerMonth(siteLabour, worker.id, month) : null;
+  const todayMarks = siteLabour.attendance[today] || {};
+  const todayUnmarked = workersOn(siteLabour, today).filter((entry) => !todayMarks[entry.id] && !markedElsewhere(labour, today, entry.id, siteId));
   const todayMarked = Object.keys(todayMarks).length > 0;
 
   if (!labour.workers.length) {
@@ -197,8 +193,8 @@ export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
   }
 
   function allTile(date) {
-    const workers = workersOn(labour, date);
-    const summary = daySummary(labour, date);
+    const workers = workersOn(siteLabour, date);
+    const summary = daySummary(siteLabour, date);
     const tone = !summary.marked ? 'empty' : summary.present === 0 ? 'absent' : summary.marked >= workers.length ? 'full' : 'partial';
     return (
       <DayTile
@@ -215,7 +211,7 @@ export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
   }
 
   function workerTile(date) {
-    const mark = labour.attendance[date]?.[worker.id];
+    const mark = siteLabour.attendance[date]?.[worker.id];
     const tone = !mark ? 'empty' : mark.units === 0 ? 'absent' : 'full';
     return (
       <DayTile
@@ -225,7 +221,12 @@ export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
         tone={tone}
         value={mark ? unitLabel(mark.units) : ''}
         ariaLabel={`${dayLabel(date, getLanguage())}: ${mark ? formatUnits(mark.units) : t('Not marked')}`}
-        onClick={(event) => (closed || !cloud.canEditDate(date) ? setOpenDate(date) : setPicker({ anchor: event.currentTarget, date }))}
+        onClick={(event) => {
+          const other = markedElsewhere(labour, date, worker.id, siteId);
+          if (other) notify(t('{name} is marked at {project} on this day.', { name: worker.name, project: data.projects.find((project) => project.id === other)?.name || t('another project') }), 'info');
+          else if (closed || !cloud.canEditDate(date)) setOpenDate(date);
+          else setPicker({ anchor: event.currentTarget, date });
+        }}
       />
     );
   }
@@ -243,16 +244,17 @@ export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
       <MonthBar month={month} onChange={onMonthChange} />
       <ClosedMonthNotice month={month} />
 
-      {data.projects.length > 0 && (
+      {data.projects.length > 0 ? (
         <SelectField
-          label={t('Working at (site)')}
+          label={t('Project / site')}
           value={siteId}
-          placeholder={t('No site')}
           options={data.projects.filter((project) => project.status === 'running' || project.id === siteId).map((project) => ({ value: project.id, label: project.name }))}
-          helperText={t('New marks are saved against this site, so each project can show its labour cost.')}
+          helperText={t('You see and change this project’s attendance only. Switch project to work on another.')}
           onChange={setSite}
           sx={{ mb: 1.5 }}
         />
+      ) : (
+        <Notice tone="info">{t('Add a project in Projects to keep attendance and labour cost for each site.')}</Notice>
       )}
       <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', pb: 1, mb: 1, mx: -0.5, px: 0.5 }}>
         <Chip label={t('All workers')} color={workerId === 'all' ? 'primary' : 'default'} variant={workerId === 'all' ? 'filled' : 'outlined'} onClick={() => setWorkerId('all')} />
@@ -310,7 +312,7 @@ export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
         {ATTENDANCE_UNITS.map((units) => (
           <MenuItem
             key={units}
-            selected={labour.attendance[picker?.date]?.[worker?.id]?.units === units}
+            selected={siteLabour.attendance[picker?.date]?.[worker?.id]?.units === units}
             onClick={() => pick(units)}
             sx={{ fontWeight: 700, color: units === 0 ? 'error.main' : 'inherit' }}
           >

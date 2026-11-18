@@ -421,7 +421,7 @@ describe('Projects, advances and expenses', () => {
     expect(await screen.findByRole('button', { name: /: ₹250$/ })).toBeTruthy();
     await user.click(screen.getByRole('button', { name: 'Table' }));
     expect((await screen.findAllByText('₹250')).length).toBeGreaterThan(1); // the row and the day total
-    expect(screen.getByText('Lunch')).toBeTruthy();
+    expect(screen.getAllByText('Lunch').length).toBeGreaterThan(0); // the row (and the hidden PDF copy)
     expect(screen.getByRole('button', { name: 'PDF' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Excel (CSV)' })).toBeTruthy();
   });
@@ -623,5 +623,36 @@ describe('To do today', () => {
     expect(screen.getByText('Attendance is not marked today for 1 of 1 workers.')).toBeTruthy();
     await user.click(screen.getByRole('button', { name: /^Later: Attendance/ }));
     await waitFor(() => expect(screen.queryByText('Attendance is not marked today for 1 of 1 workers.')).toBeNull());
+  });
+});
+
+describe('Expenses and Labour follow one project at a time', () => {
+  const twoProjects = () => ({
+    ...SAMPLE_STATE,
+    projects: [
+      { id: 'pa', name: 'Alpha site', client: 'A', status: 'running', version: 1 },
+      { id: 'pb', name: 'Beta site', client: 'B', status: 'running', version: 1 }
+    ]
+  });
+
+  it('shows only the chosen project\'s expenses, and deletes one entry or the whole day', async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const expense = (id, projectId, amount) => ({ id, projectId, date: today, amount, category: 'food', note: `note-${id}`, version: 1, createdAt: '2026-11-01T00:00:00Z', updatedAt: '2026-11-01T00:00:00Z', updatedBy: 'u' });
+    const state = { ...twoProjects(), expenses: [expense('e1', 'pa', 100), expense('e2', 'pa', 200), expense('e3', 'pb', 999)] };
+    const { user } = renderApp(state);
+    await goTo(user, 'Expenses');
+    await user.click(await screen.findByRole('button', { name: 'Table' }));
+    expect(await screen.findAllByText('note-e1')).not.toHaveLength(0);
+    expect(screen.queryByText('note-e3')).toBeNull(); // the other project is not shown
+
+    await user.click(screen.getByRole('button', { name: 'Delete expense ₹100' }));
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete' }));
+    await waitFor(() => expect(savedState().expenses.find((item) => item.id === 'e1').deletedAt).toBeTruthy());
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await user.click(await screen.findByRole('button', { name: /^Delete all expenses of / }));
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete all' }));
+    await waitFor(() => expect(savedState().expenses.find((item) => item.id === 'e2').deletedAt).toBeTruthy());
+    expect(savedState().expenses.find((item) => item.id === 'e3').deletedAt).toBeFalsy(); // the other project is untouched
   });
 });

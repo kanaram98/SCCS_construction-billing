@@ -77,7 +77,7 @@ test('daily expenses table with PDF and Excel export', async ({ page }) => {
   const csv = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Excel (CSV)' }).click();
   const download = await csv;
-  expect(download.suggestedFilename()).toMatch(/^Expenses-All_projects-\d{4}-\d{2}\.csv$/);
+  expect(download.suggestedFilename()).toMatch(/^Expenses-Sharma_house-\d{4}-\d{2}\.csv$/);
   const csvText = fs.readFileSync(await download.path(), 'utf8');
   expect(csvText.startsWith('﻿Date,Project,Category,Note,Amount')).toBe(true);
   expect(csvText).toContain('Sharma house,Food & tea,Tea and lunch,250');
