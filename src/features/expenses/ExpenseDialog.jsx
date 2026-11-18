@@ -14,18 +14,18 @@ import { tr as t } from '../../i18n/translate.js';
  * person may not use that date (the contractor: today and the 2 days before).
  * `onDelete` shows a Delete button (editing only).
  */
-export default function ExpenseDialog({ open, expense, projects, projectId = '', dateError = () => '', onSave, onDelete, onClose }) {
+export default function ExpenseDialog({ open, expense, projects, projectId = '', defaultDate = '', dateError = () => '', onSave, onDelete, onClose }) {
   return (
     <ResponsiveDialog open={open} title={expense ? t('Edit expense') : t('Add expense')} onClose={onClose} maxWidth="xs">
-      {open && <ExpenseForm key={expense?.id || 'new'} initial={expense} projects={projects} projectId={projectId} dateError={dateError} onSave={onSave} onDelete={onDelete} onClose={onClose} />}
+      {open && <ExpenseForm key={expense?.id || 'new'} initial={expense} projects={projects} projectId={projectId} defaultDate={defaultDate} dateError={dateError} onSave={onSave} onDelete={onDelete} onClose={onClose} />}
     </ResponsiveDialog>
   );
 }
 
-function ExpenseForm({ initial, projects, projectId, dateError, onSave, onDelete, onClose }) {
+function ExpenseForm({ initial, projects, projectId, defaultDate, dateError, onSave, onDelete, onClose }) {
   const [values, setValues] = useState(() => ({
     projectId: projectId || (projects.length === 1 ? projects[0].id : ''),
-    date: localToday(),
+    date: defaultDate || localToday(),
     amount: '',
     category: 'food',
     note: '',

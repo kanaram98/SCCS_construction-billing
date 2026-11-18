@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import ButtonBase from '@mui/material/ButtonBase';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
@@ -20,11 +19,12 @@ import EventAvailableIcon from '@mui/icons-material/EventAvailableOutlined';
 import { EmptyState, ResponsiveDialog } from '../../components/ui';
 import { useUndoable } from '../../hooks/useUndoable.js';
 import {
-  ATTENDANCE_UNITS, dayLabel, daySummary, daysOfMonth, firstWeekday, formatUnits,
-  isDateClosed, localToday, monthOf, shiftDate, weekdayNames, workerMonth
+  ATTENDANCE_UNITS, dayLabel, daySummary, formatUnits,
+  isDateClosed, localToday, monthOf, shiftDate, workerMonth
 } from '../../domain/labour.js';
 import { formatCurrency } from '../../domain/formatters.js';
 import { getLanguage, tr as t } from '../../i18n/translate.js';
+import { DayTile, MonthCalendar } from '../../components/DayGrid.jsx';
 import MonthBar from './MonthBar.jsx';
 import ClosedMonthNotice from './ClosedMonthNotice.jsx';
 import { useLabour, useMonthLock, useOldDateGuard } from './useLabour.js';
@@ -42,54 +42,6 @@ function workersOn(labour, date) {
 }
 
 // ── Calendar ──────────────────────────────────────────────────────────
-
-/** Tile colours: every worker marked, some marked, or absent (single-worker view). */
-const TONES = {
-  full: { bgcolor: 'success.main', color: 'success.contrastText', borderColor: 'success.main' },
-  partial: { bgcolor: 'warning.light', color: 'common.black', borderColor: 'warning.main' },
-  absent: { bgcolor: 'error.main', color: 'error.contrastText', borderColor: 'error.main' },
-  empty: { bgcolor: 'transparent', color: 'text.primary', borderColor: 'divider' }
-};
-
-function DayTile({ date, today, tone, value, ariaLabel, onClick }) {
-  const future = date > today;
-  return (
-    <ButtonBase
-      onClick={onClick}
-      disabled={future}
-      aria-label={ariaLabel}
-      sx={{
-        ...TONES[tone],
-        flexDirection: 'column',
-        border: 1,
-        borderRadius: '10px',
-        minHeight: 46,
-        py: 0.5,
-        opacity: future ? 0.35 : 1,
-        outline: date === today ? '2px solid' : 'none',
-        outlineColor: 'primary.main',
-        outlineOffset: 1
-      }}
-    >
-      <Typography variant="caption" sx={{ lineHeight: 1.1, opacity: 0.8 }}>{Number(date.slice(8))}</Typography>
-      <Typography variant="caption" sx={{ fontWeight: 700, lineHeight: 1.3, minHeight: '1.3em' }}>{value}</Typography>
-    </ButtonBase>
-  );
-}
-
-function MonthCalendar({ month, renderTile }) {
-  const names = weekdayNames(getLanguage());
-  const blanks = firstWeekday(month);
-  return (
-    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 0.5 }}>
-      {names.map((name, index) => (
-        <Typography key={index} variant="caption" color="text.secondary" sx={{ textAlign: 'center', fontWeight: 600 }}>{name}</Typography>
-      ))}
-      {Array.from({ length: blanks }, (_unused, index) => <span key={`blank-${index}`} />)}
-      {daysOfMonth(month).map(renderTile)}
-    </Box>
-  );
-}
 
 // ── Day sheet ─────────────────────────────────────────────────────────
 

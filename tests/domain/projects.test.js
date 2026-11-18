@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  billFieldsFromProject, createAdvance, createExpense, createProject, expensesByCategory, projectsFromBills, expensesByDay, getAdvanceErrors, getExpenseErrors, getProjectErrors, hasErrors
+  billFieldsFromProject, compactAmount, expenseDayTone, createAdvance, createExpense, createProject, expensesByCategory, projectsFromBills, expensesByDay, getAdvanceErrors, getExpenseErrors, getProjectErrors, hasErrors
 } from '../../src/domain/projects.js';
 import { projectSummary, projectsByClient } from '../../src/domain/project-report.js';
 import { recordChanges, liveState, recycleBin, restoreRecord } from '../../src/domain/history.js';
@@ -80,4 +80,18 @@ test('billFieldsFromProject copies the client details, and projects made from bi
   const made = projectsFromBills([{ id: 'b', projectName: 'Shop', client: 'Ravi', clientPhone: '70', clientAddress: 'Kota', clientGstin: 'G2' }], []);
   assert.equal(made.projects[0].clientPhone, '70');
   assert.equal(made.projects[0].clientGstin, 'G2');
+});
+
+test('compactAmount shortens money for a small tile', () => {
+  const cases = [[0, '0'], [250, '250'], [999, '999'], [1000, '1k'], [1500, '1.5k'], [1234, '1.2k'], [12500, '12.5k'], [99000, '99k'], [100000, '1L'], [150000, '1.5L']];
+  for (const [value, expected] of cases) assert.equal(compactAmount(value), expected, String(value));
+});
+
+test('a day is green, then amber over 5000, then red over 10000', () => {
+  assert.equal(expenseDayTone(0), 'empty');
+  assert.equal(expenseDayTone(250), 'full');
+  assert.equal(expenseDayTone(5000), 'full');
+  assert.equal(expenseDayTone(5001), 'amber');
+  assert.equal(expenseDayTone(10000), 'amber');
+  assert.equal(expenseDayTone(10001), 'absent');
 });

@@ -953,5 +953,10 @@ export default {
   'Link to a project': 'प्रोजेक्ट से जोड़ें',
   'Shown under the firm name on every bill and PDF, e.g. Specialist in marble and stone work': 'हर बिल और PDF में फर्म के नाम के नीचे दिखता है, जैसे मार्बल और पत्थर के काम के विशेषज्ञ',
   'Tag line': 'टैग लाइन',
-  '{bill} linked to {project}.': '{bill} को {project} से जोड़ा गया।'
+  '{bill} linked to {project}.': '{bill} को {project} से जोड़ा गया।',
+  'Calendar': 'कैलेंडर',
+  'PDF preview': 'PDF प्रिव्यू',
+  'Show expenses as': 'खर्च ऐसे दिखाएँ',
+  'Table': 'तालिका',
+  'Tap a day to add or see its expenses. Green = up to {amber}, amber = over {amber}, red = over {red} in a day.': 'किसी दिन पर दबाकर उसका खर्च जोड़ें या देखें। हरा = {amber} तक, पीला = {amber} से ज़्यादा, लाल = एक दिन में {red} से ज़्यादा।'
 };

@@ -98,6 +98,29 @@ export function expensesByCategory(expenses) {
   return Object.entries(totals).map(([category, total]) => ({ category, total: roundTo2(total) })).sort((a, b) => b.total - a.total);
 }
 
+/** A day's spending above this is shown amber, above the second figure red. */
+export const EXPENSE_AMBER_ABOVE = 5000;
+export const EXPENSE_RED_ABOVE = 10000;
+
+/** Colour of a day tile for a day's total: none, green (normal), amber (over 5k) or red (over 10k). */
+export function expenseDayTone(total) {
+  const amount = Number(total) || 0;
+  if (amount <= 0) return 'empty';
+  if (amount > EXPENSE_RED_ABOVE) return 'absent';
+  if (amount > EXPENSE_AMBER_ABOVE) return 'amber';
+  return 'full';
+}
+
+const trimmed = (value) => String(Math.round(value * 10) / 10).replace(/\.0$/, '');
+
+/** Short amount for a small tile: 250, 1k, 1.5k, 12k, 1L, 1.5L. */
+export function compactAmount(value) {
+  const amount = Math.abs(Number(value) || 0);
+  if (amount < 999.5) return String(Math.round(amount));
+  if (amount < 99950) return `${trimmed(amount / 1000)}k`;
+  return `${trimmed(amount / 100000)}L`;
+}
+
 /** What a project / expense / advance is called in lists and History. */
 export function projectName(projects, projectId) {
   return projects.find((project) => project.id === projectId)?.name || '';

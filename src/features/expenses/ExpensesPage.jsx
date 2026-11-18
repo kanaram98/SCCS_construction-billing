@@ -1,5 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import Box from '@mui/material/Box';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
 import Button from '@mui/material/Button';
 import Grid from '@mui/material/Grid';
 import IconButton from '@mui/material/IconButton';
@@ -9,20 +11,30 @@ import AddIcon from '@mui/icons-material/Add';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import DownloadIcon from '@mui/icons-material/Download';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonthOutlined';
+import ListIcon from '@mui/icons-material/ViewListOutlined';
+import PdfIcon from '@mui/icons-material/PictureAsPdfOutlined';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import TableViewIcon from '@mui/icons-material/TableChartOutlined';
 import { EmptyState, PageHeading, SelectField, StatCard, useConfirm, useNotify } from '../../components/ui';
 import { useBilling } from '../../state/BillingContext.jsx';
 import { useUndoable } from '../../hooks/useUndoable.js';
 import { VIEWS } from '../../config/app.js';
-import { EXPENSE_CATEGORIES, expensesByCategory, expensesByDay, totalAmount } from '../../domain/projects.js';
-import { localToday, monthLabel, monthOf, shiftMonth } from '../../domain/labour.js';
+import { EXPENSE_AMBER_ABOVE, EXPENSE_CATEGORIES, EXPENSE_RED_ABOVE, compactAmount, expenseDayTone, expensesByCategory, expensesByDay, totalAmount } from '../../domain/projects.js';
+import { dayLabel, localToday, monthLabel, monthOf, shiftMonth } from '../../domain/labour.js';
 import { formatCurrency } from '../../domain/formatters.js';
 import { isShareCancelled } from '../../services/files.js';
 import { getLanguage, makeTranslator, tr as t } from '../../i18n/translate.js';
 import { useCloud } from '../account/CloudProvider.jsx';
+import { DayTile, MonthCalendar } from '../../components/DayGrid.jsx';
+import FitToWidth from '../print/preview/FitToWidth.jsx';
 import ExpenseDays from './ExpenseDays.jsx';
+import ExpenseDaySheet from './ExpenseDaySheet.jsx';
 import ExpenseDialog from './ExpenseDialog.jsx';
 import ExpenseSheetDocument from './ExpenseSheetDocument.jsx';
+
+const PORTRAIT_WIDTH_PX = 794; // A4 portrait at 96 dpi
 
 /** "◀ November 2026 ▶": back month by month, not past the current month. */
 function MonthNav({ month, onChange }) {
@@ -46,7 +58,10 @@ export default function ExpensesPage({ onNavigate }) {
   const sheetRef = useRef(null);
   const [projectId, setProjectId] = useState('');
   const [month, setMonth] = useState(() => monthOf(localToday()));
+  const [view, setView] = useState('calendar'); // calendar | table | pdf
   const [editing, setEditing] = useState(null); // an expense, 'new' or null
+  const [newDate, setNewDate] = useState(''); // the day a new expense starts on
+  const [openDay, setOpenDay] = useState(''); // the day shown in the day sheet
   const [busy, setBusy] = useState(false);
   const { projects, expenses } = data;
   const language = getLanguage();
@@ -55,12 +70,25 @@ export default function ExpensesPage({ onNavigate }) {
   const days = useMemo(() => expensesByDay(expenses, { projectId, month }), [expenses, projectId, month]);
   const monthItems = days.flatMap((day) => day.items);
   const today = localToday();
+  const dayOf = useMemo(() => new Map(days.map((day) => [day.date, day])), [days]);
   const todayTotal = totalAmount(monthItems.filter((expense) => expense.date === today));
   const projectLabel = projectId ? projects.find((project) => project.id === projectId)?.name || '' : t('All projects');
   const dateError = (date) => (cloud.canEditDate(date) ? '' : t('Only the admin can use a date older than 2 days.'));
   const mayChange = (expense) => cloud.canEditDate(expense.date);
 
+  function startNew(date = '') {
+    setNewDate(date);
+    setOpenDay('');
+    setEditing('new');
+  }
+
+  function tapDay(date) {
+    if (dayOf.has(date)) setOpenDay(date);
+    else startNew(date);
+  }
+
   function open(expense) {
+    setOpenDay('');
     if (!mayChange(expense)) {
       notify(t('This expense is more than 2 days old. Only the admin can change it.'), 'info');
       return;
@@ -119,7 +147,7 @@ export default function ExpensesPage({ onNavigate }) {
       <PageHeading
         title={t('Expenses')}
         description={t('Daily site spending: food, travel and more.')}
-        action={<Button variant="contained" startIcon={<AddIcon />} onClick={() => setEditing('new')}>{t('Add expense')}</Button>}
+        action={<Button variant="contained" startIcon={<AddIcon />} onClick={() => startNew()}>{t('Add expense')}</Button>}
       />
       <SelectField
         label={t('Project')}
@@ -145,23 +173,71 @@ export default function ExpensesPage({ onNavigate }) {
           </Stack>
         </>
       )}
-      <ExpenseDays days={days} projects={projects} showProject={!projectId} onOpen={open} />
+      <ToggleButtonGroup exclusive fullWidth size="small" value={view} onChange={(_event, next) => next && setView(next)} aria-label={t('Show expenses as')} sx={{ mb: 1.5 }}>
+        <ToggleButton value="calendar"><CalendarMonthIcon fontSize="small" sx={{ mr: 0.5 }} />{t('Calendar')}</ToggleButton>
+        <ToggleButton value="table"><ListIcon fontSize="small" sx={{ mr: 0.5 }} />{t('Table')}</ToggleButton>
+        <ToggleButton value="pdf"><PdfIcon fontSize="small" sx={{ mr: 0.5 }} />{t('PDF preview')}</ToggleButton>
+      </ToggleButtonGroup>
+
+      {view === 'calendar' && (
+        <>
+          <Card sx={{ mb: 1.5 }}>
+            <CardContent sx={{ p: 1.25, '&:last-child': { pb: 1.25 } }}>
+              <MonthCalendar
+                month={month}
+                renderTile={(date) => {
+                  const total = dayOf.get(date)?.total || 0;
+                  return (
+                    <DayTile
+                      key={date}
+                      date={date}
+                      today={today}
+                      tone={expenseDayTone(total)}
+                      value={total ? compactAmount(total) : ''}
+                      ariaLabel={`${dayLabel(date, language)}: ${total ? formatCurrency(total) : t('No expenses')}`}
+                      onClick={() => tapDay(date)}
+                    />
+                  );
+                }}
+              />
+            </CardContent>
+          </Card>
+          <Typography variant="caption" color="text.secondary" component="p" sx={{ mb: 1 }}>
+            {t('Tap a day to add or see its expenses. Green = up to {amber}, amber = over {amber}, red = over {red} in a day.', { amber: formatCurrency(EXPENSE_AMBER_ABOVE), red: formatCurrency(EXPENSE_RED_ABOVE) })}
+          </Typography>
+        </>
+      )}
+      {view === 'table' && <ExpenseDays days={days} projects={projects} showProject={!projectId} onOpen={open} />}
+      {view === 'pdf' && (
+        days.length ? (
+          <Box ref={sheetRef} sx={{ border: 1, borderColor: 'divider', borderRadius: 1, overflow: 'hidden', bgcolor: '#fff', mb: 1 }}>
+            <FitToWidth contentWidth={PORTRAIT_WIDTH_PX}>
+              <ExpenseSheetDocument days={days} projects={projects} projectLabel={projectLabel} showProject={!projectId} month={month} firm={data.firm} t={docT} language={language} />
+            </FitToWidth>
+          </Box>
+        ) : <ExpenseDays days={days} projects={projects} />
+      )}
       <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 1 }}>
         {cloud.can('editProject')
           ? t('Tap an expense to edit or delete it.')
           : t('You can add expenses and change your own for 2 days. Older ones need the admin.')}
       </Typography>
 
-      {/* Off-screen sheet used for Hindi PDFs. */}
-      <Box ref={sheetRef} sx={{ display: 'none' }} aria-hidden>
-        <ExpenseSheetDocument days={days} projects={projects} projectLabel={projectLabel} showProject={!projectId} month={month} firm={data.firm} t={docT} language={language} />
-      </Box>
+      {/* Off-screen sheet used for Hindi PDFs (the preview itself is used when it is showing). */}
+      {view !== 'pdf' && (
+        <Box ref={sheetRef} sx={{ display: 'none' }} aria-hidden>
+          <ExpenseSheetDocument days={days} projects={projects} projectLabel={projectLabel} showProject={!projectId} month={month} firm={data.firm} t={docT} language={language} />
+        </Box>
+      )}
+
+      <ExpenseDaySheet day={dayOf.get(openDay) || null} projects={projects} showProject={!projectId} onOpen={open} onAdd={startNew} onClose={() => setOpenDay('')} />
 
       <ExpenseDialog
         open={Boolean(editing)}
         expense={editing === 'new' ? null : editing}
         projects={projects}
         projectId={projectId}
+        defaultDate={newDate}
         dateError={dateError}
         onSave={save}
         onDelete={editing && editing !== 'new' ? remove : undefined}

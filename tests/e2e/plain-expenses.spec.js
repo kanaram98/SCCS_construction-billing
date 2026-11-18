@@ -43,12 +43,18 @@ test('daily expenses table with PDF and Excel export', async ({ page }) => {
     await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(dialog).toHaveCount(0);
   }
+  // Calendar tile for today shows the short amount (650 = green), the Table lists the rows.
+  await expect(page.getByRole('button', { name: /: ₹650$/ })).toContainText('650');
+  await page.getByRole('button', { name: 'Table' }).click();
   await expect(page.getByText('Tea and lunch').first()).toBeVisible();
+  await page.getByRole('button', { name: 'PDF preview' }).click();
+  await expect(page.locator('.expense-document').first()).toBeVisible();
+  await expect(page.locator('.expense-document').first()).toContainText('Tea and lunch');
   await expect(page.getByText('₹650').first()).toBeVisible(); // the day total
   await page.screenshot({ path: 'test-results/screens/8-expenses.png' });
 
   const pdf = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'PDF' }).click();
+  await page.getByRole('button', { name: 'PDF', exact: true }).click();
   const pdfPath = await (await pdf).path();
   const pdfText = fs.readFileSync(pdfPath, 'latin1');
   expect(pdfText).toContain('DAILY SITE EXPENSES'); // the letterhead prints the title in capitals

@@ -367,6 +367,9 @@ describe('Projects, advances and expenses', () => {
     // The Expenses tab: the daily table with its total, and exports.
     await goTo(user, 'Expenses');
     expect(await screen.findByRole('heading', { name: 'Expenses' })).toBeTruthy();
+    // The calendar shows the day as a short amount tile.
+    expect(await screen.findByRole('button', { name: /: ₹250$/ })).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Table' }));
     expect((await screen.findAllByText('₹250')).length).toBeGreaterThan(1); // the row and the day total
     expect(screen.getByText('Lunch')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'PDF' })).toBeTruthy();
