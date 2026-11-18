@@ -79,7 +79,6 @@ export default function MainNav({ activeView, onNavigate, views = null, open = f
         disableDiscovery
         swipeAreaWidth={24}
         className="no-print"
-        ModalProps={{ keepMounted: false }}
         sx={{ '& .MuiDrawer-paper': { width: 'min(82vw, 300px)', boxSizing: 'border-box', pt: 'env(safe-area-inset-top)' } }}
       >
         <Toolbar sx={{ gap: 1.5, minHeight: 64 }}>

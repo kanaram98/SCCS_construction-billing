@@ -135,6 +135,7 @@ const billPayment = z.looseObject({ id, date: isoDate, amount: z.number().finite
 export const billSchema = z.strictObject({
   ...meta,
   number: z.string().max(30),
+  name: short.optional(),
   date: z.string().max(10),
   kind: z.enum(['bill', 'estimate']).optional(),
   isSample: z.boolean().optional(),

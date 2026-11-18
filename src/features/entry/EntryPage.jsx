@@ -30,7 +30,6 @@ import FloorBar from './FloorBar.jsx';
 import FloorPanel from './FloorPanel.jsx';
 import AreaPanel from './AreaPanel.jsx';
 import TemplatesDialog from './TemplatesDialog.jsx';
-import GettingStarted from './GettingStarted.jsx';
 import AmountsCard from '../project/AmountsCard.jsx';
 import { isFinal } from '../../domain/bill-final.js';
 import PaymentsCard from '../project/PaymentsCard.jsx';
@@ -117,7 +116,6 @@ export default function EntryPage({ onNavigate }) {
         </>
       ) : (
         <>
-          {counts.items === 0 && <GettingStarted counts={counts} levelName={sectionLabel.toLowerCase()} sublevelName={areaLabel.toLowerCase()} />}
 
           <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mb: 0.5 }}>
             <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }} noWrap>

@@ -1071,5 +1071,10 @@ export default {
   'To do today': 'आज के काम',
   '{count} bill is not linked to a project, so reports leave it out.': '{count} बिल किसी प्रोजेक्ट से नहीं जुड़ा, इसलिए रिपोर्ट में नहीं आता।',
   '{count} bills are not linked to a project, so reports leave them out.': '{count} बिल किसी प्रोजेक्ट से नहीं जुड़े, इसलिए रिपोर्ट में नहीं आते।',
-  '{month} is not closed yet. Check the wages, then close it.': '{month} अभी बंद नहीं हुआ। मज़दूरी जाँचें, फिर बंद करें।'
+  '{month} is not closed yet. Check the wages, then close it.': '{month} अभी बंद नहीं हुआ। मज़दूरी जाँचें, फिर बंद करें।',
+  'Bill name': 'बिल का नाम',
+  'Fill all:': 'सबको भरें:',
+  'Fill the rest:': 'बाकी को भरें:',
+  'Fill {units} for everyone': 'सबको {units} भरें',
+  'Optional, e.g. Ground floor marble work. Shown in the Bills list.': 'वैकल्पिक, जैसे ग्राउंड फ्लोर का मार्बल काम। बिल सूची में दिखता है।'
 };

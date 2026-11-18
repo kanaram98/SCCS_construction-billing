@@ -13,7 +13,6 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import DoneAllIcon from '@mui/icons-material/DoneAll';
 import EngineeringIcon from '@mui/icons-material/EngineeringOutlined';
 import EventAvailableIcon from '@mui/icons-material/EventAvailableOutlined';
 import { EmptyState, ResponsiveDialog, SelectField } from '../../components/ui';
@@ -117,11 +116,16 @@ function DaySheet({ date, month, siteId, onDateChange, onClose }) {
           </Stack>
           <ClosedMonthNotice month={month} />
           {tooOld && <Notice tone="info">{t('This day is more than {days} days old. Only the admin can change it.', { days: CONTRACTOR_TIMESHEET_DAYS })}</Notice>}
-          <Stack direction="row" spacing={1} sx={{ justifyContent: 'center', mb: 1, display: closed ? 'none' : 'flex' }}>
+          <Stack direction="row" spacing={1} sx={{ justifyContent: 'center', flexWrap: 'wrap', rowGap: 1, mb: 1, display: closed ? 'none' : 'flex' }}>
             {unmarked.length > 0 && (
-              <Button size="small" variant="outlined" startIcon={<DoneAllIcon />} onClick={change(() => actions.markAll(date, unmarked, 1, siteId))}>
-                {summary.marked > 0 ? t('Rest 1P') : t('All 1P')}
-              </Button>
+              <>
+                <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center' }}>{summary.marked > 0 ? t('Fill the rest:') : t('Fill all:')}</Typography>
+                {[0.5, 1, 1.5, 2].map((units) => (
+                  <Button key={units} size="small" variant="outlined" onClick={change(() => actions.markAll(date, unmarked, units, siteId))} aria-label={t('Fill {units} for everyone', { units: formatUnits(units) })} sx={{ minWidth: 0, px: 1.25 }}>
+                    {UNIT_LABELS[units]}
+                  </Button>
+                ))}
+              </>
             )}
             {summary.marked > 0 && (
               <Button size="small" color="inherit" onClick={change(() => undoable(t('Day cleared.'), () => actions.markAll(date, workers, null)))}>

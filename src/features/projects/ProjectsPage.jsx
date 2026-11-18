@@ -18,7 +18,7 @@ import { EmptyState, PageHeading, StatCard, useConfirm, useNotify } from '../../
 import { useBilling } from '../../state/BillingContext.jsx';
 import { useUndoable } from '../../hooks/useUndoable.js';
 import { PAYMENT_MODES, advanceApplied } from '../../domain/payments.js';
-import { PROJECT_STATUSES, EXPENSE_CATEGORIES, expensesByDay } from '../../domain/projects.js';
+import { PROJECT_STATUSES } from '../../domain/projects.js';
 import { projectSummary } from '../../domain/project-report.js';
 import { billLabel, isEstimate } from '../../domain/bill-kinds.js';
 import { getBillTotals } from '../../domain/calculations.js';
@@ -27,11 +27,9 @@ import { formatCurrency } from '../../domain/formatters.js';
 import { tr as t, trn } from '../../i18n/translate.js';
 import Alert from '@mui/material/Alert';
 import { useCloud } from '../account/CloudProvider.jsx';
-import ExpenseDays from '../expenses/ExpenseDays.jsx';
 import ReceiptDialog from '../receipts/ReceiptDialog.jsx';
 import { advanceReceipt } from '../../domain/receipt.js';
 import ReceiptIcon from '@mui/icons-material/ReceiptOutlined';
-import ExpenseDialog from '../expenses/ExpenseDialog.jsx';
 import AdvanceDialog from './AdvanceDialog.jsx';
 import ProjectDialog from './ProjectDialog.jsx';
 
@@ -66,11 +64,9 @@ function ProjectDetail({ project, onBack, onNavigate }) {
   const [tab, setTab] = useState('advances');
   const [advanceDialog, setAdvanceDialog] = useState(null);
   const [receipt, setReceipt] = useState(null);
-  const [expenseDialog, setExpenseDialog] = useState(null);
   const [projectDialog, setProjectDialog] = useState(false);
   const summary = useMemo(() => projectSummary(project, data), [project, data]);
   const advances = data.advances.filter((advance) => advance.projectId === project.id).sort((a, b) => b.date.localeCompare(a.date));
-  const days = useMemo(() => expensesByDay(data.expenses, { projectId: project.id }), [data.expenses, project.id]);
   const projectBills = data.bills.filter((bill) => bill.projectId === project.id);
   const canEditAdvance = cloud.can('editAdvance');
   const canEditProject = cloud.can('editProject');
@@ -111,7 +107,6 @@ function ProjectDetail({ project, onBack, onNavigate }) {
 
       <Tabs value={tab} onChange={(_event, value) => setTab(value)} variant="fullWidth" sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}>
         <Tab value="advances" label={t('Advances')} />
-        <Tab value="expenses" label={t('Expenses')} />
         <Tab value="bills" label={t('Bills')} />
       </Tabs>
 
@@ -181,17 +176,6 @@ function ProjectDetail({ project, onBack, onNavigate }) {
         </>
       )}
 
-      {tab === 'expenses' && (
-        <>
-          <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-            <Typography variant="body2" color="text.secondary">
-              {summary.expensesByCategory.map((entry) => `${t(EXPENSE_CATEGORIES[entry.category] || entry.category)} ${formatCurrency(entry.total)}`).join(' · ') || t('No expenses')}
-            </Typography>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setExpenseDialog('new')}>{t('Add expense')}</Button>
-          </Stack>
-          <ExpenseDays days={days} projects={data.projects} onOpen={(expense) => (cloud.canEditDate(expense.date) ? setExpenseDialog(expense) : notify(t('This expense is more than 2 days old. Only the admin can change it.'), 'info'))} />
-        </>
-      )}
 
       <ReceiptDialog receipt={receipt} onClose={() => setReceipt(null)} />
       <AdvanceDialog
@@ -209,19 +193,6 @@ function ProjectDetail({ project, onBack, onNavigate }) {
           setAdvanceDialog(null);
         }}
         onClose={() => setAdvanceDialog(null)}
-      />
-      <ExpenseDialog
-        open={Boolean(expenseDialog)}
-        expense={expenseDialog === 'new' ? null : expenseDialog}
-        projects={data.projects}
-        projectId={project.id}
-        dateError={(date) => (cloud.canEditDate(date) ? '' : t('Only the admin can use a date older than 2 days.'))}
-        onSave={(values) => {
-          if (expenseDialog === 'new') { actions.expenses.add(values); notify(t('Expense added.'), 'success'); } else actions.expenses.update(expenseDialog.id, values);
-          setExpenseDialog(null);
-        }}
-        onDelete={expenseDialog && expenseDialog !== 'new' ? () => { const expense = expenseDialog; setExpenseDialog(null); undoable(t('Expense deleted.'), () => actions.expenses.remove(expense.id)); } : undefined}
-        onClose={() => setExpenseDialog(null)}
       />
       <ProjectDialog open={projectDialog} project={project} onSave={(values) => { actions.projects.update(project.id, values); setProjectDialog(false); }} onClose={() => setProjectDialog(false)} />
     </section>

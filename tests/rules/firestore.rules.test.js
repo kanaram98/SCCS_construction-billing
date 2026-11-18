@@ -181,6 +181,8 @@ describe('what the contractor (your father) can and cannot do', () => {
     const adjustments = [{ id: 'j1', advanceId: 'a1', amount: 500, date: '2026-11-02' }];
     await assertSucceeds(put(as(FATHER), bill, { ...bill.data, version: bill.data.version + 1, advanceAdjustments: adjustments }));
     await assertFails(put(as(FATHER), bill, { ...bill.data, version: bill.data.version + 2, advanceAdjustments: 'lots' }));
+    await assertSucceeds(put(as(FATHER), bill, { ...bill.data, version: bill.data.version + 2, name: 'Ground floor marble' }));
+    await assertFails(put(as(FATHER), bill, { ...bill.data, version: bill.data.version + 3, name: 42 }));
   });
 
   it('a project holds the client details (optional fields, size limited)', async () => {

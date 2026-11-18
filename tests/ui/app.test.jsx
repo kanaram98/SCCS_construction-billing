@@ -181,10 +181,11 @@ describe('First use', () => {
     expect(savedState().meta.onboarded).toBe(true);
   });
 
-  it('shows the getting-started checklist on an empty bill', async () => {
+  it('opens an empty bill without a getting-started checklist', async () => {
     const { user } = renderApp();
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Start my first bill' }));
-    expect(await screen.findByText('Getting started')).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(screen.queryByText('Getting started')).toBeNull();
   });
 });
 
@@ -351,7 +352,9 @@ describe('Projects, advances and expenses', () => {
     expect(await screen.findByText('Received from the client: ₹50,000')).toBeTruthy();
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 
-    await user.click(screen.getByRole('tab', { name: 'Expenses' }));
+    expect(screen.queryByRole('tab', { name: 'Expenses' })).toBeNull(); // expenses are entered on the Expenses page only
+    await user.click(screen.getByRole('button', { name: 'Back to projects' }));
+    await goTo(user, 'Expenses');
     await user.click(await screen.findByRole('button', { name: 'Add expense' }));
     dialog = await screen.findByRole('dialog');
     await user.type(within(dialog).getByLabelText(/Amount/), '250');

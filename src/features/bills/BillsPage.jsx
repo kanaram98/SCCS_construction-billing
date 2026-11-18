@@ -11,6 +11,7 @@ import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import { useBilling } from '../../state/BillingContext.jsx';
 import { summarizeBill } from '../../domain/calculations.js';
 import { billKind, billLabel, billsOfKind } from '../../domain/bill-kinds.js';
+import RenameDialog from '../../components/ui/RenameDialog.jsx';
 import { EmptyState, PageHeading, useConfirm, useNotify } from '../../components/ui';
 import { useUndoable } from '../../hooks/useUndoable.js';
 import { useWhatsAppReminder } from '../../hooks/useWhatsAppReminder.js';
@@ -32,6 +33,7 @@ export default function BillsPage({ onNavigate }) {
   const [creating, setCreating] = useState(false);
   /** The bill being linked to a project from the list, if any. */
   const [linking, setLinking] = useState(null);
+  const [renaming, setRenaming] = useState(null);
   const reminder = useWhatsAppReminder();
   const { rates } = data;
   /** 'bill' or 'estimate': which list is shown, and what "New" creates. */
@@ -150,6 +152,7 @@ export default function BillsPage({ onNavigate }) {
           note={convertedLabel(bill)}
           onOpen={() => openBill(bill.id)}
           onLinkProject={() => setLinking(bill)}
+          onRename={() => setRenaming(bill)}
           onDuplicate={() => duplicateBill(bill)}
           onDelete={() => deleteBill(bill)}
           onRemind={() => reminder.remind(bill)}
@@ -182,6 +185,7 @@ export default function BillsPage({ onNavigate }) {
         )
       )}
       <HistoryDialog open={historyOpen} filter="bills" onClose={() => setHistoryOpen(false)} />
+      <RenameDialog open={Boolean(renaming)} allowEmpty title={t('Bill name')} label={t('Bill name')} value={renaming?.name || ''} onSave={(name) => actions.bills.rename(renaming.id, name)} onClose={() => setRenaming(null)} />
       <NewBillDialog open={Boolean(linking)} kind={kind} projects={data.projects} linking={linking} onCreate={(choice) => linkProject(linking, choice)} onClose={() => setLinking(null)} />
       <NewBillDialog open={creating} kind={kind} projects={data.projects} defaultProjectId={activeBill.projectId || ''} onCreate={create} onClose={() => setCreating(false)} />
     </section>

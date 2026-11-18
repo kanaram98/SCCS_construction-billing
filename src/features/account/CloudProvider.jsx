@@ -15,8 +15,8 @@ import { tr as t, trn } from '../../i18n/translate.js';
  *
  * What the phone may open (`access`):
  *   'full'    signed in as a workspace member (or no cloud set up): everything, by role
- *   'labour'  signed out on a phone where someone signed in before: Labour only
- *             (that person's timesheets); entries upload at their next sign-in
+ *   'labour'  signed out on a phone where someone signed in before: Labour and Expenses only
+ *             (timesheets and site expenses); entries upload at their next sign-in
  *   'signin'  never signed in on this phone (or no access yet): sign in first
  *
  *   const cloud = useCloud();

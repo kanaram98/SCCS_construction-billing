@@ -77,7 +77,7 @@ const PAGES = {
 };
 
 /** Screens while signed out: Labour (phone signed in before) or only Settings to sign in. */
-const LIMITED_VIEWS = { labour: [VIEWS.labour, VIEWS.settings], signin: [VIEWS.settings] };
+const LIMITED_VIEWS = { labour: [VIEWS.labour, VIEWS.expenses, VIEWS.settings], signin: [VIEWS.settings] };
 
 function AppShell({ view: chosenView, setView }) {
   const [menuOpen, setMenuOpen] = useState(false);

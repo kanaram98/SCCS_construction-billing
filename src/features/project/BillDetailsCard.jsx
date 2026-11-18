@@ -78,6 +78,9 @@ export default function BillDetailsCard({ onNavigate }) {
             <Notice tone="info">{t('This bill is not linked to a project. Choose one above, or add the project in Projects first.')}</Notice>
           </Grid>
         )}
+        <Grid size={12}>
+          <TextField label={t('Bill name')} helperText={t('Optional, e.g. Ground floor marble work. Shown in the Bills list.')} value={bill.name || ''} onChange={(name) => update({ name: name.trim() ? name : undefined })} />
+        </Grid>
         <Grid size={6}>
           <TextField label={t('Bill number')} required value={bill.number} error={numberError} onChange={(number) => update({ number })} />
         </Grid>

@@ -148,7 +148,7 @@ service cloud.firestore {
       return fields(recordKeys().concat(['number', 'date', 'projectName', 'clientId', 'client', 'clientPhone',
           'clientAddress', 'clientGstin', 'firstLevelName', 'secondLevelName', 'discount', 'taxRate',
           'gstEnabled', 'gstType', 'advance', 'payments', 'footer', 'sections']),
-          ['order', 'kind', 'isSample', 'projectId', 'raSeriesId', 'raNumber', 'convertedBillId', 'sourceEstimateId', 'advanceAdjustments', 'final', 'finalizedAt'])
+          ['order', 'kind', 'isSample', 'projectId', 'raSeriesId', 'raNumber', 'convertedBillId', 'sourceEstimateId', 'advanceAdjustments', 'final', 'finalizedAt', 'name'])
         && validMeta(id)
         && str(d.number, 30) && str(d.date, 10)
         && (!('kind' in d) || d.kind in ['bill', 'estimate'])
@@ -161,7 +161,7 @@ service cloud.firestore {
         && d.payments is list && d.payments.size() <= 500
         && str(d.footer, 5000)
         && d.sections is list && d.sections.size() <= 300
-        && optStr(d, 'projectId', 100) && optStr(d, 'raSeriesId', 100) && (!('raNumber' in d) || (d.raNumber is int && d.raNumber >= 1))
+        && optStr(d, 'name', 200) && optStr(d, 'projectId', 100) && optStr(d, 'raSeriesId', 100) && (!('raNumber' in d) || (d.raNumber is int && d.raNumber >= 1))
         && optStr(d, 'convertedBillId', 100) && optStr(d, 'sourceEstimateId', 100)
         && (!('final' in d) || d.final is bool) && optStr(d, 'finalizedAt', 40)
         && (!('advanceAdjustments' in d) || (d.advanceAdjustments is list && d.advanceAdjustments.size() <= 200));

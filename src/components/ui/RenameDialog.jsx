@@ -5,19 +5,19 @@ import { TextField } from './FormFields.jsx';
 import { tr as t } from '../../i18n/translate.js';
 
 /** Small dialog to rename something; saves on Enter. */
-export default function RenameDialog({ open, title, label, value, onSave, onClose }) {
+export default function RenameDialog({ open, title, label, value, onSave, onClose, allowEmpty = false }) {
   return (
     <ResponsiveDialog open={open} title={title} onClose={onClose} maxWidth="xs">
-      {open && <RenameForm label={label} initial={value} onSave={onSave} onClose={onClose} />}
+      {open && <RenameForm label={label} initial={value} onSave={onSave} onClose={onClose} allowEmpty={allowEmpty} />}
     </ResponsiveDialog>
   );
 }
 
-function RenameForm({ label, initial, onSave, onClose }) {
+function RenameForm({ label, initial, onSave, onClose, allowEmpty }) {
   const [name, setName] = useState(initial || '');
   function save(event) {
     event.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() && !allowEmpty) return;
     onSave(name.trim());
     onClose();
   }
@@ -26,7 +26,7 @@ function RenameForm({ label, initial, onSave, onClose }) {
       <TextField label={label} value={name} onChange={setName} autoFocus slotProps={{ htmlInput: { onFocus: (event) => event.target.select() } }} />
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
         <Button onClick={onClose}>{t('Cancel')}</Button>
-        <Button type="submit" variant="contained" disabled={!name.trim()}>{t('Save')}</Button>
+        <Button type="submit" variant="contained" disabled={!name.trim() && !allowEmpty}>{t('Save')}</Button>
       </div>
     </form>
   );
