@@ -100,3 +100,39 @@ export function expensesByCategory(expenses) {
 export function projectName(projects, projectId) {
   return projects.find((project) => project.id === projectId)?.name || '';
 }
+
+const norm = (value) => text(value).toLowerCase();
+
+/** The fields a bill takes from the project it is linked to. */
+export function billFieldsFromProject(project) {
+  if (!project) return {};
+  return {
+    projectId: project.id,
+    projectName: project.name,
+    ...(project.client ? { client: project.client, clientId: project.clientId || '' } : {})
+  };
+}
+
+/**
+ * Projects for bills that are not linked yet: one per distinct project name and
+ * client (an existing project with the same name and client is reused).
+ * Sample bills and bills without a project name are skipped.
+ * @returns {{ projects: object[], links: Record<string, string> }} new projects, and billId → projectId
+ */
+export function projectsFromBills(bills, projects) {
+  const created = [];
+  const links = {};
+  const find = (name, client) => [...projects, ...created].find((project) => norm(project.name) === name && norm(project.client) === client);
+  for (const bill of bills) {
+    if (bill.projectId || bill.isSample || !text(bill.projectName)) continue;
+    const name = norm(bill.projectName);
+    const client = norm(bill.client);
+    let project = find(name, client);
+    if (!project) {
+      project = createProject({ name: text(bill.projectName), client: text(bill.client), clientId: bill.clientId || '' });
+      created.push(project);
+    }
+    links[bill.id] = project.id;
+  }
+  return { projects: created, links };
+}

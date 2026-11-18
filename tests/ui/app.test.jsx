@@ -378,3 +378,18 @@ describe('Projects, advances and expenses', () => {
     expect(await screen.findByRole('heading', { name: 'Projects' })).toBeTruthy();
   });
 });
+
+describe('New bill and projects', () => {
+  it('creates a bill under a new project', async () => {
+    const { user } = renderApp(SAMPLE_STATE);
+    await goTo(user, 'Bills');
+    await screen.findByRole('heading', { name: 'Bills' });
+    await user.click(await screen.findByRole('button', { name: /New bill/ }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('combobox', { name: /Project/ }));
+    await user.click(await screen.findByRole('option', { name: 'Add a new project…' }));
+    await user.type(within(dialog).getByLabelText(/Project \/ site name/), 'Green Park');
+    await user.click(within(dialog).getByRole('button', { name: 'Create' }));
+    expect((await screen.findAllByText(/Green Park/)).length).toBeGreaterThan(0);
+  });
+});

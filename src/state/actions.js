@@ -15,7 +15,7 @@ import {
   nextLevelName
 } from '../domain/factories.js';
 import { createRate } from '../domain/rates.js';
-import { createAdvance, createExpense, createProject } from '../domain/projects.js';
+import { billFieldsFromProject, createAdvance, createExpense, createProject, projectsFromBills } from '../domain/projects.js';
 import { newId } from '../domain/ids.js';
 import { clientDetailsPatch, clientFromBill, getClientSaveError, getClientProfileState } from '../domain/clients.js';
 import { createTemplate } from '../domain/templates.js';
@@ -46,9 +46,12 @@ function createBillActions({ data, setData }) {
     open(billId) {
       setData((current) => ({ ...current, activeBillId: billId }));
     },
-    /** @param {'bill'|'estimate'} kind */
-    create(kind = 'bill') {
-      const bill = createBill(nextNumberFor(data.bills, kind), { gstEnabled: Boolean(data.firm.gstRegistered) });
+    /**
+     * @param {'bill'|'estimate'} kind
+     * @param {{ project?: object }} options the project the bill belongs to (its name and client are copied in)
+     */
+    create(kind = 'bill', { project } = {}) {
+      const bill = { ...createBill(nextNumberFor(data.bills, kind), { gstEnabled: Boolean(data.firm.gstRegistered) }), ...billFieldsFromProject(project) };
       insertAndOpen(kind === 'estimate' ? { ...bill, kind } : bill);
     },
     /** Creates a bill from an estimate and marks the estimate as converted. Returns the new bill. */
@@ -451,7 +454,24 @@ export function createActions(context) {
     templates: createTemplateActions(context),
     clients: createClientActions(context),
     rates: createRateActions(context),
-    projects: createListActions(context, 'projects', createProject),
+    projects: {
+      ...createListActions(context, 'projects', createProject),
+      /** Makes projects for bills that have none yet and links them. Returns how many bills were linked. */
+      linkBills() {
+        let linked = 0;
+        context.setData((current) => {
+          const { projects, links } = projectsFromBills(current.bills, current.projects);
+          linked = Object.keys(links).length;
+          if (!linked) return current;
+          return {
+            ...current,
+            projects: [...current.projects, ...projects],
+            bills: current.bills.map((bill) => (links[bill.id] ? { ...bill, projectId: links[bill.id] } : bill))
+          };
+        });
+        return linked;
+      }
+    },
     advances: createListActions(context, 'advances', createAdvance),
     expenses: createListActions(context, 'expenses', createExpense),
     firm: createFirmActions(context),

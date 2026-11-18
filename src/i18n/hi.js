@@ -945,5 +945,20 @@ export default {
   'You can add advances. Only the admin can change or delete them.': 'आप एडवांस जोड़ सकते हैं। बदलना या हटाना सिर्फ़ एडमिन कर सकते हैं।',
   'You can add expenses and change your own for 2 days. Older ones need the admin.': 'आप खर्च जोड़ सकते हैं और अपने खर्च 2 दिन तक बदल सकते हैं। पुराने के लिए एडमिन चाहिए।',
   'e.g. UTR / cheque number, what it is for': 'जैसे UTR / चेक नंबर, किसलिए',
-  'e.g. lunch for 6 workers': 'जैसे 6 मज़दूरों का खाना'
+  'e.g. lunch for 6 workers': 'जैसे 6 मज़दूरों का खाना',
+  'A project is made for each project name and client on your bills, and the bills are linked to it. You can change this later.': 'आपके बिलों के हर प्रोजेक्ट नाम और क्लाइंट के लिए एक प्रोजेक्ट बनेगा और बिल उससे जुड़ जाएँगे। बाद में बदला जा सकता है।',
+  'Add a new project…': 'नया प्रोजेक्ट जोड़ें…',
+  'Bills under a project appear in its report.': 'प्रोजेक्ट के बिल उसकी रिपोर्ट में दिखते हैं।',
+  'Create': 'बनाएँ',
+  'Create a bill from the Bills tab and choose this project, or link a bill in Bill details.': 'बिल टैब से बिल बनाकर यह प्रोजेक्ट चुनें, या बिल विवरण में बिल जोड़ें।',
+  'Link bills': 'बिल जोड़ें',
+  'Link my existing bills to projects?': 'मेरे मौजूदा बिल प्रोजेक्ट से जोड़ें?',
+  'No bills yet': 'अभी कोई बिल नहीं',
+  'No project (link it later)': 'कोई प्रोजेक्ट नहीं (बाद में जोड़ें)',
+  'No project linked': 'प्रोजेक्ट नहीं जुड़ा',
+  'Open {name}': '{name} खोलें',
+  '{count} bill is not linked to a project.': '{count} बिल किसी प्रोजेक्ट से नहीं जुड़ा।',
+  '{count} bills are not linked to a project.': '{count} बिल किसी प्रोजेक्ट से नहीं जुड़े।',
+  '{count} bill linked.': '{count} बिल जुड़ गया।',
+  '{count} bills linked.': '{count} बिल जुड़ गए।'
 };

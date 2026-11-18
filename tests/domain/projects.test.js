@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  createAdvance, createExpense, createProject, expensesByCategory, expensesByDay, getAdvanceErrors, getExpenseErrors, getProjectErrors, hasErrors
+  billFieldsFromProject, createAdvance, createExpense, createProject, expensesByCategory, projectsFromBills, expensesByDay, getAdvanceErrors, getExpenseErrors, getProjectErrors, hasErrors
 } from '../../src/domain/projects.js';
 import { projectSummary, projectsByClient } from '../../src/domain/project-report.js';
 import { recordChanges, liveState, recycleBin, restoreRecord } from '../../src/domain/history.js';

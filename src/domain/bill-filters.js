@@ -3,6 +3,7 @@ import { text } from './formatters.js';
 export const EMPTY_BILL_FILTERS = Object.freeze({
   search: '',
   client: '',
+  projectId: '',
   dateFrom: '',
   dateTo: '',
   payment: ''
@@ -17,6 +18,7 @@ export function filterBills(bills, filters, getStatus) {
   return bills.filter((bill) =>
     `${bill.number} ${bill.projectName} ${bill.client} ${bill.date}`.toLowerCase().includes(query) &&
     (!filters.client || bill.client === filters.client) &&
+    (!filters.projectId || bill.projectId === filters.projectId) &&
     (!filters.dateFrom || bill.date >= filters.dateFrom) &&
     (!filters.dateTo || bill.date <= filters.dateTo) &&
     (!filters.payment || getStatus(bill) === filters.payment));

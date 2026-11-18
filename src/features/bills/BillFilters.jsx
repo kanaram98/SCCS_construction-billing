@@ -16,9 +16,9 @@ import { BILL_SORTS } from '../../domain/bill-filters.js';
 import { tr as t } from '../../i18n/translate.js';
 
 /** Search box with a collapsible panel for client, date and status filters. */
-export default function BillFilters({ filters, sort, onSortChange, clientNames, resultCount, totalCount, onChange, onClear }) {
+export default function BillFilters({ filters, sort, onSortChange, clientNames, projects = [], resultCount, totalCount, onChange, onClear }) {
   const [expanded, setExpanded] = useState(false);
-  const activeCount = ['client', 'dateFrom', 'dateTo', 'payment'].filter((key) => filters[key]).length;
+  const activeCount = ['client', 'projectId', 'dateFrom', 'dateTo', 'payment'].filter((key) => filters[key]).length;
 
   return (
     <>
@@ -56,6 +56,17 @@ export default function BillFilters({ filters, sort, onSortChange, clientNames, 
               onChange={(value) => onChange('client', value)}
             />
           </Grid>
+          {projects.length > 0 && (
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <SelectField
+                label={t('Project')}
+                value={filters.projectId}
+                placeholder={t('All projects')}
+                options={projects.map((project) => ({ value: project.id, label: project.name }))}
+                onChange={(value) => onChange('projectId', value)}
+              />
+            </Grid>
+          )}
           <Grid size={{ xs: 12, sm: 6 }}>
             <SelectField
               label={t('Payment status')}

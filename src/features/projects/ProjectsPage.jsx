@@ -20,8 +20,12 @@ import { useUndoable } from '../../hooks/useUndoable.js';
 import { PAYMENT_MODES } from '../../domain/payments.js';
 import { PROJECT_STATUSES, EXPENSE_CATEGORIES, expensesByDay } from '../../domain/projects.js';
 import { projectSummary } from '../../domain/project-report.js';
+import { billLabel, isEstimate } from '../../domain/bill-kinds.js';
+import { getBillTotals } from '../../domain/calculations.js';
+import { VIEWS } from '../../config/app.js';
 import { formatCurrency } from '../../domain/formatters.js';
-import { tr as t } from '../../i18n/translate.js';
+import { tr as t, trn } from '../../i18n/translate.js';
+import Alert from '@mui/material/Alert';
 import { useCloud } from '../account/CloudProvider.jsx';
 import ExpenseDays from '../expenses/ExpenseDays.jsx';
 import ExpenseDialog from '../expenses/ExpenseDialog.jsx';
@@ -50,7 +54,7 @@ function ProjectCard({ project, summary, onOpen }) {
 }
 
 /** One project: money summary, advances from the client, expenses. */
-function ProjectDetail({ project, onBack }) {
+function ProjectDetail({ project, onBack, onNavigate }) {
   const { data, actions } = useBilling();
   const cloud = useCloud();
   const notify = useNotify();
@@ -63,6 +67,7 @@ function ProjectDetail({ project, onBack }) {
   const summary = useMemo(() => projectSummary(project, data), [project, data]);
   const advances = data.advances.filter((advance) => advance.projectId === project.id).sort((a, b) => b.date.localeCompare(a.date));
   const days = useMemo(() => expensesByDay(data.expenses, { projectId: project.id }), [data.expenses, project.id]);
+  const projectBills = data.bills.filter((bill) => bill.projectId === project.id);
   const canEditAdvance = cloud.can('editAdvance');
   const canEditProject = cloud.can('editProject');
 
@@ -99,7 +104,41 @@ function ProjectDetail({ project, onBack }) {
       <Tabs value={tab} onChange={(_event, value) => setTab(value)} variant="fullWidth" sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}>
         <Tab value="advances" label={t('Advances')} />
         <Tab value="expenses" label={t('Expenses')} />
+        <Tab value="bills" label={t('Bills')} />
       </Tabs>
+
+      {tab === 'bills' && (
+        <>
+          {!projectBills.length ? (
+            <EmptyState title={t('No bills yet')} description={t('Create a bill from the Bills tab and choose this project, or link a bill in Bill details.')} compact />
+          ) : (
+            <Card>
+              {projectBills.map((bill, index) => {
+                const totals = getBillTotals(bill, data.rates);
+                return (
+                  <Box
+                    key={bill.id}
+                    component="button"
+                    type="button"
+                    onClick={() => { actions.bills.open(bill.id); onNavigate(VIEWS.entry); }}
+                    aria-label={t('Open {name}', { name: billLabel(bill, t) })}
+                    sx={{ all: 'unset', boxSizing: 'border-box', display: 'flex', width: '100%', justifyContent: 'space-between', gap: 1, px: 1.75, py: 1.25, borderTop: index ? 1 : 0, borderColor: 'divider', cursor: 'pointer' }}
+                  >
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>{billLabel(bill, t)}</Typography>
+                      <Typography variant="caption" color="text.secondary">{bill.date}{isEstimate(bill) ? ` · ${t('Estimate')}` : ''}</Typography>
+                    </Box>
+                    <Box sx={{ textAlign: 'right' }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>{formatCurrency(totals.total)}</Typography>
+                      {!isEstimate(bill) && <Typography variant="caption" color="text.secondary">{t('Due {amount}', { amount: formatCurrency(totals.balance) })}</Typography>}
+                    </Box>
+                  </Box>
+                );
+              })}
+            </Card>
+          )}
+        </>
+      )}
 
       {tab === 'advances' && (
         <>
@@ -175,14 +214,27 @@ function ProjectDetail({ project, onBack }) {
 }
 
 /** Projects (sites): the list, and one project's advances and expenses. */
-export default function ProjectsPage() {
+export default function ProjectsPage({ onNavigate }) {
   const { data, actions } = useBilling();
+  const confirm = useConfirm();
   const notify = useNotify();
   const [selectedId, setSelectedId] = useState('');
   const [adding, setAdding] = useState(false);
   const selected = data.projects.find((project) => project.id === selectedId);
 
-  if (selected) return <ProjectDetail project={selected} onBack={() => setSelectedId('')} />;
+  if (selected) return <ProjectDetail project={selected} onBack={() => setSelectedId('')} onNavigate={onNavigate} />;
+
+  const unlinked = data.bills.filter((bill) => !bill.projectId && !bill.isSample && bill.projectName?.trim()).length;
+  async function linkBills() {
+    const ok = await confirm({
+      title: t('Link my existing bills to projects?'),
+      message: t('A project is made for each project name and client on your bills, and the bills are linked to it. You can change this later.'),
+      confirmLabel: t('Link bills')
+    });
+    if (!ok) return;
+    const count = actions.projects.linkBills();
+    notify(trn(count, '{count} bill linked.', '{count} bills linked.'), 'success');
+  }
 
   return (
     <section>
@@ -191,6 +243,11 @@ export default function ProjectsPage() {
         description={t('Each site you work on: what you billed, what the client paid, what you spent.')}
         action={<Button variant="contained" startIcon={<AddIcon />} onClick={() => setAdding(true)}>{t('Add project')}</Button>}
       />
+      {unlinked > 0 && (
+        <Alert severity="info" sx={{ mb: 2 }} action={<Button color="inherit" size="small" onClick={linkBills}>{t('Link bills')}</Button>}>
+          {trn(unlinked, '{count} bill is not linked to a project.', '{count} bills are not linked to a project.')}
+        </Alert>
+      )}
       {!data.projects.length ? (
         <EmptyState title={t('No projects yet')} description={t('Add a project for each site. Then record advances and expenses under it, and link bills to it.')} />
       ) : (

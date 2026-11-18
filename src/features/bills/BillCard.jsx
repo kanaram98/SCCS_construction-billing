@@ -18,7 +18,7 @@ import { tr as t } from '../../i18n/translate.js';
 const STATUS_COLORS = { paid: 'success', partial: 'warning', unpaid: 'default' };
 
 /** Tap the card to open the bill or estimate; other actions live in the ⋮ menu. */
-export default function BillCard({ bill, summary, selected, note, onOpen, onDuplicate, onDelete, onRemind, onConvert, onNextRunningBill }) {
+export default function BillCard({ bill, summary, selected, note, needsProject = false, onOpen, onDuplicate, onDelete, onRemind, onConvert, onNextRunningBill }) {
   const estimate = isEstimate(bill);
   return (
     <Card
@@ -51,6 +51,7 @@ export default function BillCard({ bill, summary, selected, note, onOpen, onDupl
               variant={summary.status === 'unpaid' ? 'outlined' : 'filled'}
             />
           )}
+          {needsProject && !bill.projectId && <Chip size="small" variant="outlined" color="warning" label={t('No project linked')} />}
         </Stack>
       </CardActionArea>
       <Box sx={{ display: 'flex', alignItems: 'flex-start', pt: 0.5, pr: 0.5 }}>

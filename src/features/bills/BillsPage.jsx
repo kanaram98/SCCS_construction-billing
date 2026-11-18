@@ -19,6 +19,7 @@ import { useBillFilters } from './useBillFilters.js';
 import BillFilters from './BillFilters.jsx';
 import BillCard from './BillCard.jsx';
 import HistoryDialog from '../history/HistoryDialog.jsx';
+import NewBillDialog from './NewBillDialog.jsx';
 import { tr as t } from '../../i18n/translate.js';
 
 /** List of all bills and estimates: search, filter, sort and per-bill actions. */
@@ -28,6 +29,7 @@ export default function BillsPage({ onNavigate }) {
   const notify = useNotify();
   const undoable = useUndoable();
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
   const reminder = useWhatsAppReminder();
   const { rates } = data;
   /** 'bill' or 'estimate': which list is shown, and what "New" creates. */
@@ -44,8 +46,11 @@ export default function BillsPage({ onNavigate }) {
 
   const billCount = useMemo(() => billsOfKind(data.bills, 'bill').length, [data.bills]);
 
-  function create() {
-    actions.bills.create(kind);
+  /** Creates the bill under a chosen project (or none), then opens it. */
+  function create({ project, newProject } = {}) {
+    const target = newProject ? actions.projects.add(newProject) : project;
+    actions.bills.create(kind, { project: target });
+    setCreating(false);
     onNavigate(VIEWS.entry);
   }
 
@@ -99,7 +104,7 @@ export default function BillsPage({ onNavigate }) {
         action={(
           <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
             <IconButton aria-label={t('History')} onClick={() => setHistoryOpen(true)}><HistoryIcon /></IconButton>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={create}>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreating(true)}>
               {isEstimates ? t('New estimate') : t('New bill')}
             </Button>
           </Stack>
@@ -118,6 +123,7 @@ export default function BillsPage({ onNavigate }) {
         sort={sort}
         onSortChange={setSort}
         clientNames={clientNames}
+        projects={data.projects}
         resultCount={filteredBills.length}
         totalCount={bills.length}
         onChange={setFilter}
@@ -126,7 +132,7 @@ export default function BillsPage({ onNavigate }) {
 
       {filteredBills.map((bill) => (
         <BillCard
-          key={bill.id}
+          needsProject={data.projects.length > 0} key={bill.id}
           bill={bill}
           summary={summaries.get(bill.id)}
           selected={bill.id === activeBill.id}
@@ -164,6 +170,7 @@ export default function BillsPage({ onNavigate }) {
         )
       )}
       <HistoryDialog open={historyOpen} filter="bills" onClose={() => setHistoryOpen(false)} />
+      <NewBillDialog open={creating} kind={kind} projects={data.projects} defaultProjectId={activeBill.projectId || ''} onCreate={create} onClose={() => setCreating(false)} />
     </section>
   );
 }
