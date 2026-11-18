@@ -30,7 +30,9 @@ const loaders = {
   rates: () => import('./features/rates/RatesPage.jsx'),
   project: () => import('./features/project/ProjectPage.jsx'),
   print: () => import('./features/print/PrintPage.jsx'),
-  labour: () => import('./features/labour/LabourPage.jsx')
+  labour: () => import('./features/labour/LabourPage.jsx'),
+  projects: () => import('./features/projects/ProjectsPage.jsx'),
+  expenses: () => import('./features/expenses/ExpensesPage.jsx')
 };
 const EntryPage = lazy(loaders.entry);
 const BillsPage = lazy(loaders.bills);
@@ -39,6 +41,8 @@ const RatesPage = lazy(loaders.rates);
 const ProjectPage = lazy(loaders.project);
 const PrintPage = lazy(loaders.print);
 const LabourPage = lazy(loaders.labour);
+const ProjectsPage = lazy(loaders.projects);
+const ExpensesPage = lazy(loaders.expenses);
 
 function usePrefetchPages() {
   useEffect(() => {
@@ -60,7 +64,9 @@ const PAGES = {
   [VIEWS.rates]: RatesPage,
   [VIEWS.project]: ProjectPage,
   [VIEWS.print]: PrintPage,
-  [VIEWS.labour]: LabourPage
+  [VIEWS.labour]: LabourPage,
+  [VIEWS.projects]: ProjectsPage,
+  [VIEWS.expenses]: ExpensesPage
 };
 
 /** Screens while signed out: Labour (phone signed in before) or only Settings to sign in. */

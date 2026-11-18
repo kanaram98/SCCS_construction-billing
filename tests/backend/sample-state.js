@@ -31,6 +31,9 @@ export function buildSampleState() {
   raw = apply(raw, (live) => ({
     ...live,
     clients: [{ id: 'client-1', name: 'Asha Builders', phone: '9876543210', address: 'Pune', gstin: '' }],
+    projects: [{ id: 'proj-1', name: 'Villa', clientId: 'client-1', client: 'Asha Builders', address: 'Pune', status: 'running', agreedAmount: '500000', notes: '' }],
+    advances: [{ id: 'adv-1', projectId: 'proj-1', date: '2026-11-03', amount: 50000, mode: 'upi', note: 'First advance' }],
+    expenses: [{ id: 'exp-1', projectId: 'proj-1', date: '2026-11-04', amount: 250, category: 'food', note: 'Tea and lunch' }],
     templates: [{ id: 'tpl-1', name: 'Bathroom', type: 'area', content: sample.sections[0].areas[0] }],
     firm: { ...live.firm, name: 'SCCS', phone: '12345', upiId: 'sccs@okbank' },
     quotation: { ...live.quotation, clientName: 'Asha Builders' }

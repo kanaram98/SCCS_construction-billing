@@ -18,7 +18,7 @@ test('every document made from a real state passes its validator', () => {
   assert.deepEqual(counts, {
     members: 0, invites: 0, // managed separately, not part of app data
     bills: 5, // 4 bills + the starting blank bill, now in the recycle bin
-    rates: 3, clients: 1, templates: 1, settings: 3, workers: 1, labourPayments: 1,
+    rates: 3, clients: 1, templates: 1, projects: 1, advances: 1, expenses: 1, settings: 3, workers: 1, labourPayments: 1,
     attendance: 2, closedMonths: 1, history: counts.history, labourLog: counts.labourLog
   });
   assert.ok(counts.history > 0 && counts.labourLog > 0);

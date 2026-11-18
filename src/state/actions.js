@@ -15,6 +15,7 @@ import {
   nextLevelName
 } from '../domain/factories.js';
 import { createRate } from '../domain/rates.js';
+import { createAdvance, createExpense, createProject } from '../domain/projects.js';
 import { newId } from '../domain/ids.js';
 import { clientDetailsPatch, clientFromBill, getClientSaveError, getClientProfileState } from '../domain/clients.js';
 import { createTemplate } from '../domain/templates.js';
@@ -251,6 +252,25 @@ function createRateActions({ setData }) {
   };
 }
 
+/** add / update / remove for a list of versioned records (projects, advances, expenses). */
+function createListActions({ setData }, key, create) {
+  return {
+    /** Adds a record; `values` override the defaults. Returns it. */
+    add(values = {}) {
+      const record = create(values);
+      setData((current) => ({ ...current, [key]: [...current[key], record] }));
+      return record;
+    },
+    update(id, patch) {
+      setData((current) => ({ ...current, [key]: current[key].map((item) => (item.id === id ? { ...item, ...patch } : item)) }));
+    },
+    /** Moves to the recycle bin (restorable from History). */
+    remove(id) {
+      setData((current) => ({ ...current, [key]: current[key].filter((item) => item.id !== id) }));
+    }
+  };
+}
+
 function createFirmActions({ setData }) {
   return {
     update(patch) {
@@ -431,6 +451,9 @@ export function createActions(context) {
     templates: createTemplateActions(context),
     clients: createClientActions(context),
     rates: createRateActions(context),
+    projects: createListActions(context, 'projects', createProject),
+    advances: createListActions(context, 'advances', createAdvance),
+    expenses: createListActions(context, 'expenses', createExpense),
     firm: createFirmActions(context),
     print: createPrintActions(context)
   };

@@ -17,6 +17,8 @@ export const IMAGE_UPLOAD = Object.freeze({
 
 export const VIEWS = Object.freeze({
   home: 'home',
+  projects: 'projects',
+  expenses: 'expenses',
   bills: 'bills',
   entry: 'entry',
   rates: 'rates',
@@ -29,10 +31,12 @@ export const VIEWS = Object.freeze({
 /** Main tabs (bottom bar on phones). Settings opens from the header ⚙ and the desktop sidebar. */
 export const NAVIGATION = Object.freeze([
   { id: VIEWS.home, label: 'Home' },
+  { id: VIEWS.projects, label: 'Projects' },
   { id: VIEWS.bills, label: 'Bills' },
   { id: VIEWS.entry, label: 'Entry' },
   { id: VIEWS.labour, label: 'Labour' },
+  { id: VIEWS.expenses, label: 'Expenses' },
   { id: VIEWS.rates, label: 'Rates' },
-  { id: VIEWS.project, label: 'Project' },
+  { id: VIEWS.project, label: 'Bill details' },
   { id: VIEWS.print, label: 'PDF / Print', shortLabel: 'PDF' }
 ]);

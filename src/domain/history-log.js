@@ -3,6 +3,8 @@
  * and the quotation, e.g. "Bill changed" / "Bill 3 · Lake View" / "Changed: Client, Discount".
  */
 import { billLabel } from './bill-kinds.js';
+import { formatCurrency } from './formatters.js';
+import { EXPENSE_CATEGORIES } from './projects.js';
 
 /** Titles per entity and action (translated where shown). */
 export const HISTORY_TITLES = Object.freeze({
@@ -26,6 +28,21 @@ export const HISTORY_TITLES = Object.freeze({
   'templates.delete': 'Template deleted',
   'templates.restore': 'Template restored',
   'templates.purge': 'Template deleted forever',
+  'projects.create': 'Project added',
+  'projects.update': 'Project changed',
+  'projects.delete': 'Project deleted',
+  'projects.restore': 'Project restored',
+  'projects.purge': 'Project deleted forever',
+  'advances.create': 'Advance added',
+  'advances.update': 'Advance changed',
+  'advances.delete': 'Advance deleted',
+  'advances.restore': 'Advance restored',
+  'advances.purge': 'Advance deleted forever',
+  'expenses.create': 'Expense added',
+  'expenses.update': 'Expense changed',
+  'expenses.delete': 'Expense deleted',
+  'expenses.restore': 'Expense restored',
+  'expenses.purge': 'Expense deleted forever',
   'firm.update': 'Firm details changed',
   'quotation.update': 'Quotation changed'
 });
@@ -67,7 +84,13 @@ export const FIELD_LABELS = Object.freeze({
   clientName: 'Client',
   validDays: 'Valid days',
   terms: 'Terms & conditions',
-  disclaimer: 'Disclaimer'
+  disclaimer: 'Disclaimer',
+  amount: 'Amount',
+  mode: 'Paid by',
+  category: 'Category',
+  status: 'Status',
+  agreedAmount: 'Agreed amount',
+  projectId: 'Project'
 });
 
 /** Entity filter options for the History screen. */
@@ -77,14 +100,18 @@ export const HISTORY_FILTERS = Object.freeze({
   rates: 'Rates',
   clients: 'Clients',
   templates: 'Templates',
+  money: 'Projects & money',
   settings: 'Firm & quotation'
 });
 
 export function matchesFilter(entity, filter) {
   if (filter === 'all') return true;
   if (filter === 'settings') return entity === 'firm' || entity === 'quotation';
+  if (filter === 'money') return entity === 'projects' || entity === 'advances' || entity === 'expenses';
   return entity === filter;
 }
+
+const EXPENSE_NAMES = EXPENSE_CATEGORIES;
 
 /** Name of the record an entry is about. */
 export function recordName(entity, label, t) {
@@ -92,6 +119,8 @@ export function recordName(entity, label, t) {
     const name = billLabel({ kind: label.kind, number: label.number || '', raNumber: label.raNumber }, t);
     return label.projectName ? `${name} · ${label.projectName}` : name;
   }
+  if (entity === 'advances') return `${formatCurrency(label.amount)} · ${label.date || ''}`;
+  if (entity === 'expenses') return [formatCurrency(label.amount), label.category && t(EXPENSE_NAMES[label.category] || label.category), label.date].filter(Boolean).join(' · ');
   if (entity === 'firm') return label.name || t('Firm details');
   if (entity === 'quotation') return label.title || t('Rate quotation');
   return label.name || '—';

@@ -24,6 +24,9 @@ const RECORD_LISTS = Object.freeze({
   rates: ['rates'],
   clients: ['clients'],
   templates: ['templates'],
+  projects: ['projects'],
+  advances: ['advances'],
+  expenses: ['expenses'],
   workers: ['labour', 'workers'],
   labourPayments: ['labour', 'payments']
 });

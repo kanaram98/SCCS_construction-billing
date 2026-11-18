@@ -11,6 +11,9 @@
  *   workspaces/{wid}/rates/{id}             work-item rate
  *   workspaces/{wid}/clients/{id}           saved client
  *   workspaces/{wid}/templates/{id}         saved section / area template
+ *   workspaces/{wid}/projects/{id}          project (site) for a client
+ *   workspaces/{wid}/advances/{id}          advance received from a client, under a project
+ *   workspaces/{wid}/expenses/{id}          site expense under a project
  *   workspaces/{wid}/settings/{name}        firm | quotation | printSettings
  *   workspaces/{wid}/workers/{id}           labour worker
  *   workspaces/{wid}/labourPayments/{id}    advance / wage payment
@@ -40,6 +43,9 @@ export const COLLECTIONS = Object.freeze({
   rates: 'rates',
   clients: 'clients',
   templates: 'templates',
+  projects: 'projects',
+  advances: 'advances',
+  expenses: 'expenses',
   settings: 'settings',
   workers: 'workers',
   labourPayments: 'labourPayments',
@@ -134,6 +140,7 @@ export const billSchema = z.strictObject({
   isSample: z.boolean().optional(),
   projectName: short,
   clientId: z.string().max(LIMITS.id),
+  projectId: z.string().max(LIMITS.id).optional(),
   client: short,
   clientPhone: z.string().max(30),
   clientAddress: long,
@@ -177,6 +184,37 @@ export const templateSchema = z.strictObject({
   name: short,
   type: z.enum(['section', 'area']),
   content: z.union([section, area])
+});
+
+// ── Projects, advances, expenses ───────────────────────────────────────
+
+export const projectSchema = z.strictObject({
+  ...meta,
+  name: short,
+  clientId: z.string().max(LIMITS.id),
+  client: short,
+  address: long,
+  status: z.enum(['running', 'completed']),
+  agreedAmount: numberish,
+  notes: long
+});
+
+export const advanceSchema = z.strictObject({
+  ...meta,
+  projectId: id,
+  date: isoDate,
+  amount: z.number().finite().min(0),
+  mode: paymentMode,
+  note: long
+});
+
+export const expenseSchema = z.strictObject({
+  ...meta,
+  projectId: id,
+  date: isoDate,
+  amount: z.number().finite().min(0),
+  category: z.enum(['food', 'travel', 'fuel', 'tools', 'stay', 'other']),
+  note: long
 });
 
 // ── Settings ──────────────────────────────────────────────────────────
@@ -270,7 +308,7 @@ const historyBase = {
 
 export const historyEntrySchema = z.strictObject({
   ...historyBase,
-  entity: z.enum(['bills', 'rates', 'clients', 'templates', 'firm', 'quotation']),
+  entity: z.enum(['bills', 'rates', 'clients', 'templates', 'projects', 'advances', 'expenses', 'firm', 'quotation']),
   refId: id,
   label: z.looseObject({}),
   fields: z.array(z.string().max(50)).max(100).optional(),
@@ -290,6 +328,9 @@ export const DOCUMENT_SCHEMAS = Object.freeze({
   rates: rateSchema,
   clients: clientSchema,
   templates: templateSchema,
+  projects: projectSchema,
+  advances: advanceSchema,
+  expenses: expenseSchema,
   workers: workerSchema,
   labourPayments: labourPaymentSchema,
   attendance: attendanceMonthSchema,

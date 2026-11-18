@@ -149,6 +149,29 @@ describe('what the contractor (your father) can and cannot do', () => {
     await assertSucceeds(put(admin, payment, { ...payment.data, version: payment.data.version + 1, updatedBy: ADMIN.uid, amount: 1500 }));
   });
 
+  it('adds projects, advances and expenses; edits only expenses; the admin does everything', async () => {
+    const docs = sampleDocs(FATHER);
+    const father = as(FATHER);
+    const project = find(docs, 'projects');
+    const advance = find(docs, 'advances');
+    const expense = find(docs, 'expenses');
+    for (const entry of [project, advance, expense]) await assertSucceeds(put(father, entry));
+    // He cannot change or delete a project or a client advance…
+    await assertFails(put(father, project, { ...project.data, version: project.data.version + 1, status: 'completed' }));
+    await assertFails(put(father, advance, { ...advance.data, version: advance.data.version + 1, amount: 1 }));
+    await assertFails(put(father, advance, { ...advance.data, version: advance.data.version + 1, deletedAt: NOW }));
+    // …but he can correct an expense he entered, and move it to the recycle bin.
+    await assertSucceeds(put(father, expense, { ...expense.data, version: expense.data.version + 1, amount: 300 }));
+    await assertSucceeds(put(father, expense, { ...expense.data, version: expense.data.version + 2, deletedAt: NOW }));
+    // Bad values are refused.
+    await assertFails(put(father, expense, { ...expense.data, version: expense.data.version + 3, category: 'gold' }));
+    await assertFails(put(father, advance, { ...advance.data, version: advance.data.version + 5, mode: 'crypto' }));
+    // The admin can edit all three.
+    const admin = as(ADMIN);
+    await assertSucceeds(put(admin, project, { ...project.data, version: project.data.version + 1, updatedBy: ADMIN.uid, status: 'completed' }));
+    await assertSucceeds(put(admin, advance, { ...advance.data, version: advance.data.version + 1, updatedBy: ADMIN.uid, amount: 60000 }));
+  });
+
   it('can move things to the recycle bin and restore them (both are edits)', async () => {
     const bill = find(sampleDocs(FATHER), 'bills', 'bill-1');
     const db = as(FATHER);

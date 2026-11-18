@@ -153,9 +153,9 @@ describe('Settings', () => {
 describe('Project and PDF', () => {
   it('Project shows only client and firm details', async () => {
     const { user } = renderApp(SAMPLE_STATE);
-    await goTo(user, 'Project');
-    expect(await screen.findByText('Bill details')).toBeTruthy();
-    expect(screen.getByText('Your firm')).toBeTruthy();
+    await goTo(user, 'Bill details');
+    expect(await screen.findByText('Your firm')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Bill details' })).toBeTruthy();
     expect(screen.queryByText('Payments')).toBeNull();
     expect(screen.queryByText('Backup & restore')).toBeNull();
   });
@@ -314,7 +314,7 @@ describe('History and recycle bin', () => {
 
   it('undoes an edit to firm details from Settings', async () => {
     const { user } = renderApp(SAMPLE_STATE);
-    await goTo(user, 'Project');
+    await goTo(user, 'Bill details');
     const name = await screen.findByLabelText(/Firm name/);
     await user.clear(name);
     await user.type(name, 'Typo Firm');
@@ -328,5 +328,53 @@ describe('History and recycle bin', () => {
     const ask = (await screen.findAllByRole('dialog')).at(-1);
     await user.click(within(ask).getByRole('button', { name: 'Undo' }));
     await waitFor(() => expect(savedState().firm.name).toBe('Acme Interiors'));
+  });
+});
+
+describe('Projects, advances and expenses', () => {
+  it('adds a project, an advance from the client and a site expense, and lists the expense day by day', async () => {
+    const { user } = renderApp(SAMPLE_STATE);
+    await goTo(user, 'Projects');
+    await user.click(await screen.findByRole('button', { name: 'Add project' }));
+    let dialog = await screen.findByRole('dialog');
+    await user.type(within(dialog).getByLabelText(/Project \/ site name/), 'Sharma house');
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+    expect(await screen.findByRole('heading', { name: 'Sharma house' })).toBeTruthy();
+
+    await user.click(screen.getByRole('button', { name: 'Add advance' }));
+    dialog = await screen.findByRole('dialog');
+    await user.type(within(dialog).getByLabelText(/Amount/), '50000');
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Received from the client: ₹50,000')).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    await user.click(screen.getByRole('tab', { name: 'Expenses' }));
+    await user.click(await screen.findByRole('button', { name: 'Add expense' }));
+    dialog = await screen.findByRole('dialog');
+    await user.type(within(dialog).getByLabelText(/Amount/), '250');
+    await user.type(within(dialog).getByLabelText(/Note/), 'Lunch');
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(savedState().expenses).toHaveLength(1));
+    expect(savedState().expenses[0]).toMatchObject({ amount: 250, category: 'food', note: 'Lunch', version: 1 });
+    expect(savedState().advances[0]).toMatchObject({ amount: 50000, mode: 'cash' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(savedState().projects[0].name).toBe('Sharma house');
+    expect(savedState().advances[0].projectId).toBe(savedState().projects[0].id);
+
+    // The Expenses tab: the daily table with its total, and exports.
+    await goTo(user, 'Expenses');
+    expect(await screen.findByRole('heading', { name: 'Expenses' })).toBeTruthy();
+    expect((await screen.findAllByText('₹250')).length).toBeGreaterThan(1); // the row and the day total
+    expect(screen.getByText('Lunch')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'PDF' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Excel (CSV)' })).toBeTruthy();
+  });
+
+  it('asks for a project before the first expense', async () => {
+    const { user } = renderApp(SAMPLE_STATE);
+    await goTo(user, 'Expenses');
+    expect(await screen.findByText('Add a project first')).toBeTruthy();
+    await user.click(await screen.findByRole('button', { name: 'Go to Projects' }));
+    expect(await screen.findByRole('heading', { name: 'Projects' })).toBeTruthy();
   });
 });

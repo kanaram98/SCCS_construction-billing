@@ -10,6 +10,9 @@
  *               payments, change older timesheet days, unlock a month,
  *               delete forever, change firm details or manage people.
  *
+ * Projects and client advances are add-only for the contractor too; site
+ * expenses follow the timesheet rule (today and the 2 days before).
+ *
  * firestore.rules enforces the add-only parts on the server; the timesheet
  * window is enforced in the app (rules can't read dates inside a month
  * document). The app uses `can()`, `canEditAttendanceDate()`, `canUndo()` and
@@ -33,7 +36,11 @@ export const ADMIN_ONLY = Object.freeze([
   'editWorker',
   'deleteWorker',
   'editPayment',
-  'deletePayment'
+  'deletePayment',
+  'editProject',
+  'deleteProject',
+  'editAdvance',
+  'deleteAdvance'
 ]);
 
 export function can(role, action) {
@@ -64,6 +71,8 @@ export function canUndo(role, entry, today = localToday()) {
   if (role !== 'contractor') return false;
   switch (entry.entity) {
     case 'rates':
+    case 'projects':
+    case 'advances':
     case 'firm':
     case 'payment':
     case 'month':
@@ -72,6 +81,8 @@ export function canUndo(role, entry, today = localToday()) {
       return entry.action === 'update' && onlyActiveChanged(entry);
     case 'attendance':
       return canEditAttendanceDate(role, entry.date, today);
+    case 'expenses':
+      return canEditAttendanceDate(role, entry.label?.date, today);
     default:
       return true; // bills, clients, templates, quotation
   }
@@ -81,5 +92,5 @@ export function canUndo(role, entry, today = localToday()) {
 export function canRestore(role, entity) {
   if (role === 'admin') return true;
   if (role !== 'contractor') return false;
-  return !['rates', 'worker', 'payment'].includes(entity);
+  return !['rates', 'worker', 'payment', 'projects', 'advances'].includes(entity);
 }

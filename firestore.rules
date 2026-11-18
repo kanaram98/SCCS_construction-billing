@@ -140,7 +140,7 @@ service cloud.firestore {
       return fields(recordKeys().concat(['number', 'date', 'projectName', 'clientId', 'client', 'clientPhone',
           'clientAddress', 'clientGstin', 'firstLevelName', 'secondLevelName', 'discount', 'taxRate',
           'gstEnabled', 'gstType', 'advance', 'payments', 'footer', 'sections']),
-          ['order', 'kind', 'isSample', 'raSeriesId', 'raNumber', 'convertedBillId', 'sourceEstimateId'])
+          ['order', 'kind', 'isSample', 'projectId', 'raSeriesId', 'raNumber', 'convertedBillId', 'sourceEstimateId'])
         && validMeta(id)
         && str(d.number, 30) && str(d.date, 10)
         && (!('kind' in d) || d.kind in ['bill', 'estimate'])
@@ -153,7 +153,7 @@ service cloud.firestore {
         && d.payments is list && d.payments.size() <= 500
         && str(d.footer, 5000)
         && d.sections is list && d.sections.size() <= 300
-        && optStr(d, 'raSeriesId', 100) && (!('raNumber' in d) || (d.raNumber is int && d.raNumber >= 1))
+        && optStr(d, 'projectId', 100) && optStr(d, 'raSeriesId', 100) && (!('raNumber' in d) || (d.raNumber is int && d.raNumber >= 1))
         && optStr(d, 'convertedBillId', 100) && optStr(d, 'sourceEstimateId', 100);
     }
 
@@ -178,6 +178,32 @@ service cloud.firestore {
       return fields(recordKeys().concat(['name', 'type', 'content']), ['order'])
         && validMeta(id)
         && str(d.name, 200) && d.type in ['section', 'area'] && d.content is map;
+    }
+
+    function validProject(id) {
+      let d = data();
+      return fields(recordKeys().concat(['name', 'clientId', 'client', 'address', 'status', 'agreedAmount', 'notes']), ['order'])
+        && validMeta(id)
+        && str(d.name, 200) && str(d.clientId, 100) && str(d.client, 200) && str(d.address, 5000)
+        && d.status in ['running', 'completed'] && numberish(d.agreedAmount) && str(d.notes, 5000);
+    }
+
+    function validAdvance(id) {
+      let d = data();
+      return fields(recordKeys().concat(['projectId', 'date', 'amount', 'mode', 'note']), ['order'])
+        && validMeta(id)
+        && str(d.projectId, 100) && isoDate(d.date)
+        && d.amount is number && d.amount >= 0
+        && paymentMode(d.mode) && str(d.note, 5000);
+    }
+
+    function validExpense(id) {
+      let d = data();
+      return fields(recordKeys().concat(['projectId', 'date', 'amount', 'category', 'note']), ['order'])
+        && validMeta(id)
+        && str(d.projectId, 100) && isoDate(d.date)
+        && d.amount is number && d.amount >= 0
+        && d.category in ['food', 'travel', 'fuel', 'tools', 'stay', 'other'] && str(d.note, 5000);
     }
 
     function validWorker(id) {
@@ -315,6 +341,25 @@ service cloud.firestore {
         allow create, update: if canWork(wid) && validTemplate(id) && versionGoesUp() && writerRecorded(wid);
         allow delete: if isAdmin(wid) && inRecycleBin();
       }
+      // Projects and client advances: the contractor adds; only the admin edits or deletes.
+      match /projects/{id} {
+        allow read: if isMember(wid);
+        allow create: if canWork(wid) && validProject(id) && versionGoesUp() && writerRecorded(wid);
+        allow update: if isAdmin(wid) && validProject(id) && versionGoesUp() && writerRecorded(wid);
+        allow delete: if isAdmin(wid) && inRecycleBin();
+      }
+      match /advances/{id} {
+        allow read: if isMember(wid);
+        allow create: if canWork(wid) && validAdvance(id) && versionGoesUp() && writerRecorded(wid);
+        allow update: if isAdmin(wid) && validAdvance(id) && versionGoesUp() && writerRecorded(wid);
+        allow delete: if isAdmin(wid) && inRecycleBin();
+      }
+      // Site expenses: the contractor adds and edits (the app limits him to the last 3 days).
+      match /expenses/{id} {
+        allow read: if isMember(wid);
+        allow create, update: if canWork(wid) && validExpense(id) && versionGoesUp() && writerRecorded(wid);
+        allow delete: if isAdmin(wid) && inRecycleBin();
+      }
       match /workers/{id} {
         allow read: if isMember(wid);
         allow create: if canWork(wid) && validWorker(id) && versionGoesUp() && writerRecorded(wid);
@@ -345,7 +390,7 @@ service cloud.firestore {
       // History is append-only: entries can be added, never edited; only an admin may trim it.
       match /history/{id} {
         allow read: if isMember(wid);
-        allow create: if canWork(wid) && validHistoryEntry(wid, id, ['bills', 'rates', 'clients', 'templates', 'firm', 'quotation']);
+        allow create: if canWork(wid) && validHistoryEntry(wid, id, ['bills', 'rates', 'clients', 'templates', 'projects', 'advances', 'expenses', 'firm', 'quotation']);
         allow update: if false;
         allow delete: if isAdmin(wid);
       }

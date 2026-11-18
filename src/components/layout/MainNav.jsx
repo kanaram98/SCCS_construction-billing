@@ -18,6 +18,8 @@ import SettingsIcon from '@mui/icons-material/SettingsOutlined';
 import BusinessIcon from '@mui/icons-material/BusinessOutlined';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdfOutlined';
 import EngineeringIcon from '@mui/icons-material/EngineeringOutlined';
+import AccountTreeIcon from '@mui/icons-material/AccountTreeOutlined';
+import PaymentsIcon from '@mui/icons-material/PaymentsOutlined';
 import { APP_NAME, NAVIGATION, VIEWS } from '../../config/app.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { DRAWER_WIDTH } from '../../theme.js';
@@ -31,7 +33,9 @@ const ICONS = {
   [VIEWS.settings]: <SettingsIcon />,
   [VIEWS.project]: <BusinessIcon />,
   [VIEWS.print]: <PictureAsPdfIcon />,
-  [VIEWS.labour]: <EngineeringIcon />
+  [VIEWS.labour]: <EngineeringIcon />,
+  [VIEWS.projects]: <AccountTreeIcon />,
+  [VIEWS.expenses]: <PaymentsIcon />
 };
 
 /**

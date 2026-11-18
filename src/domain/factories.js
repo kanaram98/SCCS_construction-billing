@@ -10,6 +10,7 @@ export function createBill(number = '1', { gstEnabled = false } = {}) {
     date: todayIso(),
     projectName: '',
     clientId: '',
+    projectId: '',
     client: '',
     clientPhone: '',
     clientAddress: '',

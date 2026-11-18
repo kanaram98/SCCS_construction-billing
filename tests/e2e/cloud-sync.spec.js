@@ -115,7 +115,7 @@ test('admin creates the workspace, invites the father, and changes sync both way
   await expect(father.getByRole('button', { name: 'Add item' })).toBeVisible();
 
   // Firm details are read-only for him.
-  await goTo(father, 'Project');
+  await goTo(father, 'Bill details');
   await expect(father.getByText('Only the admin can change these details.')).toBeVisible();
   await expect(father.getByLabel(/Firm name/)).toBeDisabled();
   await father.screenshot({ path: 'test-results/screens/2-father-project.png' });
@@ -123,7 +123,7 @@ test('admin creates the workspace, invites the father, and changes sync both way
   // ── He edits the bill; it arrives on your phone ──
   const project = father.getByLabel(/Project \/ site/);
   await project.fill('Sharma house');
-  await goTo(admin, 'Project');
+  await goTo(admin, 'Bill details');
   await expect(admin.getByLabel(/Project \/ site/)).toHaveValue('Sharma house', { timeout: 20000 });
 
   // ── You change the firm name; it arrives on his phone ──
@@ -179,7 +179,7 @@ test('admin creates the workspace, invites the father, and changes sync both way
   await father.getByRole('button', { name: 'Sign out' }).click();
   await expect(father.getByText(/Signed out: only Labour is available/)).toBeVisible();
   await expectTab(father, 'Bills', 0);
-  await expectTab(father, 'Project', 0);
+  await expectTab(father, 'Bill details', 0);
   await goTo(father, 'Labour');
   await father.getByRole('button', { name: 'Ramu', exact: true }).click(); // his calendar
   await expect(father.getByRole('button', { name: /: 1P$/ }).first()).toBeVisible();

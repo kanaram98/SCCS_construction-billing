@@ -1,6 +1,6 @@
 import Grid from '@mui/material/Grid';
 import { useBilling } from '../../state/BillingContext.jsx';
-import { Card, TextField } from '../../components/ui';
+import { Card, SelectField, TextField } from '../../components/ui';
 import { getRequiredDetailErrors, isBillNumberTaken } from '../../domain/validation.js';
 import { text } from '../../domain/formatters.js';
 import ClientProfileFields from './ClientProfileFields.jsx';
@@ -18,6 +18,23 @@ export default function BillDetailsCard() {
   return (
     <Card title={t('Bill details')}>
       <Grid container spacing={2}>
+        {data.projects.length > 0 && (
+          <Grid size={12}>
+            <SelectField
+              label={t('Linked project')}
+              value={bill.projectId || ''}
+              placeholder={t('Not linked to a project')}
+              options={data.projects.map((project) => ({ value: project.id, label: project.name }))}
+              helperText={t('Linking lets reports add this bill to the project.')}
+              onChange={(projectId) => {
+                const project = data.projects.find((entry) => entry.id === projectId);
+                update(project
+                  ? { projectId, projectName: project.name, ...(project.client ? { client: project.client, clientId: project.clientId || bill.clientId } : {}) }
+                  : { projectId: '' });
+              }}
+            />
+          </Grid>
+        )}
         <Grid size={12}>
           <TextField label={t('Project / site')} required value={bill.projectName} error={required.projectName} onChange={(projectName) => update({ projectName })} />
         </Grid>
