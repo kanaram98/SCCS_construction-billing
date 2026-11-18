@@ -167,10 +167,12 @@ function createEntryActions({ data, bill, setData }) {
       updateBill((current) => tree.appendSection(current, section));
       return section;
     },
-    addArea(sectionId) {
+    /** `name`: a ready-made room name ("Hall"); a repeat becomes "Hall 2". */
+    addArea(sectionId, name = '') {
       const section = bill.sections.find((entry) => entry.id === sectionId);
       if (!section) return null;
-      const area = createArea(nextLevelName(bill.secondLevelName, 'Area', section.areas.length));
+      const same = name ? section.areas.filter((entry) => entry.name === name || entry.name.startsWith(`${name} `)).length : 0;
+      const area = createArea(name ? (same ? `${name} ${same + 1}` : name) : nextLevelName(bill.secondLevelName, 'Area', section.areas.length));
       updateBill((current) => tree.appendArea(current, sectionId, area));
       return area;
     },

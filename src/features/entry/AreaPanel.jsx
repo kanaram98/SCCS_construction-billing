@@ -16,11 +16,11 @@ import EditIcon from '@mui/icons-material/EditOutlined';
 import { ActionMenu, useConfirm } from '../../components/ui';
 import RenameDialog from '../../components/ui/RenameDialog.jsx';
 import { getAreaTotal } from '../../domain/calculations.js';
+import { isFinal } from '../../domain/bill-final.js';
 import { useUndoable } from '../../hooks/useUndoable.js';
-import { useEntryForm } from './useEntryForm.js';
 import GroupSummary from './GroupSummary.jsx';
 import EntryList from './EntryList.jsx';
-import EntryDialog from './EntryDialog.jsx';
+import EntrySheet from './EntrySheet.jsx';
 import SectionPickerDialog from './SectionPickerDialog.jsx';
 import { tr as t, trn } from '../../i18n/translate.js';
 
@@ -29,7 +29,7 @@ import { tr as t, trn } from '../../i18n/translate.js';
 export default function AreaPanel({ section, area, index, sections, open, visibleItems = null, onToggle, onCopied }) {
   const searching = Boolean(visibleItems);
   const shownItems = visibleItems || area.items;
-  const { data, actions } = useBilling();
+  const { data, bill, actions } = useBilling();
   const { entry } = actions;
   const confirm = useConfirm();
   const undoable = useUndoable();
@@ -38,26 +38,20 @@ export default function AreaPanel({ section, area, index, sections, open, visibl
   /** null, `{ type: 'area' }` or `{ type: 'item', itemId }` while choosing a copy target. */
   const [copyRequest, setCopyRequest] = useState(null);
 
-  const form = useEntryForm({
-    rates: data.rates,
-    items: area.items,
-    onAdd: (rateId, values) => entry.addItem(section.id, area.id, rateId, values),
-    onUpdate: (itemId, values) => entry.updateItem(section.id, area.id, itemId, values)
-  });
+  const [editFocus, setEditFocus] = useState(''); // the entry tapped to open the sheet on
 
-  function openNewEntry() {
-    form.reset();
-    setEditorOpen(true);
-  }
-
-  function editEntry(item) {
-    form.startEditing(item);
+  /** Opens the entry sheet (a final bill's measurements are locked). */
+  function openSheet(itemId = '') {
+    if (isFinal(bill)) {
+      window.dispatchEvent(new CustomEvent('bill-locked'));
+      return;
+    }
+    setEditFocus(itemId);
     setEditorOpen(true);
   }
 
   function deleteEntry(item) {
     undoable(t('{name} deleted.', { name: item.name || t('Entry') }), () => entry.removeItem(section.id, area.id, item.id));
-    form.handleItemRemoved(item.id);
   }
 
   async function deleteArea() {
@@ -112,7 +106,7 @@ export default function AreaPanel({ section, area, index, sections, open, visibl
             canMove={!searching}
             rates={data.rates}
             canCopy={sections.length > 1}
-            onEdit={editEntry}
+            onEdit={(item) => openSheet(item.id)}
             onDelete={deleteEntry}
             onCopy={(itemId) => setCopyRequest({ type: 'item', itemId })}
             onMove={(itemId, direction) => entry.moveItem(section.id, area.id, itemId, direction)}
@@ -121,8 +115,8 @@ export default function AreaPanel({ section, area, index, sections, open, visibl
           <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>{t('No entries yet.')}</Typography>
         )}
 
-        <Button fullWidth variant="outlined" startIcon={<AddIcon />} onClick={openNewEntry} sx={{ mt: 1.5, py: 1 }}>
-          {t('Add entry')}
+        <Button fullWidth variant="outlined" startIcon={<AddIcon />} onClick={() => openSheet()} sx={{ mt: 1.5, py: 1.25 }}>
+          {area.items.length ? t('Add or edit entries') : t('Add entry')}
         </Button>
       </AccordionDetails>
 
@@ -134,7 +128,7 @@ export default function AreaPanel({ section, area, index, sections, open, visibl
         onSave={(name) => entry.updateArea(section.id, area.id, { name })}
         onClose={() => setRenaming(false)}
       />
-      <EntryDialog open={editorOpen} areaName={area.name} form={form} onClose={() => setEditorOpen(false)} />
+      <EntrySheet open={editorOpen} section={section} area={area} focusItemId={editFocus} onClose={() => setEditorOpen(false)} />
       <SectionPickerDialog
         open={Boolean(copyRequest)}
         title={copyRequest?.type === 'area' ? t('Copy {name} to…', { name: area.name }) : t('Copy entry to…')}

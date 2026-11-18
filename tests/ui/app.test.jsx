@@ -45,31 +45,72 @@ describe('Bills screen', () => {
 });
 
 describe('Entry screen', () => {
-  it('shows one floor at a time and adds a measured entry', async () => {
+  /** Chooses a work item in the last row of the open entry sheet. */
+  async function pickInLastRow(user, dialog, name) {
+    const boxes = within(dialog).getAllByRole('combobox', { name: /Work item/ });
+    await user.click(boxes[boxes.length - 1]);
+    await user.click(await screen.findByRole('option', { name: new RegExp(name) }));
+  }
+  const lastField = (dialog, label) => { const all = within(dialog).getAllByLabelText(label); return all[all.length - 1]; };
+
+  it('shows one floor at a time and adds a measured entry in the entry sheet', async () => {
     const { user } = renderApp(SAMPLE_STATE);
     await goTo(user, 'Entry');
     expect(await screen.findByRole('tab', { name: 'Ground floor' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'First floor' })).toBeTruthy();
 
-    await user.click(screen.getAllByRole('button', { name: 'Add entry' })[0]);
+    await user.click(screen.getAllByRole('button', { name: 'Add or edit entries' })[0]);
     const dialog = await screen.findByRole('dialog');
-    await user.type(within(dialog).getByLabelText(/Length \(ft\.in\)/), '10.6');
-    await user.type(within(dialog).getByLabelText(/Width \(ft\.in\)/), '5.0');
-    await user.click(within(dialog).getByRole('button', { name: 'Add' }));
+    await pickInLastRow(user, dialog, 'Floor tiles');
+    await user.type(lastField(dialog, 'Length'), '10.6');
+    await user.type(lastField(dialog, 'Width'), '5.0');
+    // the amount of the row and the room total update while typing: 10'6" x 5' = 52.5 sqft x Rs 85 = Rs 4,463
+    expect(within(dialog).getAllByText('₹4,463').length).toBeGreaterThan(0);
+    await user.click(within(dialog).getByRole('button', { name: 'Done' }));
 
-    // 10'6" × 5' = 52.5 sqft × ₹85 = ₹4,463 → new total ₹19,161
+    // new total Rs 19,161, and the entry was saved
     await waitFor(() => expect(screen.getAllByText('₹19,161').length).toBeGreaterThan(0));
     expect(savedState().bills[0].sections[0].areas[0].items).toHaveLength(3);
   });
 
-  it('rejects inches above 11', async () => {
+  it('moves to the next field and the next row with Enter, saving each complete row', async () => {
     const { user } = renderApp(SAMPLE_STATE);
     await goTo(user, 'Entry');
-    await user.click((await screen.findAllByRole('button', { name: 'Add entry' }))[0]);
+    await user.click((await screen.findAllByRole('button', { name: 'Add or edit entries' }))[0]);
     const dialog = await screen.findByRole('dialog');
-    await user.type(within(dialog).getByLabelText(/Length \(ft\.in\)/), '10.13');
-    expect(within(dialog).getAllByText('Inches must be from 0 to 11.').length).toBeGreaterThan(0);
-    expect(within(dialog).getByRole('button', { name: 'Add' }).disabled).toBe(true);
+    await pickInLastRow(user, dialog, 'Gas hole');
+    // after choosing the item the cursor is in the first number box
+    await waitFor(() => expect(document.activeElement.dataset.sheetInput).toBe('count')); // a count item has only Nos
+    await user.keyboard('{Enter}'); // last field of the row: saved, and a new row gets the cursor
+    await waitFor(() => expect(savedState().bills[0].sections[0].areas[0].items).toHaveLength(3));
+    await waitFor(() => expect(document.activeElement.dataset.sheetInput).toBe('item'));
+    expect(within(dialog).getAllByRole('combobox', { name: /Work item/ })).toHaveLength(4); // 2 saved, 1 just added, 1 new empty
+  });
+
+  it('flags a bad measurement and will not finish with an unfinished row', async () => {
+    const { user } = renderApp(SAMPLE_STATE);
+    await goTo(user, 'Entry');
+    await user.click((await screen.findAllByRole('button', { name: 'Add or edit entries' }))[0]);
+    const dialog = await screen.findByRole('dialog');
+    await pickInLastRow(user, dialog, 'Floor tiles');
+    await user.type(lastField(dialog, 'Length'), '10.13');
+    expect(within(dialog).getAllByText(/Inches must be from 0 to 11./).length).toBeGreaterThan(0);
+    await user.click(within(dialog).getByRole('button', { name: 'Done' }));
+    expect(await screen.findByText(/not finished/)).toBeTruthy();
+    expect(screen.getByRole('dialog')).toBeTruthy(); // still open
+    expect(savedState().bills[0].sections[0].areas[0].items).toHaveLength(2);
+  });
+
+  it('editing a saved entry in the sheet updates it', async () => {
+    const { user } = renderApp(SAMPLE_STATE);
+    await goTo(user, 'Entry');
+    await user.click((await screen.findAllByRole('button', { name: /^Floor tiles/ }))[0]);
+    const dialog = await screen.findByRole('dialog');
+    const length = within(dialog).getAllByLabelText('Length')[0];
+    await user.clear(length);
+    await user.type(length, '20');
+    await user.click(within(dialog).getByRole('button', { name: 'Done' }));
+    await waitFor(() => expect(savedState().bills[0].sections[0].areas[0].items.find((item) => item.type === 'area').length).toBe('20'));
   });
 
   it('renames a room from its menu', async () => {

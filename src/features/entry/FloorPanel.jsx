@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import AddIcon from '@mui/icons-material/Add';
@@ -16,6 +17,9 @@ import { countSectionItems, getSectionTotal } from '../../domain/calculations.js
 import { formatCurrency } from '../../domain/formatters.js';
 import { tr as t, trn } from '../../i18n/translate.js';
 import AreaPanel from './AreaPanel.jsx';
+
+/** The usual rooms, one tap to add. */
+const QUICK_ROOMS = ['Hall', 'Kitchen', 'Bedroom', 'Bathroom', 'Balcony'];
 
 /** One floor (section): summary, its rooms, and "Add room". */
 export default function FloorPanel({ section, sections, disclosure, levelName, sublevelName, onAddArea, onCopied, onDeleted }) {
@@ -83,6 +87,11 @@ export default function FloorPanel({ section, sections, disclosure, levelName, s
         <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>{t('No areas yet. Add one to start measuring.')}</Typography>
       )}
 
+      <Stack direction="row" sx={{ mt: 1.5, flexWrap: 'wrap', gap: 0.75 }}>
+        {QUICK_ROOMS.map((name) => (
+          <Chip key={name} size="medium" variant="outlined" icon={<AddIcon />} label={t(name)} onClick={() => onAddArea(section.id, t(name))} aria-label={t('Add {name}', { name: t(name) })} />
+        ))}
+      </Stack>
       <Button fullWidth variant="outlined" startIcon={<AddIcon />} onClick={() => onAddArea(section.id)} sx={{ mt: 1.5 }}>
         {t('Add {level}', { level: sublevelName })}
       </Button>

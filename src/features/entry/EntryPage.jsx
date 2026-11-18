@@ -70,8 +70,8 @@ export default function EntryPage({ onNavigate }) {
     disclosure.reveal(section.id);
   }
 
-  function addArea(sectionId) {
-    const area = actions.entry.addArea(sectionId);
+  function addArea(sectionId, name = '') {
+    const area = actions.entry.addArea(sectionId, name);
     if (area) disclosure.reveal(sectionId, [area.id]);
   }
 
