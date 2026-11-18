@@ -120,3 +120,24 @@ test('purging from the recycle bin is final and logged', () => {
   assert.equal(ops.revertBlocker(labour, deletion), 'missing');
   assert.equal(ops.revertBlocker(labour, labour.log.at(-1)), 'final');
 });
+
+test('a worker who left keeps their records; deleting one with records is detected', async () => {
+  const { workerHasRecords, workersForMonth } = await import('../../src/domain/labour.js');
+  const { labour: start, ramesh, suresh } = setup();
+  assert.equal(start.workers[0].joinedOn.length, 10);
+  assert.equal(workerHasRecords(start, 'w1'), false);
+  let labour = ops.markAttendance(start, '2026-11-02', [{ worker: ramesh, units: 1 }], at(2));
+  labour = ops.addPayment(labour, { workerId: 'w1', date: '2026-11-05', amount: 200 }, at(5));
+  assert.equal(workerHasRecords(labour, 'w1'), true);
+  assert.equal(workerHasRecords(labour, suresh.id), false);
+
+  labour = ops.updateWorker(labour, 'w1', { active: false, leftOn: '2026-11-10' }, at(10));
+  const left = labour.workers.find((worker) => worker.id === 'w1');
+  assert.deepEqual([left.active, left.leftOn], [false, '2026-11-10']);
+  // Still in the November report, with the earned wages and the payment.
+  assert.ok(workersForMonth(labour, '2026-11').some((worker) => worker.id === 'w1'));
+  assert.equal(workerBalance(labour, 'w1'), 400);
+
+  labour = ops.updateWorker(labour, 'w1', { active: true, leftOn: '', joinedOn: '2026-12-01' }, at(11));
+  assert.deepEqual([labour.workers[0].active, labour.workers[0].leftOn, labour.workers[0].joinedOn], [true, '', '2026-12-01']);
+});

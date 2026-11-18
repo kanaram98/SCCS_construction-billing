@@ -142,10 +142,14 @@ describe('what the contractor (your father) can and cannot do', () => {
     // He may mark a worker as left (and back).
     await assertSucceeds(put(father, worker, { ...worker.data, version: worker.data.version + 1, active: false }));
     await assertSucceeds(put(father, worker, { ...worker.data, version: worker.data.version + 2, active: true }));
+    // Leaving also records the dates; nothing else may change with it.
+    await assertSucceeds(put(father, worker, { ...worker.data, version: worker.data.version + 3, active: false, leftOn: '2026-11-10', joinedOn: '2026-01-01' }));
+    await assertFails(put(father, worker, { ...worker.data, version: worker.data.version + 4, active: false, leftOn: '10 Nov', joinedOn: '2026-01-01' }));
+    await assertFails(put(father, worker, { ...worker.data, version: worker.data.version + 4, active: false, leftOn: '2026-11-10', dailyWage: 1 }));
     // The admin can do all of it.
     const admin = as(ADMIN);
     await assertSucceeds(put(admin, rate, { ...rate.data, version: rate.data.version + 1, updatedBy: ADMIN.uid, rate: 999 }));
-    await assertSucceeds(put(admin, worker, { ...worker.data, version: worker.data.version + 3, updatedBy: ADMIN.uid, dailyWage: 800 }));
+    await assertSucceeds(put(admin, worker, { ...worker.data, version: worker.data.version + 4, updatedBy: ADMIN.uid, dailyWage: 800 }));
     await assertSucceeds(put(admin, payment, { ...payment.data, version: payment.data.version + 1, updatedBy: ADMIN.uid, amount: 1500 }));
   });
 

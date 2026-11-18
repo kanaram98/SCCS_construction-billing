@@ -36,6 +36,7 @@ test('undo and restore follow the same limits', () => {
   // Workers: only left / working.
   assert.equal(canUndo('contractor', entry('worker', 'update', { before: { name: 'A', active: true }, after: { name: 'A', active: false } }), TODAY), true);
   assert.equal(canUndo('contractor', entry('worker', 'update', { before: { name: 'A', dailyWage: 1 }, after: { name: 'A', dailyWage: 2 } }), TODAY), false);
+  assert.equal(canUndo('contractor', entry('worker', 'update', { before: { name: 'A', active: true, leftOn: '' }, after: { name: 'A', active: false, leftOn: '2026-11-10' } }), TODAY), true);
   assert.equal(canUndo('contractor', entry('worker', 'delete'), TODAY), false);
   // Attendance: by the day.
   assert.equal(canUndo('contractor', entry('attendance', 'update', { date: '2026-11-17' }), TODAY), true);

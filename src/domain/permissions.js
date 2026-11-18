@@ -63,7 +63,7 @@ function onlyActiveChanged(entry) {
   if (!before || !after) return false;
   const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
   const changed = [...keys].filter((key) => before[key] !== after[key]);
-  return changed.length > 0 && changed.every((key) => key === 'active');
+  return changed.length > 0 && changed.every((key) => ['active', 'joinedOn', 'leftOn'].includes(key));
 }
 
 /** Whether `role` may undo a history entry (bills/clients/templates/labour log). */

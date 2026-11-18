@@ -47,7 +47,7 @@ export function recordMeta(now = new Date()) {
 }
 
 export function createWorker(values = {}, now = new Date()) {
-  return { id: newId(), name: '', phone: '', role: '', dailyWage: '', active: true, ...recordMeta(now), ...values };
+  return { id: newId(), name: '', phone: '', role: '', dailyWage: '', active: true, joinedOn: localToday(now), leftOn: '', ...recordMeta(now), ...values };
 }
 
 /** Fills in sync metadata on records saved before it existed. */
@@ -81,7 +81,7 @@ export function normalizeLabour(saved, now = new Date()) {
   }
   const labour = {
     workers: Array.isArray(saved.workers)
-      ? saved.workers.filter((worker) => worker?.id).map((worker) => withMeta({ name: '', phone: '', role: '', dailyWage: '', active: true, ...worker }))
+      ? saved.workers.filter((worker) => worker?.id).map((worker) => withMeta({ name: '', phone: '', role: '', dailyWage: '', active: true, joinedOn: '', leftOn: '', ...worker }))
       : [],
     attendance,
     payments: Array.isArray(saved.payments)
@@ -336,6 +336,12 @@ export function monthReport(labour, month) {
 /** What each worker is owed today, across all months. */
 export function workerBalance(labour, workerId) {
   return roundTo2(earnedWhere(labour, workerId, () => true).earned - paidWhere(labour, workerId, () => true));
+}
+
+/** Whether a worker has any attendance or payments (so deleting them would lose history). */
+export function workerHasRecords(labour, workerId) {
+  return Object.values(labour.attendance).some((marks) => marks[workerId]) ||
+    labour.payments.some((payment) => payment.workerId === workerId && !payment.deletedAt);
 }
 
 /** Permanently removes a worker and everything recorded for them. */

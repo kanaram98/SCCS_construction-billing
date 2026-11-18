@@ -277,7 +277,9 @@ export const workerSchema = z.strictObject({
   phone: z.string().max(30),
   role: z.string().max(100),
   dailyWage: numberish,
-  active: z.boolean()
+  active: z.boolean(),
+  joinedOn: z.union([isoDate, z.literal('')]).optional(),
+  leftOn: z.union([isoDate, z.literal('')]).optional()
 });
 
 export const labourPaymentSchema = z.strictObject({

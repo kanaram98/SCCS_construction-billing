@@ -158,10 +158,10 @@ test('admin creates the workspace, invites the father, and changes sync both way
   await sheet.getByRole('button', { name: 'Ramu 1P' }).click();
   await sheet.getByRole('button', { name: 'Done' }).click();
 
-  // ── Workers: he can mark left but not edit/delete; an old day needs the admin ──
+  // ── Workers: he can settle and leave but not edit/delete; an old day needs the admin ──
   await father.getByRole('tab', { name: 'Workers' }).click();
   await father.getByRole('button', { name: 'Actions for Ramu' }).click();
-  await expect(father.getByRole('menuitem', { name: 'Mark as left' })).toBeVisible();
+  await expect(father.getByRole('menuitem', { name: 'Settle and leave' })).toBeVisible();
   await expect(father.getByRole('menuitem', { name: 'Pay / advance' })).toBeVisible();
   await expect(father.getByRole('menuitem', { name: 'Edit' })).toHaveCount(0);
   await expect(father.getByRole('menuitem', { name: 'Delete' })).toHaveCount(0);

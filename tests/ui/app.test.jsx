@@ -446,3 +446,49 @@ describe('Project report', () => {
     expect(await screen.findByText('Project statement')).toBeTruthy();
   });
 });
+
+describe('Worker leaves and rejoins', () => {
+  const STATE = {
+    ...SAMPLE_STATE,
+    labour: {
+      workers: [{ id: 'w1', name: 'Ramesh', dailyWage: 600, role: '', phone: '', active: true, joinedOn: '2026-01-01', leftOn: '' }],
+      attendance: { [`${new Date().toISOString().slice(0, 7)}-01`]: { w1: { units: 1, wage: 600, at: '2026-11-01T00:00:00.000Z' } } },
+      payments: []
+    }
+  };
+
+  it('settles wages and leaves, keeps the records, can rejoin, and cannot be deleted without typing the name', async () => {
+    const { user } = renderApp(STATE);
+    await goTo(user, 'Labour');
+    await user.click(await screen.findByRole('tab', { name: 'Workers' }));
+    await user.click(await screen.findByRole('button', { name: 'Actions for Ramesh' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Settle and leave' }));
+    let dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Wages due to the worker: ₹600')).toBeTruthy();
+    await user.click(within(dialog).getByRole('button', { name: 'Settle and leave' }));
+    await waitFor(() => expect(savedState().labour.workers[0].active).toBe(false));
+    const saved = savedState().labour;
+    expect(saved.workers[0].leftOn).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(saved.payments).toHaveLength(1);
+    expect(saved.payments[0]).toMatchObject({ amount: 600, note: 'Final settlement' });
+    expect(Object.keys(saved.attendance)).toHaveLength(1); // attendance is kept
+    expect(await screen.findByText('Left workers (1)')).toBeTruthy();
+
+    // Deleting a worker with records asks for the name.
+    await user.click(await screen.findByRole('button', { name: 'Actions for Ramesh' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
+    dialog = await screen.findByRole('dialog');
+    const confirmDelete = within(dialog).getByRole('button', { name: 'Delete with all records' });
+    expect(confirmDelete.disabled).toBe(true);
+    await user.type(within(dialog).getByLabelText(/Type Ramesh to confirm/), 'ramesh');
+    expect(confirmDelete.disabled).toBe(false);
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    // Rejoin brings the worker back.
+    await user.click(await screen.findByRole('button', { name: 'Actions for Ramesh' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Rejoin' }));
+    await waitFor(() => expect(savedState().labour.workers[0].active).toBe(true));
+    expect(savedState().labour.workers[0].leftOn).toBe('');
+  });
+});

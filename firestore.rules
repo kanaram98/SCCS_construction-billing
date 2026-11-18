@@ -128,7 +128,7 @@ service cloud.firestore {
     }
     // A contractor may change a worker only by marking them left / working.
     function onlyActiveChanged() {
-      return data().diff(resource.data).affectedKeys().hasOnly(['active', 'updatedAt', 'version', 'updatedBy', 'syncedAt']);
+      return data().diff(resource.data).affectedKeys().hasOnly(['active', 'joinedOn', 'leftOn', 'updatedAt', 'version', 'updatedBy', 'syncedAt']);
     }
     function inRecycleBin() {
       return resource.data.deletedAt != null;
@@ -209,10 +209,12 @@ service cloud.firestore {
 
     function validWorker(id) {
       let d = data();
-      return fields(recordKeys().concat(['name', 'phone', 'role', 'dailyWage', 'active']), ['order'])
+      return fields(recordKeys().concat(['name', 'phone', 'role', 'dailyWage', 'active']), ['order', 'joinedOn', 'leftOn'])
         && validMeta(id)
         && str(d.name, 200) && str(d.phone, 30) && str(d.role, 100)
-        && numberish(d.dailyWage) && d.active is bool;
+        && numberish(d.dailyWage) && d.active is bool
+        && (!('joinedOn' in d) || d.joinedOn == '' || isoDate(d.joinedOn))
+        && (!('leftOn' in d) || d.leftOn == '' || isoDate(d.leftOn));
     }
 
     function validLabourPayment(id) {

@@ -14,7 +14,7 @@
 import { newId } from './ids.js';
 import { isDateClosed, isMonthClosed, purgeWorker, putMark, recordMeta } from './labour.js';
 
-const WORKER_FIELDS = ['name', 'phone', 'role', 'dailyWage', 'active'];
+const WORKER_FIELDS = ['name', 'phone', 'role', 'dailyWage', 'active', 'joinedOn', 'leftOn'];
 const PAYMENT_FIELDS = ['workerId', 'date', 'amount', 'mode', 'note'];
 
 const pick = (record, fields) => Object.fromEntries(fields.map((field) => [field, record[field]]));
