@@ -1054,5 +1054,7 @@ export default {
   'Towards': 'किसलिए',
   'Towards advance for {project}': '{project} के एडवांस के लिए',
   'Towards bill {number}': 'बिल {number} के लिए',
-  '{amount} received from {client} on {date}': '{client} से {date} को {amount} मिले'
+  '{amount} received from {client} on {date}': '{client} से {date} को {amount} मिले',
+  'Warning: {count} change on this phone has not reached the cloud yet and will be replaced. ': 'चेतावनी: इस फ़ोन का {count} बदलाव अभी क्लाउड तक नहीं पहुँचा है और बदल जाएगा। ',
+  'Warning: {count} changes on this phone have not reached the cloud yet and will be replaced. ': 'चेतावनी: इस फ़ोन के {count} बदलाव अभी क्लाउड तक नहीं पहुँचे हैं और बदल जाएँगे। '
 };

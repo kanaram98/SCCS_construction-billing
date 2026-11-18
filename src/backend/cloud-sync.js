@@ -16,7 +16,7 @@
  *   when back online.
  */
 import { COLLECTIONS, docPath, workspacePath } from './schema.js';
-import { adoptCloud, applyIncoming, createSyncState, keyOf, planUpload } from './sync-core.js';
+import { adoptCloud, applyIncoming, createSyncState, keyOf, planUpload, runInPhases } from './sync-core.js';
 
 const DATA_COLLECTIONS = Object.values(COLLECTIONS).filter((name) => name !== 'members' && name !== 'invites');
 
@@ -136,7 +136,7 @@ export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState
     inFlight += plan.ops.length;
     onPending(inFlight);
     // Each write is confirmed only when the server has it, so this waits while offline.
-    const results = await Promise.allSettled(plan.ops.map(writeOp));
+    const results = await runInPhases(plan.ops, writeOp);
     inFlight -= plan.ops.length;
     onPending(inFlight);
     const rejected = [];

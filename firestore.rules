@@ -47,6 +47,14 @@ service cloud.firestore {
     function isAdmin(wid) {
       return roleIn(wid, ['admin']);
     }
+    // A closed month is locked: no attendance or labour payments can be added or changed in it
+    // (the admin unlocks it first by deleting its closedMonths document).
+    function monthIsOpen(wid, month) {
+      return !exists(/databases/$(database)/documents/workspaces/$(wid)/closedMonths/$(month));
+    }
+    function monthOfDate(date) {
+      return date.split('-')[0] + '-' + date.split('-')[1];
+    }
     function canWork(wid) {
       return roleIn(wid, ['admin', 'contractor']);
     }
@@ -374,14 +382,14 @@ service cloud.firestore {
       }
       match /labourPayments/{id} {
         allow read: if isMember(wid);
-        allow create: if canWork(wid) && validLabourPayment(id) && versionGoesUp() && writerRecorded(wid);
-        allow update: if isAdmin(wid) && validLabourPayment(id) && versionGoesUp() && writerRecorded(wid);
+        allow create: if canWork(wid) && validLabourPayment(id) && monthIsOpen(wid, monthOfDate(data().date)) && versionGoesUp() && writerRecorded(wid);
+        allow update: if isAdmin(wid) && validLabourPayment(id) && monthIsOpen(wid, monthOfDate(data().date)) && monthIsOpen(wid, monthOfDate(resource.data.date)) && versionGoesUp() && writerRecorded(wid);
         allow delete: if isAdmin(wid) && inRecycleBin();
       }
       // Marks are changed field by field (marks.DD.workerId), so two phones don't overwrite each other.
       match /attendance/{month} {
         allow read: if isMember(wid);
-        allow create, update: if canWork(wid) && validAttendanceMonth(month);
+        allow create, update: if canWork(wid) && validAttendanceMonth(month) && monthIsOpen(wid, month);
         allow delete: if false;
       }
       match /closedMonths/{month} {

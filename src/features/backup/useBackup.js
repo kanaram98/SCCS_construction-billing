@@ -1,4 +1,5 @@
 import { useBilling } from '../../state/BillingContext.jsx';
+import { useCloud } from '../account/CloudProvider.jsx';
 import { useConfirm, useNotify } from '../../components/ui';
 import { backupFilename, createBackup, parseBackup } from '../../domain/backup.js';
 import { deliverFile, isShareCancelled, readFileAsText } from '../../services/files.js';
@@ -9,6 +10,7 @@ export function useBackup() {
   const { raw, actions } = useBilling();
   const notify = useNotify();
   const confirm = useConfirm();
+  const cloud = useCloud();
 
   async function exportBackup() {
     const now = new Date();
@@ -39,7 +41,7 @@ export function useBackup() {
     const date = parsed.exportedAt ? new Date(parsed.exportedAt).toLocaleDateString() : t('an unknown date');
     const confirmed = await confirm({
       title: t('Restore this backup?'),
-      message: trn(parsed.billCount, 'It has {count} bill from {date}. All bills, rates and settings on this device will be replaced.', 'It has {count} bills from {date}. All bills, rates and settings on this device will be replaced.', { date }),
+      message: (cloud.pending > 0 ? trn(cloud.pending, 'Warning: {count} change on this phone has not reached the cloud yet and will be replaced. ', 'Warning: {count} changes on this phone have not reached the cloud yet and will be replaced. ') : '') + trn(parsed.billCount, 'It has {count} bill from {date}. All bills, rates and settings on this device will be replaced.', 'It has {count} bills from {date}. All bills, rates and settings on this device will be replaced.', { date }),
       confirmLabel: t('Restore'),
       danger: true
     });

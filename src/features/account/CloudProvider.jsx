@@ -346,6 +346,15 @@ function ConnectedCloud({ children }) {
    * Changes not in the cloud yet: not sent, or sent but not confirmed by the
    * server (e.g. offline). Used to warn before signing out.
    */
+  // Closing or reloading the page while changes have not reached the cloud asks first.
+  const waiting = unsent + inFlight;
+  useEffect(() => {
+    if (!user || waiting <= 0) return undefined;
+    const warn = (event) => { event.preventDefault(); event.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [user, waiting]);
+
   const pendingChanges = useCallback(async () => {
     const firebase = firebaseRef.current;
     if (!user || !firebase) return 0;

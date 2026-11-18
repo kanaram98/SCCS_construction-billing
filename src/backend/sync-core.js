@@ -134,6 +134,27 @@ export function planUpload(raw, syncState, { by, blocked = {} }) {
   return { ops, sent, marks };
 }
 
+/**
+ * Uploads go in three steps so the server's closed-month rule is never tripped by our own order:
+ * 0 unlocking a month first, 1 everything else (marks, payments, records), 2 closing a month last.
+ */
+export function opPhase(op) {
+  if (op.collection !== 'closedMonths') return 1;
+  return op.kind === 'delete' ? 0 : 2;
+}
+
+/** Runs run(op) for every op, one phase after the other. Returns the settled results in the order of ops. */
+export async function runInPhases(ops, run) {
+  const results = new Array(ops.length);
+  for (const phase of [0, 1, 2]) {
+    const indexes = ops.map((_op, index) => index).filter((index) => opPhase(ops[index]) === phase);
+    if (!indexes.length) continue;
+    const settled = await Promise.allSettled(indexes.map((index) => run(ops[index])));
+    settled.forEach((result, position) => { results[indexes[position]] = result; });
+  }
+  return results;
+}
+
 // ── Download ──────────────────────────────────────────────────────────
 
 const strip = ({ syncedAt: _synced, order: _order, ...rest }) => rest;

@@ -267,3 +267,23 @@ test('joining a workspace keeps what this phone already had (labour entries, bil
   assert.equal(admin.raw.labour.attendance['2026-11-21'].w9.units, 1);
   assert.ok(admin.raw.bills.some((bill) => bill.id === 'own-bill'));
 });
+
+test('uploads unlock a month first, send marks and payments next, and close a month last', async () => {
+  const { runInPhases, opPhase } = await import('../../src/backend/sync-core.js');
+  const ops = [
+    { kind: 'set', collection: 'closedMonths', id: '2026-10' },
+    { kind: 'marks', collection: 'attendance', id: '2026-10' },
+    { kind: 'delete', collection: 'closedMonths', id: '2026-09' },
+    { kind: 'set', collection: 'labourPayments', id: 'p1' }
+  ];
+  assert.deepEqual(ops.map(opPhase), [2, 1, 0, 1]);
+  const order = [];
+  const results = await runInPhases(ops, async (op) => {
+    await new Promise((resolve) => setTimeout(resolve, op.collection === 'attendance' ? 15 : 1)); // the slow one must still finish before the lock
+    order.push(`${op.kind}:${op.collection}`);
+    if (op.id === 'p1') throw new Error('refused');
+  });
+  assert.deepEqual(order.slice(0, 1), ['delete:closedMonths']);
+  assert.equal(order.at(-1), 'set:closedMonths');
+  assert.deepEqual(results.map((result) => result.status), ['fulfilled', 'fulfilled', 'fulfilled', 'rejected']); // aligned with ops
+});

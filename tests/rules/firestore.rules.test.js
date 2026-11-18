@@ -280,6 +280,27 @@ describe('protection against lost changes', () => {
     await assertFails(deleteDoc(doc(as(ADMIN), docPath(WS, 'attendance', month.id))));
   });
 
+  it('refuses attendance and labour payments in a closed month, for everyone, until the admin unlocks it', async () => {
+    const docs = sampleDocs(FATHER);
+    const month = find(docs, 'attendance', '2026-10');
+    const closed = find(docs, 'closedMonths');
+    const payment = find(docs, 'labourPayments');
+    await assertSucceeds(put(as(FATHER), month)); // still open: the marks went in before it was closed
+    await assertSucceeds(put(as(FATHER), closed));
+    // Closed: no new marks, no changed payment, no new payment dated in it.
+    await assertFails(updateDoc(doc(as(FATHER), docPath(WS, 'attendance', month.id)), { 'marks.31.w1': { units: 1, wage: 700, at: NOW }, syncedAt: serverTimestamp() }));
+    await assertFails(updateDoc(doc(as(ADMIN), docPath(WS, 'attendance', month.id)), { 'marks.30.w1': { units: 2, wage: 700, at: NOW }, syncedAt: serverTimestamp() }));
+    const inOctober = { ...payment.data, id: 'late-pay', date: '2026-10-31' };
+    await assertFails(put(as(FATHER), { collection: 'labourPayments', id: 'late-pay' }, inOctober));
+    // Other months are unaffected.
+    await assertSucceeds(put(as(FATHER), find(docs, 'attendance', '2026-11')));
+    await assertSucceeds(put(as(FATHER), payment));
+    // The admin unlocks the month, then it can be changed again.
+    await assertSucceeds(deleteDoc(doc(as(ADMIN), docPath(WS, 'closedMonths', closed.id))));
+    await assertSucceeds(updateDoc(doc(as(FATHER), docPath(WS, 'attendance', month.id)), { 'marks.31.w1': { units: 1, wage: 700, at: NOW }, syncedAt: serverTimestamp() }));
+    await assertSucceeds(put(as(FATHER), { collection: 'labourPayments', id: 'late-pay' }, inOctober));
+  });
+
   it('lets the contractor close a month, and only the admin unlock it', async () => {
     const closed = find(sampleDocs(FATHER), 'closedMonths');
     await assertSucceeds(put(as(FATHER), closed));
