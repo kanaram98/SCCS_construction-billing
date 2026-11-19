@@ -1,7 +1,8 @@
 name: Nightly backup
 
-# Copies the cloud data to a file every night and keeps it for 30 days (Actions → this run → Artifacts).
-# One-time setup: see docs/backups.md. The repository must be private.
+# Copies the cloud data into a SEPARATE private GitHub repository every night (one commit per night,
+# so the history keeps every night). The data never stays in this repository.
+# One-time setup: see docs/backups.md.
 
 on:
   schedule:
@@ -12,11 +13,6 @@ jobs:
   backup:
     runs-on: ubuntu-latest
     steps:
-      - name: Stop if the repository is public
-        if: github.repository_visibility != 'private'
-        run: |
-          echo "This repository is not private. Backups hold your business data, so none was made."
-          exit 1
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
@@ -27,11 +23,38 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-        run: node scripts/backup-firestore.mjs --out backups
-      - name: Keep the backup for 30 days
-        uses: actions/upload-artifact@v4
-        with:
-          name: cloud-backup-${{ github.run_id }}
-          path: backups/
-          retention-days: 30
-          if-no-files-found: error
+        run: node scripts/backup-firestore.mjs --out new-backup
+
+      - name: Stop if the backup repository is not private
+        env:
+          GH_TOKEN: ${{ secrets.BACKUP_REPO_TOKEN }}
+          BACKUP_REPO: ${{ secrets.BACKUP_REPO }}
+        run: |
+          private=$(gh api "repos/$BACKUP_REPO" --jq .private)
+          if [ "$private" != "true" ]; then
+            echo "The backup repository is not private. Backups hold your business data, so none was saved."
+            exit 1
+          fi
+
+      - name: Save the backup in the backup repository
+        env:
+          BACKUP_REPO: ${{ secrets.BACKUP_REPO }}
+          BACKUP_REPO_TOKEN: ${{ secrets.BACKUP_REPO_TOKEN }}
+        run: |
+          git clone "https://x-access-token:${BACKUP_REPO_TOKEN}@github.com/${BACKUP_REPO}.git" backup-repo
+          mkdir -p backup-repo/backups
+          cp new-backup/*.json backup-repo/backups/
+          # keep the latest 90 nights as files; older ones stay in the repository history
+          for kind in construction-billing-backup documents; do
+            ls backup-repo/backups/${kind}-*.json | sort | head -n -90 | xargs -r rm
+          done
+          cd backup-repo
+          git config user.name "backup-bot"
+          git config user.email "backup-bot@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Nothing changed since the last backup."
+          else
+            git commit -m "Backup $(date -u +%Y-%m-%d)"
+            git push
+          fi
