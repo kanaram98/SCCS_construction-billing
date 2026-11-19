@@ -183,3 +183,21 @@ test('a new worker needs a project; an older worker can still be saved without o
   assert.equal(getWorkerErrors({ ...values, projectIds: ['p1'] }, { requireProject: true }).projectIds, '');
   assert.equal(getWorkerErrors(values).projectIds, '');
 });
+
+test('a project calendar counts only the workers on that project, even for older marks that carry no project', async () => {
+  const { labourOfSite, daySummary: summary } = await import('../../src/domain/labour.js');
+  const onSite = { ...createWorker({ id: 'w1', name: 'Ramesh', dailyWage: 600 }), projectIds: ['pa'] };
+  const elsewhere = { ...createWorker({ id: 'w2', name: 'Suresh', dailyWage: 500 }), projectIds: ['pb'] };
+  const unassigned = createWorker({ id: 'w3', name: 'Mohan', dailyWage: 400 });
+  const labour = {
+    ...createLabourState(),
+    workers: [onSite, elsewhere, unassigned],
+    // marks made before projects existed have no projectId
+    attendance: { '2026-10-30': { w1: { units: 1, wage: 600 }, w2: { units: 2, wage: 500 }, w3: { units: 1, wage: 400 } } }
+  };
+  const site = labourOfSite(labour, 'pa');
+  assert.deepEqual(site.workers.map((worker) => worker.id), ['w1']);
+  assert.deepEqual(Object.keys(site.attendance['2026-10-30']), ['w1']);
+  assert.equal(summary(site, '2026-10-30').marked, 1);
+  assert.equal(summary(labourOfSite(labour, 'pc'), '2026-10-30').marked, 0); // a project nobody works on shows an empty calendar
+});

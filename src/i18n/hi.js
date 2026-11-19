@@ -1493,5 +1493,6 @@ export default {
   'Cannot delete forever: this worker has records in the closed month {months}. Unlock the month first.': 'हमेशा के लिए नहीं हटा सकते: इस कारीगर के रिकॉर्ड बंद महीने {months} में हैं। पहले महीना खोलें।',
   'Choose the project this worker works on.': 'चुनें कि यह कारीगर किस प्रोजेक्ट पर काम करता है।',
   'Create a project first, then add workers to it.': 'पहले एक प्रोजेक्ट बनाएँ, फिर उसमें कारीगर जोड़ें।',
-  'Its {things} ({amount}) will be deleted too. Be sure the money was returned or moved to another project. Undo brings them back.': 'इसके {things} ({amount}) भी हट जाएँगे। पक्का करें कि पैसा लौटाया गया या दूसरे प्रोजेक्ट में डाला गया। पूर्ववत करने पर वापस आ जाएँगे।'
+  'Its {things} ({amount}) will be deleted too. Be sure the money was returned or moved to another project. Undo brings them back.': 'इसके {things} ({amount}) भी हट जाएँगे। पक्का करें कि पैसा लौटाया गया या दूसरे प्रोजेक्ट में डाला गया। पूर्ववत करने पर वापस आ जाएँगे।',
+  'No workers on this project yet': 'इस प्रोजेक्ट पर अभी कोई कारीगर नहीं'
 };

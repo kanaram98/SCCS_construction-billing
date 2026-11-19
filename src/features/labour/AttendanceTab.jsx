@@ -22,7 +22,7 @@ import { useBilling } from '../../state/BillingContext.jsx';
 import { useUndoable } from '../../hooks/useUndoable.js';
 import {
   ATTENDANCE_UNITS, dayLabel, daySummary, formatUnits,
-  isDateClosed, labourForSite, localToday, markedElsewhere, monthOf, shiftDate, workerMonth, workerOnSite
+  isDateClosed, labourOfSite, localToday, markedElsewhere, monthOf, shiftDate, workerMonth, workerOnSite
 } from '../../domain/labour.js';
 import { formatCurrency } from '../../domain/formatters.js';
 import { compactAmount } from '../../domain/projects.js';
@@ -92,7 +92,7 @@ function WorkerRow({ worker, mark, onMark, disabled }) {
 function DaySheet({ date, month, siteId, onDateChange, onClose }) {
   const { allLabour, actions } = useLabour();
   const { data } = useBilling();
-  const labour = useMemo(() => labourForSite(allLabour, siteId), [allLabour, siteId]);
+  const labour = useMemo(() => labourOfSite(allLabour, siteId), [allLabour, siteId]);
   const undoable = useUndoable();
   const allowOld = useOldDateGuard();
   const cloud = useCloud();
@@ -171,7 +171,7 @@ export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
   const [workerId, setWorkerId] = useState('all');
   const siteId = useLabourSite();
   const notify = useNotify();
-  const siteLabour = useMemo(() => labourForSite(labour, siteId), [labour, siteId]);
+  const siteLabour = useMemo(() => labourOfSite(labour, siteId), [labour, siteId]);
   const [openDate, setOpenDate] = useState(null);
   const [picker, setPicker] = useState(null); // { anchor, date } in single-worker view
   const active = useMemo(() => labour.workers.filter((worker) => worker.active && workerOnSite(labour, worker, siteId)), [labour, siteId]);
@@ -193,11 +193,11 @@ export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
     notify(t('Yesterday’s attendance copied. Fix anyone who is different.'), 'success');
   }
 
-  if (!labour.workers.length) {
+  if (!siteLabour.workers.length) {
     return (
       <EmptyState
         icon={<EngineeringIcon fontSize="large" />}
-        title={t('No workers yet')}
+        title={siteId ? t('No workers on this project yet') : t('No workers yet')}
         description={t('Add your workers with their daily wage, then mark attendance every day.')}
         action={<Button variant="contained" onClick={onAddWorkers}>{t('Add workers')}</Button>}
       />
