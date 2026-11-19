@@ -115,20 +115,19 @@ export function pruneLog(log, now = new Date()) {
  * deleted workers' attendance) left out.
  */
 export function liveLabour(labour) {
-  const deleted = new Set(labour.workers.filter((worker) => worker.deletedAt).map((worker) => worker.id));
-  let attendance = labour.attendance;
-  if (deleted.size) {
-    attendance = {};
-    for (const [date, marks] of Object.entries(labour.attendance)) {
-      const kept = Object.fromEntries(Object.entries(marks).filter(([workerId]) => !deleted.has(workerId)));
-      if (Object.keys(kept).length) attendance[date] = kept;
-    }
+  // Only the attendance and payments of workers who exist and are not deleted count: a mark left behind by a
+  // worker who was deleted forever (for instance one in a month that was locked at the time) is not shown.
+  const alive = new Set(labour.workers.filter((worker) => !worker.deletedAt).map((worker) => worker.id));
+  const attendance = {};
+  for (const [date, marks] of Object.entries(labour.attendance)) {
+    const kept = Object.fromEntries(Object.entries(marks).filter(([workerId]) => alive.has(workerId)));
+    if (Object.keys(kept).length) attendance[date] = kept;
   }
   return {
     ...labour,
     workers: labour.workers.filter((worker) => !worker.deletedAt),
     attendance,
-    payments: labour.payments.filter((payment) => !payment.deletedAt && !deleted.has(payment.workerId))
+    payments: labour.payments.filter((payment) => !payment.deletedAt && alive.has(payment.workerId))
   };
 }
 
@@ -156,11 +155,13 @@ export function registerCell(mark) {
   return mark.units === 0 ? 'A' : String(roundTo2(mark.units));
 }
 
-export function getWorkerErrors(values) {
+/** `requireProject`: a new worker must belong to at least one project (older workers without one can still be edited). */
+export function getWorkerErrors(values, { requireProject = false } = {}) {
   const wage = Number(values.dailyWage);
   return {
     name: text(values.name) ? '' : tr('Enter the worker’s name.'),
-    dailyWage: text(values.dailyWage) === '' ? tr('Enter the daily wage.') : (!Number.isFinite(wage) || wage < 0 ? tr('Enter a valid amount.') : '')
+    dailyWage: text(values.dailyWage) === '' ? tr('Enter the daily wage.') : (!Number.isFinite(wage) || wage < 0 ? tr('Enter a valid amount.') : ''),
+    projectIds: requireProject && !(values.projectIds || []).length ? tr('Choose the project this worker works on.') : ''
   };
 }
 

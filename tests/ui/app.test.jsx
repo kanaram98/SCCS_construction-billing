@@ -328,7 +328,7 @@ describe('First use', () => {
 
 describe('Labour screen', () => {
   it('adds a worker, marks 2P / 1.5P attendance and shows the monthly wages', async () => {
-    const { user } = renderApp(SAMPLE_STATE);
+    const { user } = renderApp({ ...SAMPLE_STATE, projects: [{ id: 'pa', name: 'Alpha site', client: 'Mr Alpha', status: 'running', version: 1 }] });
     await goTo(user, 'Labour');
     await screen.findByRole('heading', { name: 'Labour' });
 
@@ -494,6 +494,20 @@ describe('History and recycle bin', () => {
     expect(await screen.findByText('Everything is deleted.', {}, { timeout: 15000 })).toBeTruthy();
     await waitFor(() => expect(savedState().labour.closedMonths).toEqual({}));
   }, 30000);
+
+  it('a new worker must belong to a project, and without any project there is nowhere to add one', async () => {
+    const { user } = renderApp(SAMPLE_STATE); // no projects yet
+    await goTo(user, 'Labour');
+    await screen.findByRole('heading', { name: 'Labour' });
+    await user.click(screen.getByRole('button', { name: 'Add worker' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Create a project first, then add workers to it.')).toBeTruthy();
+    await user.type(within(dialog).getByLabelText(/Name/), 'Ramesh');
+    await user.type(within(dialog).getByLabelText(/Daily wage/), '600');
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+    expect(screen.getByRole('dialog')).toBeTruthy(); // not saved
+    expect((savedState()?.labour?.workers || []).length).toBe(0);
+  });
 
   it('undoes an edit to firm details from Settings', async () => {
     const { user } = renderApp(SAMPLE_STATE);

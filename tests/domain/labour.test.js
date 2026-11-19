@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  createLabourState, createWorker, daySummary, daysOfMonth, formatUnits, monthReport, normalizeLabour,
+  createLabourState, createWorker, liveLabour, daySummary, daysOfMonth, formatUnits, monthReport, normalizeLabour,
   calendarWeeks, monthPayments, putMark, registerCell, purgeWorker, shiftDate, shiftMonth, workerBalance, workerMonth
 } from '../../src/domain/labour.js';
 import { hydrateState } from '../../src/domain/app-state.js';
@@ -160,4 +160,26 @@ test('workers belong to projects; unassigned ones show on no project; project wa
   assert.deepEqual(unassignedWorkers(labour).map((worker) => worker.id), ['b']);
   assert.equal(labourCostOfProject(labour, 'p1'), 1300);
   assert.equal(labourCostOfProject(labour, 'p2'), 0);
+});
+
+test('marks left by a worker who no longer exists are not shown or counted', () => {
+  const ramesh = createWorker({ id: 'w1', name: 'Ramesh', dailyWage: 700 });
+  const labour = {
+    ...createLabourState(),
+    workers: [ramesh],
+    attendance: { '2026-10-30': { w1: { units: 1, wage: 700 }, gone: { units: 2, wage: 500 } }, '2026-10-31': { gone: { units: 1, wage: 500 } } },
+    payments: [{ id: 'p1', workerId: 'gone', amount: 100, date: '2026-10-30' }]
+  };
+  const live = liveLabour(labour);
+  assert.deepEqual(Object.keys(live.attendance), ['2026-10-30']);
+  assert.deepEqual(Object.keys(live.attendance['2026-10-30']), ['w1']);
+  assert.deepEqual(live.payments, []);
+});
+
+test('a new worker needs a project; an older worker can still be saved without one', async () => {
+  const { getWorkerErrors } = await import('../../src/domain/labour.js');
+  const values = { name: 'Ramesh', dailyWage: '600', projectIds: [] };
+  assert.ok(getWorkerErrors(values, { requireProject: true }).projectIds);
+  assert.equal(getWorkerErrors({ ...values, projectIds: ['p1'] }, { requireProject: true }).projectIds, '');
+  assert.equal(getWorkerErrors(values).projectIds, '');
 });

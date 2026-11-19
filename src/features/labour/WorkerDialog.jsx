@@ -20,7 +20,7 @@ export default function WorkerDialog({ open, worker, projects = [], defaultProje
 function WorkerForm({ initial, projects, defaultProjectId, onSave, onClose }) {
   const [values, setValues] = useState(() => ({ name: '', role: '', phone: '', ...initial, dailyWage: String(initial?.dailyWage ?? ''), projectIds: initial ? (initial.projectIds || []) : (defaultProjectId ? [defaultProjectId] : []) }));
   const [submitted, setSubmitted] = useState(false);
-  const errors = getWorkerErrors(values);
+  const errors = getWorkerErrors(values, { requireProject: !initial });
   const update = (field) => (value) => setValues((current) => ({ ...current, [field]: value }));
 
   function save(event) {
@@ -44,6 +44,11 @@ function WorkerForm({ initial, projects, defaultProjectId, onSave, onClose }) {
       <Grid size={12}>
         <TextField label={t('Mobile (optional)')} type="tel" value={values.phone} onChange={update('phone')} />
       </Grid>
+      {!initial && projects.length === 0 && (
+        <Grid size={12}>
+          <Typography variant="body2" color={submitted ? 'error' : 'text.secondary'}>{t('Create a project first, then add workers to it.')}</Typography>
+        </Grid>
+      )}
       {projects.length > 0 && (
         <Grid size={12}>
           <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.75 }}>{t('Works on')}</Typography>
@@ -62,6 +67,7 @@ function WorkerForm({ initial, projects, defaultProjectId, onSave, onClose }) {
               );
             })}
           </Stack>
+          {submitted && errors.projectIds && <Typography variant="caption" color="error" component="p" sx={{ mt: 0.5 }}>{errors.projectIds}</Typography>}
           <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 0.5 }}>{t('The worker shows only on the projects ticked here. Tick more than one if they move between sites.')}</Typography>
         </Grid>
       )}
