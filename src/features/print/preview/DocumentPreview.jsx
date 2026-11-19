@@ -36,6 +36,7 @@ export default function DocumentPreview({
   printSettings,
   signatureVisible = false,
   editableSignature = false,
+  showPageBreaks = false,
   className = '',
   onSignatureLayoutChange,
   runningAccount = null
@@ -73,13 +74,16 @@ export default function DocumentPreview({
         <tbody>
           {chunks.flatMap((rows, chunkIndex) => rows.map((row, rowIndex) => {
             const classes = [ROW_CLASSES[row.kind], chunkIndex > 0 && rowIndex === 0 && 'entry-break-before'];
-            return (
+            const marker = showPageBreaks && chunkIndex > 0 && rowIndex === 0
+              ? <tr key={`break-${chunkIndex}`} className="page-break-marker" aria-hidden="true"><td colSpan={columns.length}>{t('Page {number} starts here', { number: chunkIndex + 1 })}</td></tr>
+              : null;
+            return [marker, (
               <tr key={`${chunkIndex}-${rowIndex}`} className={classes.filter(Boolean).join(' ') || undefined}>
                 {toTableCells(row, columns.length).map((cell, cellIndex) => (
                   <td key={cellIndex} colSpan={cell.span > 1 ? cell.span : undefined}>{cell.text}</td>
                 ))}
               </tr>
-            );
+            )];
           }))}
         </tbody>
       </table>

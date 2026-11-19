@@ -73,6 +73,7 @@ export default function PreviewTab({ bill, firm, rates, printSettings, selectedD
             documentType={previewDocument}
             signatureVisible={isSignatureVisible(printSettings, selectedDocuments.indexOf(previewDocument), selectedDocuments.length)}
             editableSignature
+            showPageBreaks
             onSignatureLayoutChange={onSignatureLayoutChange}
             runningAccount={runningAccount}
           />

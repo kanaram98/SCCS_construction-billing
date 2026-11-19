@@ -1152,5 +1152,6 @@ export default {
   'Copy': 'कॉपी करें',
   'Print preview': 'प्रिंट प्रीव्यू',
   'Print now': 'अभी प्रिंट करें',
-  'Documents to print': 'प्रिंट के लिए दस्तावेज़'
+  'Documents to print': 'प्रिंट के लिए दस्तावेज़',
+  'Page {number} starts here': 'पेज {number} यहाँ से शुरू'
 };

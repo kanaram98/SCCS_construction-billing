@@ -37,6 +37,7 @@ export default function PrintPreviewDialog({ open, onClose, onPrint, bill, firm,
                     rates={rates}
                     printSettings={printSettings}
                     documentType={documentType}
+                    showPageBreaks
                     signatureVisible={isSignatureVisible(printSettings, index, selectedDocuments.length)}
                     runningAccount={runningAccount}
                   />

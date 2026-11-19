@@ -23,6 +23,9 @@
 .paper .print-repeat-header { display: none; }
 .paper-footer { margin-top: 16px; font-size: 11px; }
 
+.paper .page-break-marker td { padding: 3px 6px; border: 0; border-top: 2px dashed #888; border-bottom: 2px dashed #888; background: #d5d9df; color: #444; font-size: 0.85em; font-weight: 700; text-align: center; letter-spacing: .05em; }
+@media print { .paper .page-break-marker { display: none; } }
+
 /* Letterhead (bills and quotations) */
 .letterhead { font-size: var(--print-font-size, 9pt); color: #222; }
 .lh-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
