@@ -122,7 +122,8 @@ function billTotalRows(bill, context) {
     ...(totals.advance ? [amountRow('normal', t('Advance received'), `- ${money(totals.advance)}`)] : []),
     ...(totals.received ? [amountRow('normal', t('Payments received'), `- ${money(totals.received)}`)] : []),
     ...(totals.adjusted ? [amountRow('normal', t('Adjusted from advance'), `- ${money(totals.adjusted)}`)] : []),
-    ...(totals.paid ? [amountRow('grandTotal', t('Balance due'), money(totals.balance))] : [])
+    ...(totals.writtenOff ? [amountRow('normal', t('Discount allowed'), `- ${money(totals.writtenOff)}`)] : []),
+    ...(totals.paid || totals.writtenOff ? [amountRow('grandTotal', t('Balance due'), money(totals.balance))] : [])
   ];
 }
 
@@ -130,10 +131,12 @@ function billTotalRows(bill, context) {
 function runningAccountRows({ runningAccount: account, money, t }) {
   return [
     row('section', [t('Running account'), '']),
-    ...account.trail.map((entry) => row('normal', [`${t('RA {number}', { number: entry.raNumber })} · ${t('Bill')} ${entry.number}${entry.date ? ` · ${entry.date}` : ''}${entry.current ? ` (${t('this bill')})` : ''}`, money(entry.total)])),
+    ...account.trail.map((entry) => row('normal', [`${entry.label}${entry.date ? ` · ${entry.date}` : ''}${entry.current ? ` (${t('this bill')})` : ''}`, money(entry.total)])),
     amountRow('sectionTotal', t('Total work to date'), money(account.totalToDate)),
     ...(account.receivedToDate ? [amountRow('normal', t('Received to date'), `- ${money(account.receivedToDate)}`)] : []),
-    amountRow('grandTotal', t('Balance due to date'), money(account.balanceToDate))
+    ...(account.discountToDate ? [amountRow('normal', t('Discount allowed'), `- ${money(account.discountToDate)}`)] : []),
+    amountRow('grandTotal', t('Balance due to date'), money(account.balanceToDate)),
+    ...(account.dueApartToDate ? [amountRow('normal', t('Still due on earlier bills (not included above)'), money(account.dueApartToDate))] : [])
   ];
 }
 

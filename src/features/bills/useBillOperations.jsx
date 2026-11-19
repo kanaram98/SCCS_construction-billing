@@ -7,7 +7,7 @@ import { useUndoable } from '../../hooks/useUndoable.js';
 import { useWhatsAppReminder } from '../../hooks/useWhatsAppReminder.js';
 import { VIEWS } from '../../config/app.js';
 import { billLabel, isEstimate, nextRunningBlocker } from '../../domain/bill-kinds.js';
-import { canMoveToDraft, deleteBlocker, hasMoney, readyBlockers } from '../../domain/bill-guard.js';
+import { canMoveToDraft, laterBillOf, deleteBlocker, hasMoney, readyBlockers } from '../../domain/bill-guard.js';
 import { getBillTotals } from '../../domain/calculations.js';
 import { formatCurrency } from '../../domain/formatters.js';
 import { getPayments, sumPayments } from '../../domain/payments.js';
@@ -16,6 +16,7 @@ import AttachQuotationDialog from './AttachQuotationDialog.jsx';
 import NewBillDialog from './NewBillDialog.jsx';
 import RunningBillOfDialog from './RunningBillOfDialog.jsx';
 import RunningTrailDialog from './RunningTrailDialog.jsx';
+import SubmitBillDialog from './SubmitBillDialog.jsx';
 import BillDetailsCard from '../project/BillDetailsCard.jsx';
 import { BLOCKER_TEXT } from './stageText.js';
 
@@ -41,9 +42,10 @@ export function useBillOperations({ onNavigate }) {
   const [cancelling, setCancelling] = useState(null);
   const [moving, setMoving] = useState(null);
   const [trail, setTrail] = useState(null);
+  const [submitting, setSubmitting] = useState(null);
   const [attaching, setAttaching] = useState(null);
   const [detailing, setDetailing] = useState(null);
-  /** A stage change that needs a typed reason: { kind: 'submit' | 'draft' | 'reopen' | 'restore', bill }. */
+  /** A stage change that needs a typed reason: { kind: 'draft' | 'reopen' | 'restore', bill }. */
   const [asking, setAsking] = useState(null);
 
   const quotationOf = (bill) => data.quotations.find((entry) => entry.id === bill.quotationId) || null;
@@ -122,6 +124,8 @@ export function useBillOperations({ onNavigate }) {
   }
 
   async function backToDraft(bill) {
+    const later = laterBillOf(data.bills, bill);
+    if (later) { notify(t('{later} follows this bill. Delete or cancel it first, then this bill can go back to draft.', { later: billLabel(later, t) }), 'warning'); return; }
     if (admin && hasMoney(bill)) { setAsking({ kind: 'draft', bill }); return; }
     const ok = await confirm({
       title: t('Move back to draft?'),
@@ -131,20 +135,11 @@ export function useBillOperations({ onNavigate }) {
     if (ok) actions.bills.backToDraft(bill.id, { admin });
   }
 
-  async function submit(bill) {
-    if (getBillTotals(bill, data.rates).balance > 0.5) { setAsking({ kind: 'submit', bill }); return; }
-    const ok = await confirm({
-      title: t('Submit this bill?'),
-      message: t('The bill is closed and moves to the Submitted tab. Only the admin can reopen it.'),
-      confirmLabel: t('Submit')
-    });
-    if (!ok) return;
-    actions.bills.submit(bill.id);
-    notify(t('Bill submitted.'), 'success');
+  function submit(bill) {
+    setSubmitting(bill);
   }
 
   const reasonText = (kind, bill) => {
-    if (kind === 'submit') return { title: t('Submit with a balance?'), message: t('{amount} is still unpaid on this bill. Say why you are submitting it (for example: client will pay later, or a discount was agreed). The reason is kept on the bill.', { amount: formatCurrency(getBillTotals(bill, data.rates).balance) }), label: t('Submit') };
     if (kind === 'draft') return { title: t('Move back to draft?'), message: t('Payments are recorded on this bill. The reason is kept on the bill.'), label: t('Back to draft') };
     if (kind === 'reopen') return { title: t('Reopen this bill?'), message: t('It goes back to ready so payments can be changed. The reason is kept on the bill.'), label: t('Reopen') };
     return { title: t('Restore this bill?'), message: t('It counts again in totals and reports. The reason is kept on the bill.'), label: t('Restore bill') };
@@ -152,8 +147,7 @@ export function useBillOperations({ onNavigate }) {
 
   function answerReason(reason) {
     const { kind, bill } = asking;
-    if (kind === 'submit') { actions.bills.submit(bill.id, reason); notify(t('Bill submitted.'), 'success'); }
-    else if (kind === 'draft') actions.bills.backToDraft(bill.id, { admin: true, reason });
+    if (kind === 'draft') actions.bills.backToDraft(bill.id, { admin: true, reason });
     else if (kind === 'reopen') { actions.bills.reopenSubmitted(bill.id, reason); notify(t('Bill reopened.'), 'info'); }
     else actions.bills.restoreCancelled(bill.id, reason);
   }
@@ -199,6 +193,13 @@ export function useBillOperations({ onNavigate }) {
         onConfirm={(text) => { actions.bills.cancel(cancelling.id, text); notify(t('{name} cancelled.', { name: billLabel(cancelling, t) }), 'info'); }}
         onClose={() => setCancelling(null)}
       />
+      <SubmitBillDialog
+        open={Boolean(submitting)}
+        balance={submitting ? getBillTotals(submitting, data.rates).balance : 0}
+        canCarry={Boolean(submitting?.projectId) && !isEstimate(submitting)}
+        onSubmit={({ reason, settledOn, settlement }) => { actions.bills.submit(submitting.id, reason, { settledOn, settlement }); notify(t('Bill submitted.'), 'success'); }}
+        onClose={() => setSubmitting(null)}
+      />
       <ReasonDialog
         open={Boolean(asking)}
         title={reason.title}
@@ -223,7 +224,7 @@ export function useBillOperations({ onNavigate }) {
         onAttach={(quotationId) => { actions.bills.attachQuotation(attaching.id, quotationId, { reprice: true }); notify(quotationId ? t('Quotation attached. Entries now use its prices.') : t('Standard rates are used again.'), 'info'); }}
         onClose={() => setAttaching(null)}
       />
-      <RunningTrailDialog open={Boolean(trail)} bill={trail} bills={data.bills} rates={data.rates} onOpen={(entry) => { setTrail(null); open(entry); }} onClose={() => setTrail(null)} />
+      <RunningTrailDialog open={Boolean(trail)} bill={trail} bills={data.bills} rates={data.rates} onOpen={(entry) => { setTrail(null); open(entry); }} onStartNext={(latest) => { setTrail(null); nextRunning(latest); }} onClose={() => setTrail(null)} />
       <ResponsiveDialog open={Boolean(detailing)} title={t('Bill details')} onClose={() => setDetailing(null)}>
         {detailing && <BillDetailsCard onNavigate={(view) => { setDetailing(null); onNavigate(view); }} />}
       </ResponsiveDialog>

@@ -109,6 +109,7 @@ test('calculates bill totals with discount, tax, and advance', () => {
     adjusted: 0,
     cashPaid: 250,
     paid: 250,
+    writtenOff: 0,
     balance: 1840
   });
 });
@@ -154,4 +155,13 @@ test('firms that already used GST are treated as GST registered', async () => {
   assert.equal(hydrateState({ bills: [{ id: 'a', sections: [] }], firm: { gstin: '27ABCDE1234F1Z5' } }).firm.gstRegistered, true);
   assert.equal(hydrateState({ bills: [{ id: 'a', sections: [] }] }).firm.gstRegistered, false);
   assert.equal(hydrateState({ bills: [{ id: 'a', taxRate: '18', sections: [] }], firm: { gstRegistered: false } }).firm.gstRegistered, false);
+});
+
+test('a discount settlement lowers the balance but not the bill total', () => {
+  const bill = { sections: [{ areas: [{ items: [{ rateId: 'c', count: 1 }] }] }], advance: '600', settlement: { kind: 'discount', amount: 300 }, gstEnabled: false };
+  const totals = getBillTotals(bill, [{ id: 'c', type: 'count', rate: 1000 }]);
+  assert.equal(totals.total, 1000);
+  assert.equal(totals.writtenOff, 300);
+  assert.equal(totals.balance, 100);
+  assert.equal(getBillTotals({ ...bill, settlement: { kind: 'carry', amount: 300 } }, [{ id: 'c', type: 'count', rate: 1000 }]).balance, 400);
 });

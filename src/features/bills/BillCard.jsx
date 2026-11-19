@@ -78,6 +78,8 @@ export default function BillCard({ bill, summary, selected, note, ops }) {
               variant={summary.status === 'unpaid' ? 'outlined' : 'filled'}
             />
           )}
+          {status === 'submitted' && bill.settledOn && !cancelled && <Chip size="small" variant="outlined" color="success" label={t('Settled {date}', { date: bill.settledOn })} />}
+          {bill.settlement?.kind === 'discount' && <Chip size="small" variant="outlined" label={t('Discount {amount}', { amount: formatCurrency(bill.settlement.amount) })} />}
           {unlinked && <Chip size="small" variant="outlined" color="warning" label={t('No project linked')} />}
         </Stack>
       </CardActionArea>
@@ -95,7 +97,7 @@ export default function BillCard({ bill, summary, selected, note, ops }) {
             { label: t('Restore bill'), icon: <RestoreIcon fontSize="small" />, onClick: ops.onRestore, hidden: !cancelled || !ops.canCancel },
             { label: t('Convert to bill'), icon: <ReceiptLongIcon fontSize="small" />, onClick: ops.onConvert, hidden: !estimate || status !== 'ready' },
             { label: t('Next running bill'), icon: <PostAddIcon fontSize="small" />, onClick: ops.onNextRunningBill, hidden: !ops.canNextRunning },
-            { label: t('Make a running bill of…'), icon: <RouteIcon fontSize="small" />, onClick: ops.onMove, hidden: estimate || !ops.canMove || !bill.projectId || Boolean(bill.raSeriesId) },
+            { label: t('Make a running bill of…'), icon: <RouteIcon fontSize="small" />, onClick: ops.onMove, hidden: estimate || status !== 'draft' || cancelled || !ops.canMove || !bill.projectId || Boolean(bill.raSeriesId) },
             { label: t('Payment reminder'), icon: <WhatsAppIcon fontSize="small" />, onClick: ops.onRemind, hidden: estimate || status !== 'ready' || !(summary.totals.balance > 0) },
             { label: t('Running bills of this work'), icon: <RouteIcon fontSize="small" />, onClick: ops.onTrail, hidden: !bill.raSeriesId },
             { label: t('Print / PDF'), icon: <PrintIcon fontSize="small" />, onClick: ops.onPrint },

@@ -123,7 +123,9 @@ export function getBillValidation(bill, rates) {
 /** Bills and estimates are numbered separately, so only the same kind can clash. */
 export function isBillNumberTaken(bills, bill) {
   const kind = (entry) => (entry.kind === 'estimate' ? 'estimate' : 'bill');
-  return bills.some((entry) => entry.id !== bill.id && kind(entry) === kind(bill) && text(entry.number) === text(bill.number));
+  // The bills of one running series share their number (ONE/001 R1, ONE/001 R2); numbers count within a project.
+  const sameSeries = (entry) => Boolean(bill.raSeriesId) && entry.raSeriesId === bill.raSeriesId;
+  return bills.some((entry) => entry.id !== bill.id && kind(entry) === kind(bill) && (entry.projectId || '') === (bill.projectId || '') && !sameSeries(entry) && text(entry.number) === text(bill.number));
 }
 
 /** Required project details for export, keyed by field. */

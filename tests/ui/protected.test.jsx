@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { SAMPLE_STATE, renderApp, savedState } from './render-app.jsx';
 
 /** Opens the side menu and taps a tab. */
@@ -199,12 +199,56 @@ describe('Protected bills and prices', () => {
     await user.type(within(dialog).getByLabelText('Reason'), 'Client will pay next month');
     await user.click(confirmButton);
     await waitFor(() => expect(savedState().bills[0].status).toBe('submitted'));
-    expect(savedState().bills[0].audit.at(-1)).toMatchObject({ action: 'submitted-unpaid', reason: 'Client will pay next month' });
+    expect(savedState().bills[0].audit.at(-1)).toMatchObject({ action: 'submitted-due', reason: 'Client will pay next month' });
+    expect(savedState().bills[0].settledOn).toBeTruthy();
     await noDialog();
     expect(await screen.findByRole('tab', { name: /Submitted \(1\)/ })).toBeTruthy();
     expect(screen.queryByText('Bill 1 · Lake View Villa')).toBeNull(); // gone from the working list
     await user.click(screen.getByRole('tab', { name: /Submitted/ }));
     expect(await screen.findByText('Bill 1 · Lake View Villa')).toBeTruthy();
+  });
+
+  it('submitting with a discount records the settled date and lowers what is owed, not the total', async () => {
+    const { user } = renderApp(withFirstBill(SAMPLE_STATE, { status: 'ready' }));
+    await billMenu(user, 1, 'Submit');
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText('Settled on'), { target: { value: '2026-01-15' } });
+    await user.click(within(dialog).getByRole('radio', { name: /Settled with a discount/ }));
+    const amount = within(dialog).getByLabelText(/Discount amount/);
+    await user.clear(amount);
+    await user.type(amount, '500');
+    await user.type(within(dialog).getByLabelText('Reason'), 'Client asked for it');
+    await user.click(within(dialog).getByRole('button', { name: 'Submit' }));
+    await waitFor(() => expect(savedState().bills[0].status).toBe('submitted'));
+    expect(savedState().bills[0]).toMatchObject({ settledOn: '2026-01-15', settlement: { kind: 'discount', amount: 500 } });
+  });
+
+  it('Make a running bill of… is not offered on a ready or submitted bill', async () => {
+    const { user } = renderApp(withFirstBill({ ...SAMPLE_STATE, projects: [PROJECT] }, { status: 'submitted', projectId: 'p1' }));
+    await goTo(user, 'Bills');
+    await user.click(await screen.findByRole('tab', { name: /Submitted/ }));
+    await user.click(await screen.findByRole('button', { name: 'Actions for bill 1' }));
+    expect(screen.queryByRole('menuitem', { name: 'Make a running bill of…' })).toBeNull();
+  });
+
+  it('a bill with a later running bill cannot go back to draft; the running flow shows every bill', async () => {
+    const state = {
+      ...SAMPLE_STATE,
+      projects: [PROJECT],
+      bills: [
+        { ...SAMPLE_STATE.bills[0], projectId: 'p1', advance: '', status: 'ready', raSeriesId: 's', raNumber: 1, name: 'First floor' },
+        { ...SAMPLE_STATE.bills[1], projectId: 'p1', projectName: 'Lake View Villa', sections: [], raSeriesId: 's', raNumber: 2, name: 'First floor' }
+      ]
+    };
+    const { user } = renderApp(state);
+    await billMenu(user, 1, 'Back to draft');
+    expect(await screen.findByText(/follows this bill/)).toBeTruthy();
+    expect(savedState().bills[0].status).toBe('ready');
+    await billMenu(user, 1, 'Running bills of this work');
+    const flow = await screen.findByRole('dialog');
+    expect(within(flow).getAllByText(/R1/).length).toBeGreaterThan(0);
+    expect(within(flow).getAllByText(/R2/).length).toBeGreaterThan(0);
+    expect(within(flow).getByText(/Balance to date/)).toBeTruthy();
   });
 
   it('a ready bill keeps its number fixed in Edit details', async () => {
@@ -271,7 +315,7 @@ describe('Protected bills and prices', () => {
       ...SAMPLE_STATE,
       projects: [PROJECT],
       bills: [
-        { ...SAMPLE_STATE.bills[0], projectId: 'p1', advance: '' },
+        { ...SAMPLE_STATE.bills[0], projectId: 'p1', advance: '', status: 'ready' },
         { ...SAMPLE_STATE.bills[1], projectId: 'p1', projectName: 'Lake View Villa', sections: [] },
         { ...SAMPLE_STATE.bills[1], id: 'b3', number: '3', projectId: 'p2', projectName: 'Other', sections: [] }
       ]
@@ -287,6 +331,6 @@ describe('Protected bills and prices', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Make running bill' }));
     await waitFor(() => expect(savedState().bills.find((bill) => bill.id === 'b2').raNumber).toBe(2));
     expect(savedState().bills.find((bill) => bill.id === 'b1')).toMatchObject({ raNumber: 1 });
-    expect(savedState().bills.find((bill) => bill.id === 'b2').number).toBe('2');
+    expect(savedState().bills.find((bill) => bill.id === 'b2').number).toBe('1');
   });
 });

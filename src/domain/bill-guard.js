@@ -110,6 +110,14 @@ export function readyBlockers(bill, quotation = null) {
   return blockers;
 }
 
+/** The next bill after `bill` in its running series (not cancelled), or null. */
+export function laterBillOf(bills, bill) {
+  if (!bill?.raSeriesId) return null;
+  return bills
+    .filter((entry) => entry.raSeriesId === bill.raSeriesId && !entry.cancelled && !entry.deletedAt && (entry.raNumber || 0) > (bill.raNumber || 0))
+    .sort((a, b) => (a.raNumber || 0) - (b.raNumber || 0))[0] || null;
+}
+
 /** Whether `bill` may go back to draft: the contractor only before any money is on it; the admin always. */
 export function canMoveToDraft(bill, { admin = false } = {}) {
   if (!isReady(bill) || isCancelled(bill)) return false;
@@ -117,15 +125,20 @@ export function canMoveToDraft(bill, { admin = false } = {}) {
 }
 
 /** Closes a ready bill after its payment is entered. `reason` explains a balance left unpaid. */
-export function submitBill(bill, { reason = '', now = new Date() } = {}) {
+export function submitBill(bill, { reason = '', now = new Date(), settledOn = '', settlement = null } = {}) {
   if (!isReady(bill) || isCancelled(bill)) return bill;
-  return withAudit({ ...bill, status: 'submitted', submittedAt: now.toISOString() }, reason ? 'submitted-unpaid' : 'submitted', reason, now);
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(settledOn) ? settledOn : now.toISOString().slice(0, 10);
+  const kept = settlement && ['carry', 'discount', 'due'].includes(settlement.kind) && Number(settlement.amount) > 0
+    ? { kind: settlement.kind, amount: Math.round(Number(settlement.amount) * 100) / 100, reason: String(settlement.reason || '').trim() }
+    : undefined;
+  const action = kept ? `submitted-${kept.kind}` : reason ? 'submitted-unpaid' : 'submitted';
+  return withAudit({ ...bill, status: 'submitted', submittedAt: now.toISOString(), settledOn: day, settlement: kept }, action, reason, now);
 }
 
 /** The admin reopens a submitted bill (it goes back to ready); the reason is kept. */
 export function reopenSubmitted(bill, reason, now = new Date()) {
   if (!isSubmitted(bill)) return bill;
-  const { submittedAt: _at, ...rest } = bill;
+  const { submittedAt: _at, settledOn: _settled, settlement: _settlement, ...rest } = bill;
   return withAudit({ ...rest, status: 'ready' }, 'reopened', reason, now);
 }
 
@@ -141,13 +154,20 @@ export function restoreCancelled(bill, reason, now = new Date()) {
   return withAudit(rest, 'restored', reason, now);
 }
 
-/** Why `bill` cannot become a running bill of `source` ('same', 'estimate', 'project', 'series', 'locked'), or ''. */
-export function seriesBlocker(bill, source) {
+/**
+ * Why `bill` cannot become a running bill of `source`, or ''. The bill must be a plain draft of the same project; the
+ * source must be given to the client (ready or submitted) and, when `bills` is passed, be the latest of its series, so
+ * the series stays one chain (the same rules as starting the next running bill).
+ * ('same', 'estimate', 'project', 'series', 'locked', 'source-state', 'not-latest')
+ */
+export function seriesBlocker(bill, source, bills = null) {
   if (!bill || !source || bill.id === source.id) return 'same';
   if (bill.kind === 'estimate' || source.kind === 'estimate') return 'estimate';
   if (!bill.projectId || bill.projectId !== source.projectId) return 'project';
   if (bill.raSeriesId) return 'series';
-  if (isEntryLocked(bill) || isCancelled(source)) return 'locked';
+  if (isEntryLocked(bill) || isCancelled(source) || hasMoney(bill)) return 'locked';
+  if (isDraft(source)) return 'source-state';
+  if (bills && source.raSeriesId && !isLastOfSeries(bills, source)) return 'not-latest';
   return '';
 }
 
@@ -156,12 +176,12 @@ export function seriesBlocker(bill, source) {
  * Returns `{ bill, sourcePatch }` (sourcePatch is null when `source` already has a series) or null.
  */
 export function attachToSeries(bills, bill, source, now = new Date()) {
-  if (seriesBlocker(bill, source)) return null;
+  if (seriesBlocker(bill, source, bills)) return null;
   const seriesId = source.raSeriesId || source.id;
   const series = bills.filter((entry) => entry.raSeriesId === seriesId);
   const raNumber = Math.max(source.raSeriesId ? 0 : 1, ...series.map((entry) => entry.raNumber || 1)) + 1;
   return {
-    bill: withAudit({ ...bill, raSeriesId: seriesId, raNumber }, 'running-bill', `RA ${raNumber}`, now),
+    bill: withAudit({ ...bill, number: source.number, raSeriesId: seriesId, raNumber }, 'running-bill', `R${raNumber}`, now),
     sourcePatch: source.raSeriesId ? null : { raSeriesId: seriesId, raNumber: 1 }
   };
 }

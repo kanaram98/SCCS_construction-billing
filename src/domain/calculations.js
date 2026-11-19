@@ -56,7 +56,9 @@ export function getBillTotals(bill, rates) {
   const adjusted = sumAdjustments(bill);
   const cashPaid = advance + received; // money received on this bill itself
   const paid = cashPaid + adjusted; // plus project advance applied to it
-  return { subtotal, discount, tax, total, advance, received, adjusted, cashPaid, paid, balance: total - paid };
+  // A bill closed with a discount ("client pays less") owes that much less; the bill total itself does not change.
+  const writtenOff = bill.settlement?.kind === 'discount' ? nonNegativeNumber(bill.settlement.amount) : 0;
+  return { subtotal, discount, tax, total, advance, received, adjusted, cashPaid, paid, writtenOff, balance: total - paid - writtenOff };
 }
 
 /** How GST is shown: split into CGST + SGST within a state, or IGST between states. */

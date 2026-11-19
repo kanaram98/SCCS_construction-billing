@@ -19,12 +19,12 @@ export default function RunningBillOfDialog({ open, bill, bills, onConfirm, onCl
 }
 
 function Body({ bill, bills, onConfirm, onClose }) {
-  const choices = bills.filter((entry) => !seriesBlocker(bill, entry));
+  const choices = bills.filter((entry) => !seriesBlocker(bill, entry, bills));
   const [sourceId, setSourceId] = useState('');
   return (
     <div style={{ paddingTop: 8 }}>
       <Typography variant="body2" sx={{ mb: 2 }}>
-        {t('{bill} becomes the next running bill after the bill you choose. Only bills of the same project are listed. Its entries and number stay as they are.', { bill: billLabel(bill, t) })}
+        {t('{bill} becomes the next running bill after the bill you choose. Only the latest ready or submitted bill of the same project can be followed. It takes the number of that bill and the next R number; its entries stay as they are.', { bill: billLabel(bill, t) })}
       </Typography>
       {choices.length ? (
         <SelectField
@@ -35,7 +35,7 @@ function Body({ bill, bills, onConfirm, onClose }) {
           onChange={setSourceId}
         />
       ) : (
-        <Typography variant="body2" color="text.secondary">{t('There is no other bill in this project to follow.')}</Typography>
+        <Typography variant="body2" color="text.secondary">{t('There is no ready or submitted bill in this project to follow.')}</Typography>
       )}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
         <Button onClick={onClose}>{t('Cancel')}</Button>

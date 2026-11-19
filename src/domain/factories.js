@@ -87,6 +87,8 @@ export function duplicateBill(source, number) {
     status: 'draft',
     readyAt: undefined,
     submittedAt: undefined,
+    settledOn: undefined,
+    settlement: undefined,
     firmSnapshot: undefined,
     cancelled: undefined,
     cancelledAt: undefined,

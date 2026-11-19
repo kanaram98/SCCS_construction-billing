@@ -191,13 +191,17 @@ describe('what the contractor (your father) can and cannot do', () => {
     await assertSucceeds(put(as(ADMIN), bill, { ...locked, updatedBy: ADMIN.uid }));
     await assertFails(put(as(FATHER), bill, { ...bill.data, version: bill.data.version + 2, name: 'Edited by father' }));
     await assertSucceeds(getDoc(doc(as(FATHER), docPath(WS, 'bills', bill.id))));
+    // starting the next running bill from it may mark it as part of the series, and nothing else
+    const seriesPatch = { ...locked, version: bill.data.version + 2, updatedBy: FATHER.uid, raSeriesId: 'bill-1', raNumber: 1 };
+    await assertSucceeds(put(as(FATHER), bill, seriesPatch));
+    await assertFails(put(as(FATHER), bill, { ...seriesPatch, version: bill.data.version + 3, raNumber: 2, name: 'Edited by father' }));
     // the admin reopens it, and then the contractor can work on it again
-    const reopened = { ...bill.data, version: bill.data.version + 2, status: 'ready', updatedBy: ADMIN.uid };
+    const reopened = { ...bill.data, version: bill.data.version + 4, status: 'ready', updatedBy: ADMIN.uid };
     await assertSucceeds(put(as(ADMIN), bill, reopened));
-    await assertSucceeds(put(as(FATHER), bill, { ...reopened, version: bill.data.version + 3, updatedBy: FATHER.uid, name: 'Fine now' }));
+    await assertSucceeds(put(as(FATHER), bill, { ...reopened, version: bill.data.version + 5, updatedBy: FATHER.uid, name: 'Fine now' }));
     // cancelling locks it the same way
-    await assertSucceeds(put(as(ADMIN), bill, { ...reopened, version: bill.data.version + 4, updatedBy: ADMIN.uid, cancelled: true, cancelledAt: NOW, cancelReason: 'mistake' }));
-    await assertFails(put(as(FATHER), bill, { ...reopened, version: bill.data.version + 5, updatedBy: FATHER.uid, name: 'Nope' }));
+    await assertSucceeds(put(as(ADMIN), bill, { ...reopened, version: bill.data.version + 6, updatedBy: ADMIN.uid, cancelled: true, cancelledAt: NOW, cancelReason: 'mistake' }));
+    await assertFails(put(as(FATHER), bill, { ...reopened, version: bill.data.version + 7, updatedBy: FATHER.uid, name: 'Nope' }));
   });
 
   it('bills, rates and projects accept the new protection fields, with limits', async () => {

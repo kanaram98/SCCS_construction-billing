@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  attachToSeries, billStatus, canMoveToDraft, canTakePayment, cancelBill, deleteBlocker, hasMoney, isCounted, isEntryLocked,
+  attachToSeries, laterBillOf, billStatus, canMoveToDraft, canTakePayment, cancelBill, deleteBlocker, hasMoney, isCounted, isEntryLocked,
   isFrozen, isNumberLocked, lockedFields, lockState, readyBlockers, reopenSubmitted, restoreCancelled, seriesBlocker, submitBill, withStatus
 } from '../../src/domain/bill-guard.js';
 import { backToDraft, markReady } from '../../src/domain/bill-final.js';
@@ -100,9 +100,14 @@ test('submitting closes a ready bill; an unpaid balance needs a reason; only the
   assert.equal(submitted.status, 'submitted');
   assert.equal(submitted.audit.at(-1).action, 'submitted');
   assert.equal(submitBill(ready, { reason: 'client pays next month', now }).audit.at(-1).action, 'submitted-unpaid');
+  const settled = submitBill(ready, { now, settledOn: '2026-02-27', settlement: { kind: 'discount', amount: 500, reason: 'agreed' } });
+  assert.equal(settled.settledOn, '2026-02-27');
+  assert.deepEqual(settled.settlement, { kind: 'discount', amount: 500, reason: 'agreed' });
+  assert.equal(submitted.settledOn, '2026-03-01'); // today when no date is given
   const reopened = reopenSubmitted(submitted, 'payment entered wrongly', now);
   assert.equal(reopened.status, 'ready');
   assert.equal(reopened.submittedAt, undefined);
+  assert.equal(reopened.settledOn, undefined);
   assert.deepEqual(reopened.audit.map((entry) => entry.action), ['submitted', 'reopened']);
 });
 
@@ -147,25 +152,31 @@ test('report scope: submitted only, submitted + ready, or everything; and every 
 });
 
 test('making a bill the next running bill of another: same project only', () => {
-  const first = bill({ id: 'f' });
+  const first = bill({ id: 'f', status: 'ready' });
   const stray = bill({ id: 's', number: '2' });
   assert.equal(seriesBlocker(stray, bill({ id: 'o', projectId: 'p2' })), 'project');
   assert.equal(seriesBlocker(stray, stray), 'same');
   assert.equal(seriesBlocker(stray, bill({ id: 'e', kind: 'estimate' })), 'estimate');
   assert.equal(seriesBlocker(bill({ id: 'x', status: 'ready' }), first), 'locked');
+  assert.equal(seriesBlocker(stray, bill({ id: 'd', status: 'draft' })), 'source-state'); // only a ready or submitted bill can be followed
+  const r1 = bill({ id: 'a1', status: 'ready', raSeriesId: 'a1', raNumber: 1 });
+  const r2 = bill({ id: 'a2', status: 'ready', raSeriesId: 'a1', raNumber: 2 });
+  assert.equal(seriesBlocker(stray, r1, [r1, r2]), 'not-latest');
+  assert.equal(seriesBlocker(stray, r2, [r1, r2]), '');
   assert.equal(seriesBlocker(bill({ id: 'x', raSeriesId: 'z' }), first), 'series');
   assert.equal(seriesBlocker(stray, bill({ id: 'sub', status: 'submitted' })), ''); // a submitted bill can still be followed
   const result = attachToSeries([first, stray], stray, first);
   assert.equal(result.bill.raSeriesId, 'f');
   assert.equal(result.bill.raNumber, 2);
   assert.deepEqual(result.sourcePatch, { raSeriesId: 'f', raNumber: 1 });
-  assert.equal(result.bill.number, '2');
-  const ra1 = bill({ id: 'f', raSeriesId: 'f', raNumber: 1 });
-  const ra2 = bill({ id: 'g', raSeriesId: 'f', raNumber: 2 });
-  const third = attachToSeries([ra1, ra2, stray], stray, ra1);
+  assert.equal(result.bill.number, '1');
+  const ra1 = bill({ id: 'f', status: 'ready', raSeriesId: 'f', raNumber: 1 });
+  const ra2 = bill({ id: 'g', status: 'ready', raSeriesId: 'f', raNumber: 2 });
+  const third = attachToSeries([ra1, ra2, stray], stray, ra2);
   assert.equal(third.bill.raNumber, 3);
   assert.equal(third.sourcePatch, null);
   assert.equal(attachToSeries([first, stray], stray, bill({ id: 'q', projectId: 'p2' })), null);
+  assert.equal(attachToSeries([ra1, ra2, stray], stray, ra1), null); // not the latest of its series
 });
 
 test('the last running bill of a series can be deleted (draft or ready, no money); one in the middle cannot', () => {
@@ -179,4 +190,13 @@ test('the last running bill of a series can be deleted (draft or ready, no money
   assert.equal(deleteBlocker(r1, [r1]), 'series'); // the first bill of a series stays
   assert.equal(deleteBlocker({ ...r2, advance: '100' }, [r1, r2]), 'money');
   assert.equal(deleteBlocker({ ...r2, status: 'submitted' }, [r1, r2]), 'submitted');
+});
+
+test('a bill with a later running bill is found, so it cannot go back to draft', () => {
+  const r1 = bill({ id: 'r1', status: 'ready', raSeriesId: 's', raNumber: 1 });
+  const r2 = bill({ id: 'r2', status: 'draft', raSeriesId: 's', raNumber: 2 });
+  assert.equal(laterBillOf([r1, r2], r1).id, 'r2');
+  assert.equal(laterBillOf([r1, r2], r2), null);
+  assert.equal(laterBillOf([r1, { ...r2, cancelled: true }], r1), null); // a cancelled bill does not count
+  assert.equal(laterBillOf([bill({ id: 'x' })], bill({ id: 'x' })), null);
 });

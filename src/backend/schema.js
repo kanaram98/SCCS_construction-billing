@@ -159,6 +159,9 @@ export const billSchema = z.strictObject({
   status: z.enum(['draft', 'ready', 'submitted']).optional(),
   readyAt: isoTime.optional(),
   submittedAt: isoTime.optional(),
+  /** The day the bill was settled, and how any balance was closed (carried forward, discounted or left due). */
+  settledOn: isoDate.optional(),
+  settlement: z.looseObject({ kind: z.enum(['carry', 'discount', 'due']), amount: z.number().finite().min(0) }).optional(),
   /** Older versions of the app marked a final bill with these. */
   final: z.boolean().optional(),
   finalizedAt: isoTime.optional(),

@@ -25,7 +25,7 @@ import { createWorker } from '../domain/labour.js';
 import * as labourOps from '../domain/labour-ops.js';
 import * as history from '../domain/history.js';
 import { backToDraft, markReady } from '../domain/bill-final.js';
-import { isSubmitted, attachToSeries, canTakePayment, cancelBill, deleteBlocker, isDraft, isEntryLocked, isFrozen, isReady, lockedFields, reopenSubmitted, restoreCancelled, submitBill } from '../domain/bill-guard.js';
+import { isSubmitted, laterBillOf, attachToSeries, canTakePayment, cancelBill, deleteBlocker, isDraft, isEntryLocked, isFrozen, isReady, lockedFields, reopenSubmitted, restoreCancelled, submitBill } from '../domain/bill-guard.js';
 import { addLine, createQuotation, finalizeQuotation, isQuotationFinal, itemIds, newQuotationVersion, quotationLabel, quotedRates, removeLine, repriceBill, repriceDrafts, setLinePrice } from '../domain/quotations.js';
 import { convertEstimateToBill, createNextRunningBill, nextNumberFor, nextRunningBlocker } from '../domain/bill-kinds.js';
 import { DEFAULT_SIGNATURE_LAYOUT, normalizeSignatureLayout } from '../domain/signature-layout.js';
@@ -76,7 +76,7 @@ function createBillActions({ data, setData }) {
       // The empty bill every new install starts with is replaced, not kept beside the first real bill.
       const starter = kind === 'bill' && data.bills.length === 1 && isBlankStarter(data.bills[0]);
       const others = starter ? [] : data.bills;
-      const bill = { ...createBill(nextNumberFor(others, kind), { gstEnabled: Boolean(data.firm.gstRegistered) }), ...billFieldsFromProject(project) };
+      const bill = { ...createBill(nextNumberFor(others, kind, project?.id), { gstEnabled: Boolean(data.firm.gstRegistered) }), ...billFieldsFromProject(project) };
       const created = kind === 'estimate' ? { ...bill, kind } : bill;
       if (starter) setData((current) => ({ ...current, bills: [created], activeBillId: created.id }));
       else insertAndOpen(created);
@@ -126,7 +126,7 @@ function createBillActions({ data, setData }) {
     },
     duplicate(source) {
       // A duplicate starts a fresh bill: not part of the source's running-bill series.
-      const copy = { ...duplicateBill(source, nextNumberFor(data.bills, source.kind === 'estimate' ? 'estimate' : 'bill')), raSeriesId: undefined, raNumber: undefined, convertedBillId: undefined, sourceEstimateId: undefined };
+      const copy = { ...duplicateBill(source, nextNumberFor(data.bills, source.kind === 'estimate' ? 'estimate' : 'bill', source.projectId)), raSeriesId: undefined, raNumber: undefined, convertedBillId: undefined, sourceEstimateId: undefined };
       // A copy is a new draft: it is priced from the project's current quotation.
       insertAndOpen(repriceBill(copy, quotedRates(data.rates, data.quotations.find((entry) => entry.id === copy.quotationId))));
     },
@@ -154,11 +154,12 @@ function createBillActions({ data, setData }) {
     },
     /** Ready → draft so it can be edited again (the contractor only before any money is on it; the admin always, with a reason). */
     backToDraft(billId, { reason = '', admin = false } = {}) {
-      setData((current) => updateBillById(current, billId, (bill) => backToDraft(bill, current.rates, { reason, admin })));
+      // A series is unwound from the end: a bill with a later running bill stays as it is.
+      setData((current) => updateBillById(current, billId, (bill) => (laterBillOf(current.bills, bill) ? bill : backToDraft(bill, current.rates, { reason, admin }))));
     },
     /** Ready → submitted: the payment is in, the bill is closed and moves to the Submitted tab. `reason` explains any balance left unpaid. */
-    submit(billId, reason = '') {
-      setData((current) => updateBillById(current, billId, (bill) => submitBill(bill, { reason })));
+    submit(billId, reason = '', { settledOn = '', settlement = null } = {}) {
+      setData((current) => updateBillById(current, billId, (bill) => submitBill(bill, { reason, settledOn, settlement })));
     },
     /** The admin reopens the active submitted bill (back to ready), with a reason. */
     reopenSubmitted(billId, reason) {

@@ -138,6 +138,10 @@ service cloud.firestore {
     function onlyActiveChanged() {
       return data().diff(resource.data).affectedKeys().hasOnly(['active', 'joinedOn', 'leftOn', 'projectIds', 'updatedAt', 'version', 'updatedBy', 'syncedAt']);
     }
+    // Starting the next running bill from a submitted bill only marks that bill as part of the series.
+    function onlySeriesChanged() {
+      return data().diff(resource.data).affectedKeys().hasOnly(['raSeriesId', 'raNumber', 'updatedAt', 'version', 'updatedBy', 'syncedAt']);
+    }
     function inRecycleBin() {
       return resource.data.deletedAt != null;
     }
@@ -148,7 +152,7 @@ service cloud.firestore {
       return fields(recordKeys().concat(['number', 'date', 'projectName', 'clientId', 'client', 'clientPhone',
           'clientAddress', 'clientGstin', 'firstLevelName', 'secondLevelName', 'discount', 'taxRate',
           'gstEnabled', 'gstType', 'advance', 'payments', 'footer', 'sections']),
-          ['order', 'kind', 'isSample', 'projectId', 'raSeriesId', 'raNumber', 'convertedBillId', 'sourceEstimateId', 'advanceAdjustments', 'final', 'finalizedAt', 'name', 'firmSnapshot', 'status', 'readyAt', 'submittedAt', 'quotationId', 'quotationLabel', 'cancelled', 'cancelledAt', 'cancelReason', 'audit'])
+          ['order', 'kind', 'isSample', 'projectId', 'raSeriesId', 'raNumber', 'convertedBillId', 'sourceEstimateId', 'advanceAdjustments', 'final', 'finalizedAt', 'name', 'firmSnapshot', 'status', 'readyAt', 'submittedAt', 'settledOn', 'settlement', 'quotationId', 'quotationLabel', 'cancelled', 'cancelledAt', 'cancelReason', 'audit'])
         && validMeta(id)
         && str(d.number, 30) && str(d.date, 10)
         && (!('kind' in d) || d.kind in ['bill', 'estimate'])
@@ -166,7 +170,8 @@ service cloud.firestore {
         && (!('final' in d) || d.final is bool) && optStr(d, 'finalizedAt', 40)
         && (!('advanceAdjustments' in d) || (d.advanceAdjustments is list && d.advanceAdjustments.size() <= 200))
         && (!('firmSnapshot' in d) || d.firmSnapshot is map)
-        && (!('status' in d) || d.status in ['draft', 'ready', 'submitted']) && optStr(d, 'readyAt', 40) && optStr(d, 'submittedAt', 40)
+        && (!('status' in d) || d.status in ['draft', 'ready', 'submitted']) && optStr(d, 'readyAt', 40) && optStr(d, 'submittedAt', 40) && optStr(d, 'settledOn', 40)
+        && (!('settlement' in d) || (d.settlement is map && d.settlement.kind in ['carry', 'discount', 'due'] && d.settlement.amount is number))
         && optStr(d, 'quotationId', 100) && optStr(d, 'quotationLabel', 200)
         && (!('cancelled' in d) || d.cancelled is bool) && optStr(d, 'cancelledAt', 40) && optStr(d, 'cancelReason', 5000)
         && (!('audit' in d) || (d.audit is list && d.audit.size() <= 100));
@@ -355,7 +360,8 @@ service cloud.firestore {
         allow create: if canWork(wid) && validBill(id) && versionGoesUp() && writerRecorded(wid);
         // A settled or cancelled bill can only be changed by the admin (the contractor sees it read-only).
         allow update: if canWork(wid) && validBill(id) && versionGoesUp() && writerRecorded(wid)
-          && (isAdmin(wid) || !(resource.data.get('status', 'draft') == 'submitted' || resource.data.get('settled', false) || resource.data.get('cancelled', false)));
+          && (isAdmin(wid) || !(resource.data.get('settled', false) || resource.data.get('cancelled', false))
+            && (resource.data.get('status', 'draft') != 'submitted' || onlySeriesChanged()));
         allow delete: if isAdmin(wid) && inRecycleBin();
       }
       // Rates, workers and labour payments: the contractor can add; only the admin edits or deletes.

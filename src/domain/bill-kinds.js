@@ -11,6 +11,7 @@ import { getBillTotals } from './calculations.js';
 import { newId } from './ids.js';
 import { getPrintDocument } from './print-settings.js';
 import { billStatus } from './bill-guard.js';
+import { tr } from '../i18n/translate.js';
 
 export function isEstimate(bill) {
   return bill.kind === 'estimate';
@@ -25,8 +26,12 @@ export function billsOfKind(bills, kind) {
   return bills.filter((bill) => billKind(bill) === kind);
 }
 
-export function nextNumberFor(bills, kind) {
-  return getNextBillNumber(billsOfKind(bills, kind));
+/**
+ * The next number for a bill or estimate. Numbers count up within a project (ONE/001, ONE/002…), the way a
+ * site would; bills with no project share one count. A running series keeps the number of its first bill.
+ */
+export function nextNumberFor(bills, kind, projectId = '') {
+  return getNextBillNumber(billsOfKind(bills, kind).filter((bill) => (bill.projectId || '') === (projectId || '')));
 }
 
 /**
@@ -42,8 +47,9 @@ export function projectCode(name) {
 const padNumber = (number) => (/^\d+$/.test(String(number)) ? String(number).padStart(3, '0') : String(number));
 
 /**
- * Display name. A bill of a project reads like a site reference: "LVV/003", "LVV/EST-002", "LVV/003 · RA 2".
- * A bill with no project keeps the plain "Bill 12" / "Estimate 3".
+ * Display name. A bill of a project reads like a site reference: "LVV/003", "LVV/EST-002"; the bills of a running
+ * series keep the first bill's number and count up after it: "LVV/003 R1", "LVV/003 R2".
+ * A bill with no project keeps the plain "Bill 12" / "Estimate 3" ("Bill 12 R2").
  * @param {(text: string, params?: object) => string} t translator
  */
 export function billLabel(bill, t) {
@@ -51,7 +57,7 @@ export function billLabel(bill, t) {
   const base = linked
     ? `${projectCode(bill.projectName)}/${isEstimate(bill) ? 'EST-' : ''}${padNumber(bill.number)}`
     : (isEstimate(bill) ? t('Estimate {number}', { number: bill.number }) : t('Bill {number}', { number: bill.number }));
-  return bill.raNumber ? `${base} · ${t('RA {number}', { number: bill.raNumber })}` : base;
+  return bill.raNumber ? `${base} R${bill.raNumber}` : base;
 }
 
 /** New bill from an estimate: same content, next bill number, no payments. */
@@ -60,13 +66,15 @@ export function convertEstimateToBill(estimate, bills) {
     ...estimate,
     id: newId(),
     kind: 'bill',
-    number: nextNumberFor(bills, 'bill'),
+    number: nextNumberFor(bills, 'bill', estimate.projectId),
     sections: cloneSections(estimate.sections),
     payments: [],
     advanceAdjustments: [],
     status: 'draft',
     readyAt: undefined,
     submittedAt: undefined,
+    settledOn: undefined,
+    settlement: undefined,
     firmSnapshot: undefined,
     audit: undefined,
     advance: '',
@@ -86,12 +94,12 @@ export function getSeries(bills, bill) {
 /**
  * Why a bill cannot have a next running bill started from it ('' when it can). A running series is one
  * chain, RA 1 → RA 2 → RA 3: the next bill is started from the latest bill, and only once that bill is
- * ready (given to the client), so a draft never spawns more drafts and the series never forks.
+ * given to the client (ready, or already submitted), so a draft never spawns more drafts and the series never forks.
  */
 export function nextRunningBlocker(bills, bill) {
   if (bill.kind === 'estimate') return 'estimate';
   if (bill.cancelled) return 'cancelled';
-  if (billStatus(bill) !== 'ready') return 'not-ready';
+  if (billStatus(bill) === 'draft') return 'not-ready'; // ready (with the client) or submitted (closed) can be followed
   if (bill.raSeriesId) {
     const latest = Math.max(...getSeries(bills, bill).filter((entry) => !entry.cancelled && !entry.deletedAt).map((entry) => entry.raNumber || 1));
     if ((bill.raNumber || 1) < latest) return 'not-latest';
@@ -109,7 +117,7 @@ export function createNextRunningBill(bills, source) {
   const series = source.raSeriesId ? getSeries(bills, source) : [source];
   const raNumber = Math.max(...series.map((entry) => entry.raNumber || 1)) + 1;
   const bill = {
-    ...createBill(nextNumberFor(bills, 'bill'), { gstEnabled: source.gstEnabled !== false }),
+    ...createBill(source.number, { gstEnabled: source.gstEnabled !== false }), // the series keeps the first bill's number
     projectId: source.projectId || '',
     projectName: source.projectName,
     clientId: source.clientId,
@@ -144,15 +152,20 @@ export function getRunningAccount(bills, bill, rates) {
   const thisTotal = getBillTotals(bill, rates).total;
   const totalToDate = totals.reduce((sum, { totals: value }) => sum + value.total, 0);
   const receivedToDate = totals.reduce((sum, { totals: value }) => sum + value.paid, 0);
+  const discountToDate = totals.reduce((sum, { totals: value }) => sum + value.writtenOff, 0);
+  // An earlier bill closed with "leave it as due" keeps its balance to itself; it is not added to this bill's balance.
+  const dueApartToDate = totals.reduce((sum, { entry, totals: value }) => (entry.id !== bill.id && entry.settlement?.kind === 'due' ? sum + Math.max(0, value.balance) : sum), 0);
   return {
     raNumber: bill.raNumber,
-    trail: totals.map(({ entry, totals: value }) => ({ id: entry.id, raNumber: entry.raNumber, number: entry.number, date: entry.date, total: value.total, paid: value.paid, current: entry.id === bill.id })),
+    trail: totals.map(({ entry, totals: value }) => ({ label: billLabel(entry, tr), id: entry.id, raNumber: entry.raNumber, number: entry.number, date: entry.date, total: value.total, paid: value.paid, discount: value.writtenOff, current: entry.id === bill.id })),
     previousCount: upToThis.length - 1,
     thisTotal,
     previousTotal: totalToDate - thisTotal,
     totalToDate,
     receivedToDate,
-    balanceToDate: totalToDate - receivedToDate
+    discountToDate,
+    dueApartToDate,
+    balanceToDate: totalToDate - receivedToDate - discountToDate - dueApartToDate
   };
 }
 
