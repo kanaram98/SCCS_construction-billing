@@ -1,12 +1,13 @@
 /**
  * Letterhead shared by bills and quotations: logo and firm details, a brand
  * colour stripe, the document title with its number/date, and a "Bill to" block.
- * `t` translates into the document's language.
+ * `t` translates into the document's language. `om` puts the ॐ sign at the top centre (bills).
  */
-export default function Letterhead({ firm, t, title, meta = [], billTo }) {
+export default function Letterhead({ firm, t, title, meta = [], billTo, om = false }) {
   const contact = [firm.phone && `☎ ${firm.phone}`, firm.gstRegistered && firm.gstin && t('GSTIN: {gstin}', { gstin: firm.gstin })].filter(Boolean);
   return (
     <div className="letterhead">
+      {om && <div className="lh-om" aria-hidden="true">ॐ</div>}
       <div className="lh-top">
         {firm.logo
           ? <img className="lh-logo" src={firm.logo} alt="" />

@@ -1,3 +1,7 @@
+import { omImage } from './om-image.js';
+
+const OM_HEIGHT = 7;
+
 /**
  * Letterhead drawn with jsPDF, matching the on-screen Letterhead component:
  * logo + firm details, brand stripe, title with number/date, "Bill to" block.
@@ -19,13 +23,19 @@ function imageSize(doc, image, maxWidth, maxHeight) {
 }
 
 /**
- * @param {{ firm, title: string, meta: string[], billTo?: { label: string, lines: string[] }, margin: number, fontSize: number }} options
+ * @param {{ firm, title: string, meta: string[], billTo?: { label: string, lines: string[] }, margin: number, fontSize: number, om?: boolean }} options
+ * `om` puts the ॐ sign at the top centre (bills).
  * @returns {number} y position below the letterhead
  */
-export function drawLetterhead(doc, { firm, title, meta, billTo, margin, fontSize }) {
+export function drawLetterhead(doc, { firm, title, meta, billTo, margin, fontSize, om = false }) {
   const pageWidth = doc.internal.pageSize.getWidth();
   const right = pageWidth - margin;
   let top = margin;
+  const sign = om ? omImage() : '';
+  if (sign) {
+    doc.addImage(sign, 'PNG', (pageWidth - OM_HEIGHT) / 2, top - 1, OM_HEIGHT, OM_HEIGHT, 'om-sign', 'FAST');
+    top += OM_HEIGHT;
+  }
 
   // Logo (left) and firm details (right)
   let logoHeight = 0;

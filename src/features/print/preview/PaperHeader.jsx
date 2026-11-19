@@ -9,6 +9,7 @@ export default function PaperHeader({ bill, firm, documentType, t }) {
       <Letterhead
         firm={firm}
         t={t}
+        om
         title={t(documentTitle(documentType, bill) || '')}
         meta={[billLabel(bill, t), t('Date: {date}', { date: bill.date })]}
         billTo={{

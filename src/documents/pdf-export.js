@@ -71,7 +71,8 @@ function drawHeader(doc, bill, firm, title, settings) {
       ]
     },
     margin: settings.margin,
-    fontSize: settings.fontSize
+    fontSize: settings.fontSize,
+    om: true
   });
 }
 
