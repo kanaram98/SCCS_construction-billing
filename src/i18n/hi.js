@@ -1149,5 +1149,8 @@ export default {
   'Copy these': 'ये कॉपी करें',
   'Into these': 'इनमें डालें',
   'Select all': 'सभी चुनें',
-  'Copy': 'कॉपी करें'
+  'Copy': 'कॉपी करें',
+  'Print preview': 'प्रिंट प्रीव्यू',
+  'Print now': 'अभी प्रिंट करें',
+  'Documents to print': 'प्रिंट के लिए दस्तावेज़'
 };
