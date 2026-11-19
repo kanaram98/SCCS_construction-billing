@@ -4,6 +4,8 @@ import {
   billLabel,
   convertEstimateToBill,
   createNextRunningBill,
+  nextRunningBlocker,
+  projectCode,
   getRunningAccount,
   getSeries,
   nextNumberFor
@@ -54,11 +56,26 @@ test('next running bill keeps project details and room structure without entries
   assert.deepEqual(getSeries([third, firstAsRa, second], second).map((bill) => bill.raNumber), [1, 2, 3]);
 });
 
+test('a next running bill only starts from the latest ready bill of a single chain', () => {
+  const ready = (extra) => ({ id: 'b1', status: 'ready', ...extra });
+  assert.equal(nextRunningBlocker([], { id: 'd', status: 'draft' }), 'not-ready');
+  assert.equal(nextRunningBlocker([], { id: 's', status: 'submitted' }), 'not-ready');
+  assert.equal(nextRunningBlocker([], ready({ kind: 'estimate' })), 'estimate');
+  assert.equal(nextRunningBlocker([], ready({ cancelled: true })), 'cancelled');
+  assert.equal(nextRunningBlocker([], ready()), '');
+  const r1 = ready({ id: 'r1', raSeriesId: 'r1', raNumber: 1 });
+  const r2 = ready({ id: 'r2', raSeriesId: 'r1', raNumber: 2 });
+  assert.equal(nextRunningBlocker([r1, r2], r1), 'not-latest');
+  assert.equal(nextRunningBlocker([r1, r2], r2), '');
+});
+
 test('running account adds up work and payments to date', () => {
   const ra1 = { id: 'b1', raSeriesId: 'b1', raNumber: 1, advance: '2000', sections: withCount(3) };
   const ra2 = { id: 'b2', raSeriesId: 'b1', raNumber: 2, payments: [{ amount: 500 }], sections: withCount(2) };
   const ra3 = { id: 'b3', raSeriesId: 'b1', raNumber: 3, sections: withCount(10) };
   const account = getRunningAccount([ra1, ra2, ra3], ra2, rates);
+  assert.deepEqual(account.trail.map((entry) => [entry.raNumber, entry.total, entry.current]), [[1, 3000, false], [2, 2000, true]]);
+  delete account.trail;
   assert.deepEqual(account, {
     raNumber: 2,
     previousCount: 1,
@@ -69,4 +86,15 @@ test('running account adds up work and payments to date', () => {
     balanceToDate: 2500
   });
   assert.equal(getRunningAccount([ra1], { id: 'x', sections: [] }, rates), null);
+});
+
+test('bills of a project read like site references', () => {
+  const t = (text, params = {}) => text.replace(/\{(\w+)\}/g, (_m, key) => params[key]);
+  assert.equal(projectCode('Lake View Villa'), 'LVV');
+  assert.equal(projectCode('Tower'), 'TOW');
+  assert.equal(projectCode(''), 'PRJ');
+  assert.equal(billLabel({ projectId: 'p', projectName: 'Lake View Villa', number: '3' }, t), 'LVV/003');
+  assert.equal(billLabel({ projectId: 'p', projectName: 'Lake View Villa', number: '3', raNumber: 2 }, t), 'LVV/003 · RA 2');
+  assert.equal(billLabel({ projectId: 'p', projectName: 'Tower', number: '2', kind: 'estimate' }, t), 'TOW/EST-002');
+  assert.equal(billLabel({ number: '5' }, t), 'Bill 5'); // no project: plain
 });

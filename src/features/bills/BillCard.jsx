@@ -39,7 +39,7 @@ const STATUS_COLORS = { paid: 'success', partial: 'warning', unpaid: 'default' }
 export default function BillCard({ bill, summary, selected, note, ops }) {
   const state = lockState(bill);
   const status = billStatus(bill);
-  const removable = !deleteBlocker(bill);
+  const removable = ops.canDelete ?? !deleteBlocker(bill);
   const estimate = isEstimate(bill);
   const unlinked = !bill.projectId && !bill.isSample;
   const cancelled = state === 'cancelled';
@@ -94,9 +94,10 @@ export default function BillCard({ bill, summary, selected, note, ops }) {
             { label: t('Reopen'), icon: <LockOpenIcon fontSize="small" />, onClick: ops.onReopen, hidden: status !== 'submitted' || cancelled || !ops.admin },
             { label: t('Restore bill'), icon: <RestoreIcon fontSize="small" />, onClick: ops.onRestore, hidden: !cancelled || !ops.canCancel },
             { label: t('Convert to bill'), icon: <ReceiptLongIcon fontSize="small" />, onClick: ops.onConvert, hidden: !estimate || status !== 'ready' },
-            { label: t('Next running bill'), icon: <PostAddIcon fontSize="small" />, onClick: ops.onNextRunningBill, hidden: estimate || cancelled },
+            { label: t('Next running bill'), icon: <PostAddIcon fontSize="small" />, onClick: ops.onNextRunningBill, hidden: !ops.canNextRunning },
             { label: t('Make a running bill of…'), icon: <RouteIcon fontSize="small" />, onClick: ops.onMove, hidden: estimate || !ops.canMove || !bill.projectId || Boolean(bill.raSeriesId) },
             { label: t('Payment reminder'), icon: <WhatsAppIcon fontSize="small" />, onClick: ops.onRemind, hidden: estimate || status !== 'ready' || !(summary.totals.balance > 0) },
+            { label: t('Running bills of this work'), icon: <RouteIcon fontSize="small" />, onClick: ops.onTrail, hidden: !bill.raSeriesId },
             { label: t('Print / PDF'), icon: <PrintIcon fontSize="small" />, onClick: ops.onPrint },
             { label: t('Rename'), icon: <EditIcon fontSize="small" />, onClick: ops.onRename, hidden: state === 'submitted' || cancelled },
             { label: t('Duplicate'), icon: <ContentCopyIcon fontSize="small" />, onClick: ops.onDuplicate },

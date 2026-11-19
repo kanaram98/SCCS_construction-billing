@@ -19,6 +19,8 @@ import WarningIcon from '@mui/icons-material/WarningAmber';
 import { useBilling } from '../../state/BillingContext.jsx';
 import { useWhatsAppReminder } from '../../hooks/useWhatsAppReminder.js';
 import { getDashboardSummary, OVERDUE_DAYS } from '../../domain/dashboard.js';
+import { daySummary, liveLabour, localToday } from '../../domain/labour.js';
+import { totalAmount } from '../../domain/projects.js';
 import { billLabel, isEstimate } from '../../domain/bill-kinds.js';
 import { getBillTotals } from '../../domain/calculations.js';
 import { formatCurrency, todayIso } from '../../domain/formatters.js';
@@ -60,6 +62,18 @@ export default function HomePage({ onNavigate }) {
   const reminder = useWhatsAppReminder();
   const summary = useMemo(() => getDashboardSummary(data.bills, data.rates), [data.bills, data.rates]);
   const firmName = String(data.firm.name || '').trim();
+  const spentToday = useMemo(() => {
+    const today = localToday();
+    const labour = liveLabour(data.labour);
+    const day = daySummary(labour, today);
+    const mine = (data.expenses || []).filter((expense) => !expense.deletedAt);
+    return {
+      expenses: totalAmount(mine.filter((expense) => expense.date === today)),
+      expensesMonth: totalAmount(mine.filter((expense) => String(expense.date).startsWith(today.slice(0, 7)))),
+      wages: day.cost,
+      present: day.present
+    };
+  }, [data.labour, data.expenses]);
 
   function openBill(billId) {
     actions.bills.open(billId);
@@ -92,6 +106,8 @@ export default function HomePage({ onNavigate }) {
         <Grid size={6}><Kpi label={t('Billed this month')} value={formatCurrency(summary.billedThisMonth)} /></Grid>
         <Grid size={6}><Kpi label={t('Awaiting payment')} value={formatCurrency(summary.awaitingValue)} color="warning.dark" note={trn(summary.awaitingCount, '{count} ready bill with the client', '{count} ready bills with the client')} /></Grid>
         <Grid size={6}><Kpi label={t('In progress')} value={formatCurrency(summary.draftValue)} note={trn(summary.draftCount, '{count} draft bill', '{count} draft bills')} /></Grid>
+        <Grid size={6}><Kpi label={t('Site expenses today')} value={formatCurrency(spentToday.expenses)} note={t('This month: {amount}', { amount: formatCurrency(spentToday.expensesMonth) })} /></Grid>
+        <Grid size={6}><Kpi label={t('Wages today')} value={formatCurrency(spentToday.wages)} note={t('{count} marked present', { count: spentToday.present })} /></Grid>
         <Grid size={12}><Kpi label={t('Open estimates')} value={formatCurrency(summary.openEstimateValue)} note={trn(summary.openEstimateCount, '{count} estimate not yet converted', '{count} estimates not yet converted')} color="info.main" /></Grid>
       </Grid>
 

@@ -120,6 +120,8 @@ function ProjectDetail({ project, onBack, onNavigate }) {
         <Grid size={6}><StatCard label={t('Received (bills + advances)')} value={formatCurrency(summary.received)} /></Grid>
         <Grid size={6}><StatCard label={summary.receivable < 0 ? t('Client paid ahead') : t('Client still owes')} value={formatCurrency(Math.abs(summary.receivable))} /></Grid>
         <Grid size={6}><StatCard label={t('Site expenses')} value={formatCurrency(summary.expenses)} /></Grid>
+        <Grid size={6}><StatCard label={t('Labour wages')} value={formatCurrency(summary.labourCost)} /></Grid>
+        <Grid size={6}><StatCard label={summary.afterCosts < 0 ? t('Short after costs') : t('Left after costs')} value={formatCurrency(Math.abs(summary.afterCosts))} /></Grid>
       </Grid>
       {summary.agreed > 0 && (
         <Typography variant="caption" color="text.secondary" component="p" sx={{ mb: 1.5 }}>

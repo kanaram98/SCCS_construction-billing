@@ -17,7 +17,8 @@ import PdfIcon from '@mui/icons-material/PictureAsPdfOutlined';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import TableViewIcon from '@mui/icons-material/TableChartOutlined';
-import { EmptyState, PageHeading, SelectField, StatCard, useConfirm, useNotify } from '../../components/ui';
+import Chip from '@mui/material/Chip';
+import { EmptyState, PageHeading, SelectField, StatCard, TextField, useConfirm, useNotify } from '../../components/ui';
 import { useBilling } from '../../state/BillingContext.jsx';
 import { useUndoable } from '../../hooks/useUndoable.js';
 import { useActiveProject } from '../../hooks/useActiveProject.js';
@@ -68,7 +69,15 @@ export default function ExpensesPage({ onNavigate, focus = {} }) {
   const language = getLanguage();
   const docT = makeTranslator(language);
 
-  const days = useMemo(() => expensesByDay(expenses, { projectId, month }), [expenses, projectId, month]);
+  const [query, setQuery] = useState('');
+  const [category, setCategory] = useState('');
+  const wholeMonth = useMemo(() => expensesByDay(expenses, { projectId, month }).flatMap((day) => day.items), [expenses, projectId, month]);
+  const shown = useMemo(() => {
+    const words = query.trim().toLowerCase();
+    return expenses.filter((expense) => (!category || expense.category === category)
+      && (!words || `${expense.note || ''} ${t(EXPENSE_CATEGORIES[expense.category] || expense.category)} ${expense.amount}`.toLowerCase().includes(words)));
+  }, [expenses, query, category]);
+  const days = useMemo(() => expensesByDay(shown, { projectId, month }), [shown, projectId, month]);
   const monthItems = days.flatMap((day) => day.items);
   const today = localToday();
   const dayOf = useMemo(() => new Map(days.map((day) => [day.date, day])), [days]);
@@ -183,9 +192,27 @@ export default function ExpensesPage({ onNavigate, focus = {} }) {
       </Grid>
       {monthItems.length > 0 && (
         <>
-          <Typography variant="caption" color="text.secondary" component="p" sx={{ mb: 1 }}>
-            {expensesByCategory(monthItems).map((entry) => `${t(EXPENSE_CATEGORIES[entry.category] || entry.category)} ${formatCurrency(entry.total)}`).join(' · ')}
-          </Typography>
+          <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.75, mb: 1 }}>
+            {expensesByCategory(wholeMonth).map((entry) => (
+              <Chip
+                key={entry.category}
+                size="small"
+                color={category === entry.category ? 'primary' : 'default'}
+                variant={category === entry.category ? 'filled' : 'outlined'}
+                aria-pressed={category === entry.category}
+                label={`${t(EXPENSE_CATEGORIES[entry.category] || entry.category)} ${formatCurrency(entry.total)}`}
+                onClick={() => setCategory(category === entry.category ? '' : entry.category)}
+              />
+            ))}
+          </Stack>
+          <TextField
+            type="search"
+            value={query}
+            onChange={setQuery}
+            placeholder={t('Search notes, category or amount')}
+            slotProps={{ htmlInput: { 'aria-label': t('Search expenses') } }}
+            sx={{ mb: 1.5, bgcolor: 'background.paper' }}
+          />
           <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
             <Button fullWidth variant="outlined" startIcon={<DownloadIcon />} onClick={() => exportAs('pdf')} disabled={busy}>PDF</Button>
             <Button fullWidth variant="outlined" startIcon={<TableViewIcon />} onClick={() => exportAs('csv')} disabled={busy}>{t('Excel (CSV)')}</Button>

@@ -313,7 +313,8 @@ export const workerSchema = z.strictObject({
   dailyWage: numberish,
   active: z.boolean(),
   joinedOn: z.union([isoDate, z.literal('')]).optional(),
-  leftOn: z.union([isoDate, z.literal('')]).optional()
+  leftOn: z.union([isoDate, z.literal('')]).optional(),
+  projectIds: z.array(id).max(100).optional()
 });
 
 export const labourPaymentSchema = z.strictObject({

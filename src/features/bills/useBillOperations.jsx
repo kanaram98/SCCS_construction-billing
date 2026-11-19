@@ -6,7 +6,7 @@ import { useCloud } from '../account/CloudProvider.jsx';
 import { useUndoable } from '../../hooks/useUndoable.js';
 import { useWhatsAppReminder } from '../../hooks/useWhatsAppReminder.js';
 import { VIEWS } from '../../config/app.js';
-import { billLabel, isEstimate } from '../../domain/bill-kinds.js';
+import { billLabel, isEstimate, nextRunningBlocker } from '../../domain/bill-kinds.js';
 import { canMoveToDraft, deleteBlocker, hasMoney, readyBlockers } from '../../domain/bill-guard.js';
 import { getBillTotals } from '../../domain/calculations.js';
 import { formatCurrency } from '../../domain/formatters.js';
@@ -15,6 +15,7 @@ import { tr as t } from '../../i18n/translate.js';
 import AttachQuotationDialog from './AttachQuotationDialog.jsx';
 import NewBillDialog from './NewBillDialog.jsx';
 import RunningBillOfDialog from './RunningBillOfDialog.jsx';
+import RunningTrailDialog from './RunningTrailDialog.jsx';
 import BillDetailsCard from '../project/BillDetailsCard.jsx';
 import { BLOCKER_TEXT } from './stageText.js';
 
@@ -39,6 +40,7 @@ export function useBillOperations({ onNavigate }) {
   const [renaming, setRenaming] = useState(null);
   const [cancelling, setCancelling] = useState(null);
   const [moving, setMoving] = useState(null);
+  const [trail, setTrail] = useState(null);
   const [attaching, setAttaching] = useState(null);
   const [detailing, setDetailing] = useState(null);
   /** A stage change that needs a typed reason: { kind: 'submit' | 'draft' | 'reopen' | 'restore', bill }. */
@@ -67,7 +69,7 @@ export function useBillOperations({ onNavigate }) {
 
   async function remove(bill) {
     // A bill with payments, a stage past draft or a running series is never deleted: it is cancelled.
-    if (deleteBlocker(bill)) { setCancelling(bill); return; }
+    if (deleteBlocker(bill, data.bills)) { setCancelling(bill); return; }
     const label = billLabel(bill, t);
     const confirmed = await confirm({
       title: t('Delete {name}?', { name: label }),
@@ -162,6 +164,8 @@ export function useBillOperations({ onNavigate }) {
     canCancel: cloud.can('cancelBill'),
     canMove: cloud.can('moveBill'),
     admin,
+    canDelete: !deleteBlocker(bill, data.bills),
+    canNextRunning: !nextRunningBlocker(data.bills, bill),
     canDraft: canMoveToDraft(bill, { admin }),
     onOpen: () => open(bill),
     onLinkProject: () => setLinking(bill),
@@ -180,6 +184,7 @@ export function useBillOperations({ onNavigate }) {
     onRemind: () => reminder.remind(bill),
     onConvert: () => convert(bill),
     onNextRunningBill: () => nextRunning(bill),
+    onTrail: () => setTrail(bill),
     onPrint: () => onNavigate(VIEWS.print, { billId: bill.id })
   });
 
@@ -218,6 +223,7 @@ export function useBillOperations({ onNavigate }) {
         onAttach={(quotationId) => { actions.bills.attachQuotation(attaching.id, quotationId, { reprice: true }); notify(quotationId ? t('Quotation attached. Entries now use its prices.') : t('Standard rates are used again.'), 'info'); }}
         onClose={() => setAttaching(null)}
       />
+      <RunningTrailDialog open={Boolean(trail)} bill={trail} bills={data.bills} rates={data.rates} onOpen={(entry) => { setTrail(null); open(entry); }} onClose={() => setTrail(null)} />
       <ResponsiveDialog open={Boolean(detailing)} title={t('Bill details')} onClose={() => setDetailing(null)}>
         {detailing && <BillDetailsCard onNavigate={(view) => { setDetailing(null); onNavigate(view); }} />}
       </ResponsiveDialog>

@@ -52,13 +52,23 @@ export function lockState(bill) {
   return status === 'draft' ? '' : status;
 }
 
-/** Why a bill cannot simply be deleted ('cancelled', 'submitted', 'ready', 'money', 'series'), or '' when it can. */
-export function deleteBlocker(bill) {
-  const state = lockState(bill);
-  if (state) return state;
+/** True when no later bill follows this one in its running series. */
+function isLastOfSeries(bills, bill) {
+  return bills.filter((entry) => entry.raSeriesId === bill.raSeriesId && !entry.cancelled && !entry.deletedAt && entry.id !== bill.id)
+    .every((entry) => (entry.raNumber || 0) < (bill.raNumber || 0));
+}
+
+/**
+ * Why a bill cannot simply be deleted ('cancelled', 'submitted', 'ready', 'money', 'series'), or '' when it can.
+ * Pass all `bills` to allow the one exception: the LAST running bill of a series, draft or ready, with no money on it.
+ * Bills in the middle of a series stay (cancel them instead), so the running account never has a gap.
+ */
+export function deleteBlocker(bill, bills = null) {
+  if (isCancelled(bill)) return 'cancelled';
+  if (isSubmitted(bill)) return 'submitted';
   if (hasMoney(bill)) return 'money';
-  if (bill?.raSeriesId) return 'series';
-  return '';
+  if (bill?.raSeriesId) return bills && (bill.raNumber || 0) > 1 && isLastOfSeries(bills, bill) ? '' : 'series';
+  return lockState(bill);
 }
 
 /** The bill number is part of what the client holds: fixed once the bill is ready or has money on it. */

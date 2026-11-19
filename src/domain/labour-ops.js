@@ -14,7 +14,7 @@
 import { newId } from './ids.js';
 import { isDateClosed, isMonthClosed, purgeWorker, putMark, recordMeta } from './labour.js';
 
-const WORKER_FIELDS = ['name', 'phone', 'role', 'dailyWage', 'active', 'joinedOn', 'leftOn'];
+const WORKER_FIELDS = ['name', 'phone', 'role', 'dailyWage', 'active', 'joinedOn', 'leftOn', 'projectIds'];
 const PAYMENT_FIELDS = ['workerId', 'date', 'amount', 'mode', 'note'];
 
 const pick = (record, fields) => Object.fromEntries(fields.map((field) => [field, record[field]]));
@@ -34,6 +34,15 @@ const touch = (record, patch, now) => ({ ...record, ...patch, updatedAt: now.toI
  * Sets attendance for one day: `changes` is [{ worker, units, projectId? }] with units
  * null to clear. `projectId` is the site worked at (kept on the mark for project reports). Logged as one entry. Ignored when the month is closed.
  */
+/** Puts workers that belong to no project yet on `siteId` (marking someone at a site means they work there). */
+export function assignToSite(labour, workerIds, siteId, now = new Date()) {
+  if (!siteId) return labour;
+  return workerIds.reduce((current, workerId) => {
+    const worker = current.workers.find((entry) => entry.id === workerId);
+    return worker && !(worker.projectIds || []).length ? updateWorker(current, workerId, { projectIds: [siteId] }, now) : current;
+  }, labour);
+}
+
 export function markAttendance(labour, date, changes, now = new Date(), extra = {}) {
   if (isDateClosed(labour, date)) return labour;
   return applyMarks(labour, date, changes.map(({ worker, units, projectId }) => ({
@@ -67,7 +76,7 @@ export function updateWorker(labour, workerId, patch, now = new Date(), extra = 
   if (!worker) return labour;
   const before = pick(worker, WORKER_FIELDS);
   const after = { ...before, ...pick({ ...worker, ...patch }, WORKER_FIELDS) };
-  if (WORKER_FIELDS.every((field) => before[field] === after[field])) return labour;
+  if (WORKER_FIELDS.every((field) => JSON.stringify(before[field]) === JSON.stringify(after[field]))) return labour;
   return addLog({ ...labour, workers: labour.workers.map((entry) => entry.id === workerId ? touch(entry, patch, now) : entry) },
     { entity: 'worker', action: 'update', refId: workerId, workerId, before, after, ...extra }, now);
 }

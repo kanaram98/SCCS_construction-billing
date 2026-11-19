@@ -98,8 +98,25 @@ function AppShell({ view: chosenView, setView }) {
   const [focus, setFocus] = useState({});
   const [searchOpen, setSearchOpen] = useState(false);
 
+  // The phone's Back button walks back through the screens visited (and closes the menu or search first).
+  useEffect(() => {
+    try { window.history.replaceState({ view: chosenView }, ''); } catch { /* history unavailable */ }
+    const onPop = (event) => {
+      setMenuOpen(false);
+      setSearchOpen(false);
+      setFocus({});
+      setView(event.state?.view || VIEWS.home);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function navigate(nextView, nextFocus = {}) {
     setFocus(nextFocus);
+    if (nextView !== chosenView) {
+      try { window.history.pushState({ view: nextView }, ''); } catch { /* history unavailable */ }
+    }
     setView(nextView);
     window.scrollTo({ top: 0 });
   }

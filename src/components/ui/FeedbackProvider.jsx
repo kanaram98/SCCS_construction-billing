@@ -44,11 +44,12 @@ export function FeedbackProvider({ children }) {
       <Snackbar
         key={toast?.key}
         open={Boolean(toast)}
-        autoHideDuration={toast?.action ? 6000 : 3500}
+        autoHideDuration={3000}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
         onClose={(_event, reason) => { if (reason !== 'clickaway') setToast(null); }}
         className="no-print"
-        // Sit above the bottom navigation and the BottomActionBar.
-        sx={{ bottom: { xs: 'calc(148px + env(safe-area-inset-bottom))', md: 100 } }}
+        // At the top, clear of the status bar and the app header.
+        sx={{ top: { xs: 'calc(64px + env(safe-area-inset-top))', md: 24 } }}
       >
         {toast ? (
           <Alert

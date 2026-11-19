@@ -10,6 +10,7 @@ import { cloneSections, createArea, createBill, createSection, getNextBillNumber
 import { getBillTotals } from './calculations.js';
 import { newId } from './ids.js';
 import { getPrintDocument } from './print-settings.js';
+import { billStatus } from './bill-guard.js';
 
 export function isEstimate(bill) {
   return bill.kind === 'estimate';
@@ -29,11 +30,27 @@ export function nextNumberFor(bills, kind) {
 }
 
 /**
- * Display name such as "Bill 12", "Estimate 3" or "Bill 12 · RA 2".
+ * A short code for a project, from its name: "Lake View Villa" → "LVV", "Tower" → "TOW".
+ * Bills of a project are numbered with it, the way a site would: LVV/003.
+ */
+export function projectCode(name) {
+  const words = String(name || '').toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);
+  if (!words.length) return 'PRJ';
+  return words.length === 1 ? words[0].slice(0, 3) : words.map((word) => word[0]).join('').slice(0, 4);
+}
+
+const padNumber = (number) => (/^\d+$/.test(String(number)) ? String(number).padStart(3, '0') : String(number));
+
+/**
+ * Display name. A bill of a project reads like a site reference: "LVV/003", "LVV/EST-002", "LVV/003 · RA 2".
+ * A bill with no project keeps the plain "Bill 12" / "Estimate 3".
  * @param {(text: string, params?: object) => string} t translator
  */
 export function billLabel(bill, t) {
-  const base = isEstimate(bill) ? t('Estimate {number}', { number: bill.number }) : t('Bill {number}', { number: bill.number });
+  const linked = Boolean(bill.projectId) && !bill.isSample;
+  const base = linked
+    ? `${projectCode(bill.projectName)}/${isEstimate(bill) ? 'EST-' : ''}${padNumber(bill.number)}`
+    : (isEstimate(bill) ? t('Estimate {number}', { number: bill.number }) : t('Bill {number}', { number: bill.number }));
   return bill.raNumber ? `${base} · ${t('RA {number}', { number: bill.raNumber })}` : base;
 }
 
@@ -67,6 +84,22 @@ export function getSeries(bills, bill) {
 }
 
 /**
+ * Why a bill cannot have a next running bill started from it ('' when it can). A running series is one
+ * chain, RA 1 → RA 2 → RA 3: the next bill is started from the latest bill, and only once that bill is
+ * ready (given to the client), so a draft never spawns more drafts and the series never forks.
+ */
+export function nextRunningBlocker(bills, bill) {
+  if (bill.kind === 'estimate') return 'estimate';
+  if (bill.cancelled) return 'cancelled';
+  if (billStatus(bill) !== 'ready') return 'not-ready';
+  if (bill.raSeriesId) {
+    const latest = Math.max(...getSeries(bills, bill).filter((entry) => !entry.cancelled && !entry.deletedAt).map((entry) => entry.raNumber || 1));
+    if ((bill.raNumber || 1) < latest) return 'not-latest';
+  }
+  return '';
+}
+
+/**
  * Starts the next running bill after `source`: same project, client and
  * settings, the same floors/rooms with no entries yet.
  * @returns {{ bill: object, sourcePatch: object }} sourcePatch turns a plain bill into RA 1
@@ -92,6 +125,7 @@ export function createNextRunningBill(bills, source) {
     footer: source.footer,
     quotationId: source.quotationId,
     quotationLabel: source.quotationLabel,
+    name: source.name,
     raSeriesId: seriesId,
     raNumber,
     sections: (source.sections || []).map((section) =>
@@ -106,13 +140,14 @@ export function createNextRunningBill(bills, source) {
  */
 export function getRunningAccount(bills, bill, rates) {
   if (!bill.raSeriesId || !bill.raNumber) return null;
-  const upToThis = getSeries(bills, bill).filter((entry) => (entry.raNumber || 0) <= bill.raNumber);
+  const upToThis = getSeries(bills, bill).filter((entry) => (entry.raNumber || 0) <= bill.raNumber && (entry.id === bill.id || !entry.cancelled));
   const totals = upToThis.map((entry) => ({ entry, totals: getBillTotals(entry, rates) }));
   const thisTotal = getBillTotals(bill, rates).total;
   const totalToDate = totals.reduce((sum, { totals: value }) => sum + value.total, 0);
   const receivedToDate = totals.reduce((sum, { totals: value }) => sum + value.paid, 0);
   return {
     raNumber: bill.raNumber,
+    trail: totals.map(({ entry, totals: value }) => ({ id: entry.id, raNumber: entry.raNumber, number: entry.number, date: entry.date, total: value.total, paid: value.paid, current: entry.id === bill.id })),
     previousCount: upToThis.length - 1,
     thisTotal,
     previousTotal: totalToDate - thisTotal,

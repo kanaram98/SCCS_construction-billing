@@ -32,6 +32,7 @@ export default function AreaPanel({ section, area, index, sections, open, visibl
   const shownItems = visibleItems || area.items;
   const { data, bill, actions } = useBilling();
   const { entry } = actions;
+  const readOnly = isEntryLocked(bill); // ready, submitted or cancelled: nothing to add or change here
   const confirm = useConfirm();
   const undoable = useUndoable();
   const [editorOpen, setEditorOpen] = useState(false);
@@ -97,7 +98,7 @@ export default function AreaPanel({ section, area, index, sections, open, visibl
           meta={trn(area.items.length, '{count} entry', '{count} entries')}
           total={getAreaTotal(area, data.rates)}
         />
-        <Box onClick={(event) => event.stopPropagation()} onFocus={(event) => event.stopPropagation()} sx={{ display: 'flex', alignItems: 'center' }}>
+        {!readOnly && <Box onClick={(event) => event.stopPropagation()} onFocus={(event) => event.stopPropagation()} sx={{ display: 'flex', alignItems: 'center' }}>
           <ActionMenu
             label={t('Actions for {name}', { name: area.name })}
             items={[
@@ -109,7 +110,7 @@ export default function AreaPanel({ section, area, index, sections, open, visibl
               { label: t('Delete area'), icon: <DeleteIcon fontSize="small" />, onClick: deleteArea, danger: true }
             ]}
           />
-        </Box>
+        </Box>}
       </AccordionSummary>
       <AccordionDetails sx={{ pt: 0, px: 1.5 }}>
 
@@ -119,6 +120,7 @@ export default function AreaPanel({ section, area, index, sections, open, visibl
             canMove={!searching}
             rates={data.rates}
             canCopy={sections.length > 1}
+            readOnly={readOnly}
             onEdit={(item) => openSheet(item.id)}
             onDelete={deleteEntry}
             onCopy={(itemId) => setCopyRequest({ type: 'item', itemId })}
@@ -128,9 +130,11 @@ export default function AreaPanel({ section, area, index, sections, open, visibl
           <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>{t('No entries yet.')}</Typography>
         )}
 
-        <Button fullWidth variant="outlined" startIcon={<AddIcon />} onClick={() => openSheet()} sx={{ mt: 1.5, py: 1.25 }}>
-          {area.items.length ? t('Add or edit entries') : t('Add entry')}
-        </Button>
+        {!readOnly && (
+          <Button fullWidth variant="outlined" startIcon={<AddIcon />} onClick={() => openSheet()} sx={{ mt: 1.5, py: 1.25 }}>
+            {area.items.length ? t('Add or edit entries') : t('Add entry')}
+          </Button>
+        )}
       </AccordionDetails>
 
       <RenameDialog

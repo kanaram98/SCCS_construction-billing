@@ -136,7 +136,7 @@ service cloud.firestore {
     }
     // A contractor may change a worker only by marking them left / working.
     function onlyActiveChanged() {
-      return data().diff(resource.data).affectedKeys().hasOnly(['active', 'joinedOn', 'leftOn', 'updatedAt', 'version', 'updatedBy', 'syncedAt']);
+      return data().diff(resource.data).affectedKeys().hasOnly(['active', 'joinedOn', 'leftOn', 'projectIds', 'updatedAt', 'version', 'updatedBy', 'syncedAt']);
     }
     function inRecycleBin() {
       return resource.data.deletedAt != null;
@@ -236,12 +236,13 @@ service cloud.firestore {
 
     function validWorker(id) {
       let d = data();
-      return fields(recordKeys().concat(['name', 'phone', 'role', 'dailyWage', 'active']), ['order', 'joinedOn', 'leftOn'])
+      return fields(recordKeys().concat(['name', 'phone', 'role', 'dailyWage', 'active']), ['order', 'joinedOn', 'leftOn', 'projectIds'])
         && validMeta(id)
         && str(d.name, 200) && str(d.phone, 30) && str(d.role, 100)
         && numberish(d.dailyWage) && d.active is bool
         && (!('joinedOn' in d) || d.joinedOn == '' || isoDate(d.joinedOn))
-        && (!('leftOn' in d) || d.leftOn == '' || isoDate(d.leftOn));
+        && (!('leftOn' in d) || d.leftOn == '' || isoDate(d.leftOn))
+        && (!('projectIds' in d) || (d.projectIds is list && d.projectIds.size() <= 100));
     }
 
     function validLabourPayment(id) {

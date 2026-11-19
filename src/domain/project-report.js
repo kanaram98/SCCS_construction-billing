@@ -9,14 +9,17 @@
  *   receivable   billed − received (negative = the client has paid ahead)
  *   expenses     site expenses (food, travel…)
  *   cash         received − expenses (before labour)
+ *   labourCost   wages of the attendance marked at the project
+ *   afterCosts   received − expenses − labour wages
  */
 import { getBillTotals } from './calculations.js';
 import { billsInScope } from './report-scope.js';
 import { expensesByCategory, totalAmount } from './projects.js';
 import { roundTo2 } from './formatters.js';
+import { labourCostOfProject, liveLabour } from './labour.js';
 
 /** The quick figures on the Projects screen: bills billed so far (submitted and ready) unless `scope` says otherwise. */
-export function projectSummary(project, { bills = [], advances = [], expenses = [], rates = [] }, { scope = 'ready' } = {}) {
+export function projectSummary(project, { bills = [], advances = [], expenses = [], rates = [], labour = null }, { scope = 'ready' } = {}) {
   const projectBills = billsInScope(bills.filter((bill) => bill.projectId === project.id), scope);
   const totals = projectBills.map((bill) => getBillTotals(bill, rates));
   const sum = (field) => roundTo2(totals.reduce((total, item) => total + item[field], 0));
@@ -28,6 +31,7 @@ export function projectSummary(project, { bills = [], advances = [], expenses = 
   const advanceTotal = totalAmount(projectAdvances);
   const received = roundTo2(paidOnBills + advanceTotal);
   const expenseTotal = totalAmount(projectExpenses);
+  const labourCost = labour ? labourCostOfProject(liveLabour(labour), project.id) : 0;
   return {
     billCount: projectBills.length,
     billed,
@@ -39,6 +43,8 @@ export function projectSummary(project, { bills = [], advances = [], expenses = 
     expenses: expenseTotal,
     expensesByCategory: expensesByCategory(projectExpenses),
     cash: roundTo2(received - expenseTotal),
+    labourCost,
+    afterCosts: roundTo2(received - expenseTotal - labourCost),
     agreed: Number(project.agreedAmount) || 0
   };
 }

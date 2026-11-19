@@ -1,6 +1,6 @@
 import { text } from './formatters.js';
 import { billStatus, isCancelled } from './bill-guard.js';
-import { isEstimate } from './bill-kinds.js';
+import { billLabel, isEstimate } from './bill-kinds.js';
 
 export const EMPTY_BILL_FILTERS = Object.freeze({
   search: '',
@@ -26,7 +26,7 @@ export function billStage(bill) {
 export function filterBills(bills, filters, getStatus) {
   const query = filters.search.trim().toLowerCase();
   return bills.filter((bill) =>
-    `${bill.number} ${bill.name || ''} ${bill.projectName} ${bill.client} ${bill.date} ${bill.quotationLabel || ''}`.toLowerCase().includes(query) &&
+    `${bill.number} ${billLabel(bill, (text, params) => text.replace(/\{(\w+)\}/g, (_m, key) => params?.[key] ?? ''))} ${bill.name || ''} ${bill.projectName} ${bill.client} ${bill.date} ${bill.quotationLabel || ''}`.toLowerCase().includes(query) &&
     (!filters.stage || billStage(bill) === filters.stage) &&
     (!filters.client || bill.client === filters.client) &&
     (!filters.projectId || bill.projectId === filters.projectId) &&

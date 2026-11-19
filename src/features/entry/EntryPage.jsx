@@ -33,6 +33,8 @@ import TemplatesDialog from './TemplatesDialog.jsx';
 import AmountsCard from '../project/AmountsCard.jsx';
 import { lockState } from '../../domain/bill-guard.js';
 import BillStatusBar from './BillStatusBar.jsx';
+import { useBillOperations } from '../bills/useBillOperations.jsx';
+import { isEntryLocked } from '../../domain/bill-guard.js';
 import PaymentsCard from '../project/PaymentsCard.jsx';
 
 const TABS = { measure: 'measure', amounts: 'amounts' };
@@ -47,6 +49,8 @@ function lockMessage(state) {
 export default function EntryPage({ onNavigate }) {
   const { data, bill, actions } = useBilling();
   const notify = useNotify();
+  const operations = useBillOperations({ onNavigate });
+  const readOnly = isEntryLocked(bill);
   const sections = bill.sections || [];
   const disclosure = useEntryDisclosure(sections);
   const [tab, setTab] = useState(TABS.measure);
@@ -103,7 +107,8 @@ export default function EntryPage({ onNavigate }) {
         </Box>
       </Stack>
 
-      <BillStatusBar onNavigate={onNavigate} />
+      <BillStatusBar onNavigate={onNavigate} ops={operations.cardProps(bill)} />
+      {operations.dialogs}
 
       <Paper variant="outlined" sx={{ mb: 1.5 }}>
         <Tabs value={tab} onChange={(_event, value) => setTab(value)} variant="fullWidth">
@@ -134,9 +139,11 @@ export default function EntryPage({ onNavigate }) {
                 <IconButton aria-label={t('Search entries')} onClick={toggleSearch} color={searchOpen ? 'primary' : 'default'}><SearchIcon /></IconButton>
               </Tooltip>
             )}
-            <Tooltip title={t('Templates')}>
-              <IconButton aria-label={t('Templates')} onClick={() => setTemplatesOpen(true)}><BookmarksIcon /></IconButton>
-            </Tooltip>
+            {!readOnly && (
+              <Tooltip title={t('Templates')}>
+                <IconButton aria-label={t('Templates')} onClick={() => setTemplatesOpen(true)}><BookmarksIcon /></IconButton>
+              </Tooltip>
+            )}
           </Stack>
 
           <Collapse in={searchOpen} unmountOnExit>
@@ -166,7 +173,7 @@ export default function EntryPage({ onNavigate }) {
                 activeId={disclosure.activeSection?.id}
                 addLabel={sectionLabel}
                 onSelect={disclosure.selectSection}
-                onAdd={addSection}
+                onAdd={readOnly ? undefined : addSection}
               />
               {disclosure.activeSection ? (
                 <FloorPanel
@@ -184,7 +191,7 @@ export default function EntryPage({ onNavigate }) {
                   icon={<StraightenIcon />}
                   title={t('Start with a {level}', { level: sectionLabel.toLowerCase() })}
                   description={t('Add a {level} (e.g. a floor), then its {sublevel}s and their measurements.', { level: sectionLabel.toLowerCase(), sublevel: areaLabel.toLowerCase() })}
-                  action={<Button variant="contained" startIcon={<AddIcon />} onClick={addSection}>{t('Add first {level}', { level: sectionLabel.toLowerCase() })}</Button>}
+                  action={readOnly ? undefined : <Button variant="contained" startIcon={<AddIcon />} onClick={addSection}>{t('Add first {level}', { level: sectionLabel.toLowerCase() })}</Button>}
                 />
               )}
             </>

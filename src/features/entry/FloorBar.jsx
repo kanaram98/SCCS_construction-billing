@@ -20,9 +20,11 @@ export default function FloorBar({ sections, activeId, addLabel, onSelect, onAdd
           {sections.map((section) => <Tab key={section.id} value={section.id} label={section.name || '—'} />)}
         </Tabs>
       )}
-      <Button size="small" startIcon={<AddIcon />} onClick={onAdd} sx={{ flexShrink: 0, ml: sections.length ? 0 : 'auto' }}>
-        {addLabel}
-      </Button>
+      {onAdd && (
+        <Button size="small" startIcon={<AddIcon />} onClick={onAdd} sx={{ flexShrink: 0, ml: sections.length ? 0 : 'auto' }}>
+          {addLabel}
+        </Button>
+      )}
     </Box>
   );
 }

@@ -16,7 +16,7 @@ export { stageLabel };
  * The stage of the open bill, and what it means. It is only shown here: marking a bill ready, submitting it,
  * attaching a quotation and so on are done from the bill's ⋮ menu on the Bills page.
  */
-export default function BillStatusBar({ onNavigate }) {
+export default function BillStatusBar({ onNavigate, ops }) {
   const { bill } = useBilling();
   const status = billStatus(bill);
   const estimate = isEstimate(bill);
@@ -33,7 +33,13 @@ export default function BillStatusBar({ onNavigate }) {
           {!cancelled && status === 'ready' && (estimate ? t('Final. Prices are frozen; convert it into a bill from the Bills page.') : t('Given to the client. Record payments here, then submit it from the Bills page.'))}
           {!cancelled && status === 'submitted' && t('Closed and read-only. Only the admin can reopen it.')}
         </Typography>
-        <Button variant="outlined" onClick={() => onNavigate?.(VIEWS.bills)}>{t('Manage in Bills')}</Button>
+        {ops && !cancelled && status === 'draft' && (
+          <Button variant="contained" onClick={ops.onMarkReady}>{estimate ? t('Mark final') : t('Mark ready')}</Button>
+        )}
+        {ops && !cancelled && status === 'ready' && ops.canDraft && (
+          <Button variant="outlined" onClick={ops.onBackToDraft}>{t('Back to draft')}</Button>
+        )}
+        <Button variant="text" onClick={() => onNavigate?.(VIEWS.bills)}>{t('Manage in Bills')}</Button>
       </Stack>
     </Paper>
   );

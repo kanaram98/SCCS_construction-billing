@@ -15,7 +15,7 @@ export function buildPaymentBlock(documentType, bill, rates, firm, settings, tra
   if (bill.kind === 'estimate') return null; // nothing to pay on an estimate
   if (!settings.paymentDetails || !PAYMENT_DOCUMENTS.has(documentType) || !hasPaymentDetails(firm)) return null;
   const { balance } = getBillTotals(bill, rates);
-  const amount = Math.max(0, runningAccount ? runningAccount.balanceToDate : balance);
+  const amount = Math.max(0, runningAccount && documentType === 'summary' ? runningAccount.balanceToDate : balance);
   const qr = settings.upiQr && canMakeUpiQr(firm) && amount > 0
     ? {
         amount,

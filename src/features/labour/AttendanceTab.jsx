@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
@@ -21,7 +22,7 @@ import { useBilling } from '../../state/BillingContext.jsx';
 import { useUndoable } from '../../hooks/useUndoable.js';
 import {
   ATTENDANCE_UNITS, dayLabel, daySummary, formatUnits,
-  isDateClosed, labourForSite, localToday, markedElsewhere, monthOf, shiftDate, workerMonth
+  isDateClosed, labourForSite, localToday, markedElsewhere, monthOf, shiftDate, workerMonth, workerOnSite
 } from '../../domain/labour.js';
 import { formatCurrency } from '../../domain/formatters.js';
 import { compactAmount } from '../../domain/projects.js';
@@ -39,9 +40,9 @@ const UNIT_LABELS = { 0: 'A', 0.5: '½P', 1: '1P', 1.5: '1½P', 2: '2P' };
 const unitLabel = (units) => UNIT_LABELS[units] ?? formatUnits(units);
 
 /** Workers to show on a day: everyone working, plus anyone who left but was marked that day. */
-function workersOn(labour, date) {
+function workersOn(labour, date, siteId = '') {
   const marks = labour.attendance[date] || {};
-  return labour.workers.filter((worker) => worker.active || marks[worker.id]);
+  return labour.workers.filter((worker) => (worker.active || marks[worker.id]) && (marks[worker.id] || workerOnSite(labour, worker, siteId)));
 }
 
 // ── Calendar ──────────────────────────────────────────────────────────
@@ -100,7 +101,7 @@ function DaySheet({ date, month, siteId, onDateChange, onClose }) {
   const closed = Boolean(date) && (isDateClosed(labour, date) || tooOld);
   const change = (apply) => async () => { if (await allowOld(date)) apply(); };
   const today = localToday();
-  const workers = date ? workersOn(labour, date) : [];
+  const workers = date ? workersOn(allLabour, date, siteId) : [];
   const marks = (date && labour.attendance[date]) || {};
   const summary = date ? daySummary(labour, date) : null;
   const elsewhere = (worker) => (date ? markedElsewhere(allLabour, date, worker.id, siteId) : '');
@@ -174,12 +175,24 @@ export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
   const siteLabour = useMemo(() => labourForSite(labour, siteId), [labour, siteId]);
   const [openDate, setOpenDate] = useState(null);
   const [picker, setPicker] = useState(null); // { anchor, date } in single-worker view
-  const active = useMemo(() => labour.workers.filter((worker) => worker.active), [labour.workers]);
+  const active = useMemo(() => labour.workers.filter((worker) => worker.active && workerOnSite(labour, worker, siteId)), [labour, siteId]);
   const worker = labour.workers.find((entry) => entry.id === workerId) || null;
   const workerSummary = worker ? workerMonth(siteLabour, worker.id, month) : null;
   const todayMarks = siteLabour.attendance[today] || {};
-  const todayUnmarked = workersOn(siteLabour, today).filter((entry) => !todayMarks[entry.id] && !markedElsewhere(labour, today, entry.id, siteId));
+  const todayUnmarked = workersOn(labour, today, siteId).filter((entry) => !todayMarks[entry.id] && !markedElsewhere(labour, today, entry.id, siteId));
   const todayMarked = Object.keys(todayMarks).length > 0;
+  const yesterdayMarks = siteLabour.attendance[shiftDate(today, -1)] || {};
+  /** Yesterday's marks for workers still to be marked today (same site, not marked elsewhere). */
+  const copyable = todayUnmarked.filter((entry) => yesterdayMarks[entry.id]);
+  function copyYesterday() {
+    const byUnits = new Map();
+    for (const entry of copyable) {
+      const units = yesterdayMarks[entry.id].units;
+      byUnits.set(units, [...(byUnits.get(units) || []), entry]);
+    }
+    byUnits.forEach((group, units) => actions.markAll(today, group, units, siteId));
+    notify(t('Yesterday’s attendance copied. Fix anyone who is different.'), 'success');
+  }
 
   if (!labour.workers.length) {
     return (
@@ -193,7 +206,7 @@ export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
   }
 
   function allTile(date) {
-    const workers = workersOn(siteLabour, date);
+    const workers = workersOn(labour, date, siteId);
     const summary = daySummary(siteLabour, date);
     const tone = !summary.marked ? 'empty' : summary.present === 0 ? 'absent' : summary.marked >= workers.length ? 'full' : 'partial';
     return (
@@ -295,6 +308,11 @@ export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
             <Button key={units} size="small" variant="outlined" onClick={() => actions.markAll(today, todayUnmarked, units, siteId)} aria-label={t('Fill {units} for everyone today', { units: formatUnits(units) })} sx={{ minWidth: 0, px: 1.25 }}>{UNIT_LABELS[units]}</Button>
           ))}
         </Stack>
+      )}
+      {!worker && month === monthOf(today) && !closed && copyable.length > 0 && (
+        <Button fullWidth size="small" variant="text" startIcon={<ContentCopyIcon fontSize="small" />} onClick={copyYesterday} sx={{ mb: 1 }}>
+          {t('Copy yesterday’s attendance ({count} workers)', { count: copyable.length })}
+        </Button>
       )}
       <Typography variant="caption" color="text.secondary" component="p">
         {worker

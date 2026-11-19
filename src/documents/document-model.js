@@ -119,21 +119,18 @@ function billTotalRows(bill, context) {
     ...getTaxLines(bill, totals).map((line) => amountRow('normal', line.label, money(line.amount))),
     amountRow('grandTotal', t('Total'), money(totals.total)),
     wordsRow(totals.total, context),
-    ...(context.runningAccount ? runningAccountRows(context) : [
-      ...(totals.advance ? [amountRow('normal', t('Advance received'), `- ${money(totals.advance)}`)] : []),
-      ...(totals.received ? [amountRow('normal', t('Payments received'), `- ${money(totals.received)}`)] : []),
-      ...(totals.adjusted ? [amountRow('normal', t('Adjusted from advance'), `- ${money(totals.adjusted)}`)] : []),
-      ...(totals.paid ? [amountRow('grandTotal', t('Balance due'), money(totals.balance))] : [])
-    ])
+    ...(totals.advance ? [amountRow('normal', t('Advance received'), `- ${money(totals.advance)}`)] : []),
+    ...(totals.received ? [amountRow('normal', t('Payments received'), `- ${money(totals.received)}`)] : []),
+    ...(totals.adjusted ? [amountRow('normal', t('Adjusted from advance'), `- ${money(totals.adjusted)}`)] : []),
+    ...(totals.paid ? [amountRow('grandTotal', t('Balance due'), money(totals.balance))] : [])
   ];
 }
 
-/** Running (RA) bill account: earlier bills, work and payments to date. */
+/** Running (RA) account for the summary: every earlier bill listed one by one, then work and payments to date. */
 function runningAccountRows({ runningAccount: account, money, t }) {
   return [
-    ...(account.previousCount ? [amountRow('normal', account.raNumber === 2
-      ? t('Previous bill (RA 1)')
-      : t('Previous bills (RA 1–{last})', { last: account.raNumber - 1 }), money(account.previousTotal))] : []),
+    row('section', [t('Running account'), '']),
+    ...account.trail.map((entry) => row('normal', [`${t('RA {number}', { number: entry.raNumber })} · ${t('Bill')} ${entry.number}${entry.date ? ` · ${entry.date}` : ''}${entry.current ? ` (${t('this bill')})` : ''}`, money(entry.total)])),
     amountRow('sectionTotal', t('Total work to date'), money(account.totalToDate)),
     ...(account.receivedToDate ? [amountRow('normal', t('Received to date'), `- ${money(account.receivedToDate)}`)] : []),
     amountRow('grandTotal', t('Balance due to date'), money(account.balanceToDate))
@@ -156,6 +153,7 @@ function summaryRows(bill, context) {
   });
   const { total } = getBillTotals(bill, rates);
   rows.push(row('grandTotal', [context.t('Grand total'), money(total)]), wordsRow(total, context));
+  if (context.runningAccount) rows.push(...runningAccountRows(context));
   return rows;
 }
 

@@ -25,9 +25,9 @@ import { createWorker } from '../domain/labour.js';
 import * as labourOps from '../domain/labour-ops.js';
 import * as history from '../domain/history.js';
 import { backToDraft, markReady } from '../domain/bill-final.js';
-import { attachToSeries, canTakePayment, cancelBill, deleteBlocker, isDraft, isEntryLocked, isFrozen, isReady, lockedFields, reopenSubmitted, restoreCancelled, submitBill } from '../domain/bill-guard.js';
+import { isSubmitted, attachToSeries, canTakePayment, cancelBill, deleteBlocker, isDraft, isEntryLocked, isFrozen, isReady, lockedFields, reopenSubmitted, restoreCancelled, submitBill } from '../domain/bill-guard.js';
 import { addLine, createQuotation, finalizeQuotation, isQuotationFinal, itemIds, newQuotationVersion, quotationLabel, quotedRates, removeLine, repriceBill, repriceDrafts, setLinePrice } from '../domain/quotations.js';
-import { convertEstimateToBill, createNextRunningBill, nextNumberFor } from '../domain/bill-kinds.js';
+import { convertEstimateToBill, createNextRunningBill, nextNumberFor, nextRunningBlocker } from '../domain/bill-kinds.js';
 import { DEFAULT_SIGNATURE_LAYOUT, normalizeSignatureLayout } from '../domain/signature-layout.js';
 import { moveDocument, normalizePrintSettings, toggleDocument } from '../domain/print-settings.js';
 import { tr } from '../i18n/translate.js';
@@ -84,7 +84,12 @@ function createBillActions({ data, setData }) {
     /** Gives any bill a name of its own (empty removes it). */
     rename(billId, name) {
       const clean = String(name || '').trim();
-      setData((current) => ({ ...current, bills: current.bills.map((entry) => (entry.id === billId ? { ...entry, name: clean || undefined } : entry)) }));
+      // A running bill's name is the name of its whole series ("First floor"), so every open bill of it follows.
+      setData((current) => {
+        const target = current.bills.find((entry) => entry.id === billId);
+        const together = (entry) => entry.id === billId || (target?.raSeriesId && entry.raSeriesId === target.raSeriesId && !entry.cancelled && !isSubmitted(entry));
+        return { ...current, bills: current.bills.map((entry) => (together(entry) ? { ...entry, name: clean || undefined } : entry)) };
+      });
     },
     /** Links any bill to a project (copies the project's name and client into it). */
     linkProject(billId, project) {
@@ -106,7 +111,7 @@ function createBillActions({ data, setData }) {
     /** Starts the next running (RA) bill after `sourceId`. Returns the new bill. */
     nextRunningBill(sourceId) {
       const source = data.bills.find((entry) => entry.id === sourceId);
-      if (!source) return null;
+      if (!source || nextRunningBlocker(data.bills, source)) return null;
       const { bill, sourcePatch } = createNextRunningBill(data.bills, source);
       setData((current) => ({
         ...current,
@@ -128,7 +133,7 @@ function createBillActions({ data, setData }) {
     /** Deletes (to the recycle bin) a bill nothing depends on. Bills with money, a final/locked state or a running series must be cancelled instead. */
     remove(billId) {
       const target = data.bills.find((entry) => entry.id === billId);
-      if (!target || deleteBlocker(target)) return false;
+      if (!target || deleteBlocker(target, data.bills)) return false;
       setData((current) => {
         const remaining = current.bills.filter((entry) => entry.id !== billId);
         if (!remaining.length) {
@@ -500,9 +505,9 @@ function createLabourActions({ setData }) {
     restoreWorker: (workerId) => apply(labourOps.restoreWorker, workerId),
     purgeWorker: (workerId) => apply(labourOps.purgeDeletedWorker, workerId),
     /** Sets a worker's attendance for a day in P units; `null` clears it. */
-    mark: (date, worker, units, projectId = '') => apply(labourOps.markAttendance, date, [{ worker, units, projectId }]),
+    mark: (date, worker, units, projectId = '') => { apply(labourOps.markAttendance, date, [{ worker, units, projectId }]); apply(labourOps.assignToSite, [worker.id], projectId); },
     /** Marks every listed worker for a day (one log entry). */
-    markAll: (date, workers, units, projectId = '') => apply(labourOps.markAttendance, date, workers.map((worker) => ({ worker, units, projectId }))),
+    markAll: (date, workers, units, projectId = '') => { apply(labourOps.markAttendance, date, workers.map((worker) => ({ worker, units, projectId }))); apply(labourOps.assignToSite, workers.map((worker) => worker.id), projectId); },
     addPayment: (values) => apply(labourOps.addPayment, values),
     updatePayment: (paymentId, values) => apply(labourOps.updatePayment, paymentId, values),
     /** Moves a payment to the recycle bin. */

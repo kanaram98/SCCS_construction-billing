@@ -280,9 +280,9 @@ describe('Protected bills and prices', () => {
     const dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByRole('combobox', { name: /Running bill of/ }));
     const options = await screen.findAllByRole('option');
-    expect(options.map((option) => option.textContent).join('|')).toMatch(/Bill 1/);
-    expect(options.map((option) => option.textContent).join('|')).not.toMatch(/Bill 3/); // another project
-    await user.click(options.find((option) => /Bill 1/.test(option.textContent)));
+    expect(options.map((option) => option.textContent).join('|')).toMatch(/LVV.001/);
+    expect(options.map((option) => option.textContent).join('|')).not.toMatch(/OTH.003/); // another project
+    await user.click(options.find((option) => /LVV.001/.test(option.textContent)));
     await user.click(within(dialog).getByRole('button', { name: 'Make running bill' }));
     await waitFor(() => expect(savedState().bills.find((bill) => bill.id === 'b2').raNumber).toBe(2));
     expect(savedState().bills.find((bill) => bill.id === 'b1')).toMatchObject({ raNumber: 1 });

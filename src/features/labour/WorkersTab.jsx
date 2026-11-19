@@ -13,7 +13,10 @@ import EngineeringIcon from '@mui/icons-material/EngineeringOutlined';
 import { ActionMenu, EmptyState, useConfirm, useNotify } from '../../components/ui';
 import { useLabour } from './useLabour.js';
 import { useCloud } from '../account/CloudProvider.jsx';
-import { localToday, workerBalance, workerHasRecords } from '../../domain/labour.js';
+import { localToday, unassignedWorkers, workerBalance, workerHasRecords, workerOnSite } from '../../domain/labour.js';
+import { useBilling } from '../../state/BillingContext.jsx';
+import { useActiveProject } from '../../hooks/useActiveProject.js';
+import { Notice, ResponsiveDialog, SelectField } from '../../components/ui';
 import { formatCurrency } from '../../domain/formatters.js';
 import { tr as t } from '../../i18n/translate.js';
 import WorkerDialog from './WorkerDialog.jsx';
@@ -30,16 +33,23 @@ export function balanceText(balance) {
 /** Worker list: add, edit, pay, mark as left, delete. */
 export default function WorkersTab() {
   const { labour, actions } = useLabour();
+  const { data } = useBilling();
+  const [siteId, setSite] = useActiveProject(data.projects);
   const confirm = useConfirm();
   const notify = useNotify();
   const canEditWorker = useCloud().can('editWorker');
   const [editing, setEditing] = useState(null); // a worker, 'new' or null
   const [paying, setPaying] = useState(null);
   const [settling, setSettling] = useState(null);
+  const [moving, setMoving] = useState(null);
   const [deleting, setDeleting] = useState(null); // a worker with records, awaiting typed confirmation
   const byName = (a, b) => a.name.localeCompare(b.name);
-  const working = labour.workers.filter((worker) => worker.active).sort(byName);
-  const left = labour.workers.filter((worker) => !worker.active).sort((a, b) => String(b.leftOn || '').localeCompare(String(a.leftOn || '')) || byName(a, b));
+  const toPay = labour.workers.filter((worker) => worker.active && workerBalance(labour, worker.id) > 0).sort((a, b) => workerBalance(labour, b.id) - workerBalance(labour, a.id));
+  const toPayTotal = toPay.reduce((sum, worker) => sum + workerBalance(labour, worker.id), 0);
+  const onSite = (worker) => workerOnSite(labour, worker, siteId);
+  const unassigned = unassignedWorkers(labour);
+  const working = labour.workers.filter((worker) => worker.active && onSite(worker)).sort(byName);
+  const left = labour.workers.filter((worker) => !worker.active && onSite(worker)).sort((a, b) => String(b.leftOn || '').localeCompare(String(a.leftOn || '')) || byName(a, b));
 
   function save(values) {
     if (editing === 'new') {
@@ -101,6 +111,7 @@ export default function WorkersTab() {
                 items={[
                   { label: t('Pay / advance'), onClick: () => setPaying(worker) },
                   { label: t('Edit'), onClick: () => setEditing(worker), hidden: !canEditWorker },
+                  { label: t('Move to another project'), onClick: () => setMoving(worker), hidden: data.projects.length < 2 || !worker.active },
                   { label: t('Settle and leave'), onClick: () => setSettling(worker), hidden: !worker.active },
                   { label: t('Rejoin'), onClick: () => rejoin(worker), hidden: worker.active },
                   { label: t('Delete'), danger: true, onClick: () => remove(worker), hidden: !canEditWorker }
@@ -116,7 +127,7 @@ export default function WorkersTab() {
                     {!worker.active && <Chip size="small" label={worker.leftOn ? t('Left {date}', { date: worker.leftOn }) : t('Left')} component="span" />}
                   </Stack>
                 )}
-                secondary={[worker.role, t('{amount}/day', { amount: formatCurrency(worker.dailyWage) }), worker.joinedOn && t('Joined {date}', { date: worker.joinedOn }), balanceText(workerBalance(labour, worker.id))].filter(Boolean).join(' · ')}
+                secondary={[worker.role, (worker.projectIds || []).length ? (worker.projectIds || []).map((id) => data.projects.find((project) => project.id === id)?.name).filter(Boolean).join(', ') : t('No project yet'), t('{amount}/day', { amount: formatCurrency(worker.dailyWage) }), worker.joinedOn && t('Joined {date}', { date: worker.joinedOn }), balanceText(workerBalance(labour, worker.id))].filter(Boolean).join(' · ')}
               />
             </ListItemButton>
           </ListItem>
@@ -134,10 +145,36 @@ export default function WorkersTab() {
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => setEditing('new')}>{t('Add worker')}</Button>
       </Stack>
 
+      {data.projects.length > 0 && (
+        <SelectField
+          label={t('Project / site')}
+          value={siteId}
+          options={data.projects.filter((project) => project.status === 'running' || project.id === siteId).map((project) => ({ value: project.id, label: project.name }))}
+          onChange={setSite}
+        />
+      )}
+      {unassigned.length > 0 && data.projects.length > 0 && (
+        <Notice tone="warning">{t('{count} workers are not on any project yet, so they show on every project. Tap a worker and tick the project they work on.', { count: unassigned.length })}</Notice>
+      )}
       {!canEditWorker && (
         <Typography variant="caption" color="text.secondary" component="p" sx={{ mb: 1 }}>
           {t('You can add workers and mark them as left. Only the admin can change wages or details, or delete a worker.')}
         </Typography>
+      )}
+      {toPay.length > 0 && (
+        <Card sx={{ mb: 2 }}>
+          <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'baseline', px: 2, pt: 1.5 }}>
+            <Typography variant="subtitle1">{t('To pay')}</Typography>
+            <Typography variant="subtitle1" color="warning.dark">{formatCurrency(toPayTotal)}</Typography>
+          </Stack>
+          <List dense disablePadding>
+            {toPay.slice(0, 8).map((worker) => (
+              <ListItem key={worker.id} secondaryAction={<Button size="small" variant="outlined" onClick={() => setPaying(worker)} aria-label={t('Pay {name}', { name: worker.name })}>{t('Pay')}</Button>}>
+                <ListItemText primary={worker.name} secondary={balanceText(workerBalance(labour, worker.id))} />
+              </ListItem>
+            ))}
+          </List>
+        </Card>
       )}
       {!labour.workers.length ? (
         <EmptyState icon={<EngineeringIcon fontSize="large" />} title={t('No workers yet')} description={t('Add your workers with their daily wage, then mark attendance every day.')} />
@@ -155,7 +192,17 @@ export default function WorkersTab() {
 
       <SettleDialog open={Boolean(settling)} worker={settling} balance={settling ? workerBalance(labour, settling.id) : 0} onSettle={settle} onClose={() => setSettling(null)} />
       <DeleteWorkerDialog open={Boolean(deleting)} worker={deleting} onSettle={() => { const worker = deleting; setDeleting(null); setSettling(worker); }} onDelete={deleteWithRecords} onClose={() => setDeleting(null)} />
-      <WorkerDialog open={Boolean(editing)} worker={editing === 'new' ? null : editing} onSave={save} onClose={() => setEditing(null)} />
+      <ResponsiveDialog open={Boolean(moving)} title={moving ? t('Move {name} to another project', { name: moving.name }) : ''} onClose={() => setMoving(null)} maxWidth="xs">
+        {moving && (
+          <Stack spacing={1.5} sx={{ pt: 1 }}>
+            <Typography variant="body2" color="text.secondary">{t('They will show on the project you choose, not on this one. Their earlier attendance stays where it was marked.')}</Typography>
+            {data.projects.filter((project) => project.status === 'running' || (moving.projectIds || []).includes(project.id)).map((project) => (
+              <Button key={project.id} variant={(moving.projectIds || []).includes(project.id) ? 'contained' : 'outlined'} onClick={() => { actions.updateWorker(moving.id, { projectIds: [project.id] }); notify(t('{name} moved to {project}.', { name: moving.name, project: project.name }), 'success'); setMoving(null); }}>{project.name}</Button>
+            ))}
+          </Stack>
+        )}
+      </ResponsiveDialog>
+      <WorkerDialog open={Boolean(editing)} worker={editing === 'new' ? null : editing} projects={data.projects} defaultProjectId={siteId} onSave={save} onClose={() => setEditing(null)} />
       <LabourPaymentDialog
         open={Boolean(paying)}
         worker={paying}

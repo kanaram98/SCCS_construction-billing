@@ -47,7 +47,7 @@ export function recordMeta(now = new Date()) {
 }
 
 export function createWorker(values = {}, now = new Date()) {
-  return { id: newId(), name: '', phone: '', role: '', dailyWage: '', active: true, joinedOn: localToday(now), leftOn: '', ...recordMeta(now), ...values };
+  return { id: newId(), name: '', phone: '', role: '', dailyWage: '', active: true, joinedOn: localToday(now), leftOn: '', projectIds: [], ...recordMeta(now), ...values };
 }
 
 /** Fills in sync metadata on records saved before it existed. */
@@ -81,7 +81,7 @@ export function normalizeLabour(saved, now = new Date()) {
   }
   const labour = {
     workers: Array.isArray(saved.workers)
-      ? saved.workers.filter((worker) => worker?.id).map((worker) => withMeta({ name: '', phone: '', role: '', dailyWage: '', active: true, joinedOn: '', leftOn: '', ...worker }))
+      ? saved.workers.filter((worker) => worker?.id).map((worker) => withMeta({ name: '', phone: '', role: '', dailyWage: '', active: true, joinedOn: '', leftOn: '', ...worker, projectIds: Array.isArray(worker.projectIds) ? worker.projectIds.filter((id) => typeof id === 'string' && id) : [] }))
       : [],
     attendance,
     payments: Array.isArray(saved.payments)
@@ -395,6 +395,33 @@ export function labourForSite(labour, siteId) {
   }
   return { ...labour, attendance };
 }
+
+/**
+ * Whether a worker belongs on a project's sheet: they are assigned to it, or have already been marked there.
+ * A worker assigned to no project yet (saved before workers belonged to projects) shows on every project
+ * until they are assigned, so nobody disappears.
+ */
+export function workerOnSite(labour, worker, siteId) {
+  if (!siteId) return true;
+  const assigned = worker.projectIds || [];
+  if (!assigned.length || assigned.includes(siteId)) return true;
+  return Object.values(labour.attendance || {}).some((marks) => marks[worker.id]?.projectId === siteId);
+}
+
+/** Workers not assigned to any project yet. */
+export const unassignedWorkers = (labour) => labour.workers.filter((worker) => worker.active && !(worker.projectIds || []).length);
+
+/** Wages earned on a project: the attendance marked at it, at the wage each was marked with. */
+export function labourCostOfProject(labour, projectId) {
+  let cost = 0;
+  for (const marks of Object.values(labour?.attendance || {})) {
+    for (const mark of Object.values(marks)) if (mark.projectId === projectId) cost += mark.units * mark.wage;
+  }
+  return roundTo2(cost);
+}
+
+/** Wages for everyone marked on one day, across all projects. */
+export const labourCostOfDay = (labour, date) => daySummary(labour || { attendance: {} }, date).cost;
 
 /** The project a worker is already marked at on `date`, when it is not `siteId` ('' when free to mark). */
 export function markedElsewhere(labour, date, workerId, siteId) {

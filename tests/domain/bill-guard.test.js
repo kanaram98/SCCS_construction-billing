@@ -167,3 +167,16 @@ test('making a bill the next running bill of another: same project only', () => 
   assert.equal(third.sourcePatch, null);
   assert.equal(attachToSeries([first, stray], stray, bill({ id: 'q', projectId: 'p2' })), null);
 });
+
+test('the last running bill of a series can be deleted (draft or ready, no money); one in the middle cannot', () => {
+  const r1 = { id: 'r1', raSeriesId: 's', raNumber: 1, status: 'ready' };
+  const r2 = { id: 'r2', raSeriesId: 's', raNumber: 2, status: 'ready' };
+  const r3 = { id: 'r3', raSeriesId: 's', raNumber: 3, status: 'draft' };
+  const all = [r1, r2, r3];
+  assert.equal(deleteBlocker(r3, all), '');
+  assert.equal(deleteBlocker(r2, all), 'series');
+  assert.equal(deleteBlocker(r2, [r1, r2]), ''); // a ready last bill too
+  assert.equal(deleteBlocker(r1, [r1]), 'series'); // the first bill of a series stays
+  assert.equal(deleteBlocker({ ...r2, advance: '100' }, [r1, r2]), 'money');
+  assert.equal(deleteBlocker({ ...r2, status: 'submitted' }, [r1, r2]), 'submitted');
+});

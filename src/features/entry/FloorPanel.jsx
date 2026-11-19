@@ -30,6 +30,7 @@ export default function FloorPanel({ section, sections, disclosure, levelName, s
   const { data, bill, actions } = useBilling();
   const [copyingAreas, setCopyingAreas] = useState(false);
   const { entry } = actions;
+  const readOnly = isEntryLocked(bill); // ready, submitted or cancelled: no adding or changing floors and rooms
   const confirm = useConfirm();
   const undoable = useUndoable();
   const [renaming, setRenaming] = useState(disclosure.renameId === section.id); // a fresh copy opens its rename box at once
@@ -84,7 +85,7 @@ export default function FloorPanel({ section, sections, disclosure, levelName, s
           </Typography>
         </Box>
         <Typography variant="subtitle1" color="primary" sx={{ whiteSpace: 'nowrap' }}>{formatCurrency(getSectionTotal(section, data.rates))}</Typography>
-        <ActionMenu
+        {!readOnly && <ActionMenu
           label={t('Actions for {name}', { name: section.name })}
           items={[
             { label: t('Rename'), icon: <EditIcon fontSize="small" />, onClick: () => setRenaming(true) },
@@ -94,7 +95,7 @@ export default function FloorPanel({ section, sections, disclosure, levelName, s
             { label: t('Copy several areas to other sections…'), icon: <ContentCopyIcon fontSize="small" />, onClick: () => setCopyingAreas(true), disabled: sections.length < 2 || !section.areas.length },
             { label: t('Delete section'), icon: <DeleteIcon fontSize="small" />, onClick: deleteSection, danger: true }
           ]}
-        />
+        />}
       </Stack>
 
       <Stack spacing={1}>
@@ -118,17 +119,17 @@ export default function FloorPanel({ section, sections, disclosure, levelName, s
         })}
       </Stack>
       {section.areas.length === 0 && (
-        <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>{t('No areas yet. Add one to start measuring.')}</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>{readOnly ? t('No areas.') : t('No areas yet. Add one to start measuring.')}</Typography>
       )}
 
-      <Stack direction="row" sx={{ mt: 1.5, flexWrap: 'wrap', gap: 0.75 }}>
+      {!readOnly && <Stack direction="row" sx={{ mt: 1.5, flexWrap: 'wrap', gap: 0.75 }}>
         {QUICK_ROOMS.map((name) => (
           <Chip key={name} size="medium" variant="outlined" icon={<AddIcon />} label={t(name)} onClick={() => onAddArea(section.id, t(name))} aria-label={t('Add {name}', { name: t(name) })} />
         ))}
-      </Stack>
-      <Button fullWidth variant="outlined" startIcon={<AddIcon />} onClick={() => onAddArea(section.id)} sx={{ mt: 1.5 }}>
+      </Stack>}
+      {!readOnly && <Button fullWidth variant="outlined" startIcon={<AddIcon />} onClick={() => onAddArea(section.id)} sx={{ mt: 1.5 }}>
         {t('Add {level}', { level: sublevelName })}
-      </Button>
+      </Button>}
 
       <CopyAreasDialog open={copyingAreas} section={section} sections={sections} levelName={levelName} sublevelName={sublevelName} onCopy={copyAreas} onClose={() => setCopyingAreas(false)} />
       <RenameDialog
