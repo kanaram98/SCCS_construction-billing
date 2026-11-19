@@ -18,7 +18,7 @@ import RenameDialog from '../../components/ui/RenameDialog.jsx';
 import { countSectionItems, getSectionTotal } from '../../domain/calculations.js';
 import { formatCurrency } from '../../domain/formatters.js';
 import { tr as t, trn } from '../../i18n/translate.js';
-import { isFinal } from '../../domain/bill-final.js';
+import { isEntryLocked, lockState } from '../../domain/bill-guard.js';
 import AreaPanel from './AreaPanel.jsx';
 import CopyAreasDialog from './CopyAreasDialog.jsx';
 
@@ -37,7 +37,7 @@ export default function FloorPanel({ section, sections, disclosure, levelName, s
   const index = sections.indexOf(section);
 
   function locked() {
-    if (!isFinal(bill)) return false;
+    if (!isEntryLocked(bill)) return false;
     window.dispatchEvent(new CustomEvent('bill-locked'));
     return true;
   }

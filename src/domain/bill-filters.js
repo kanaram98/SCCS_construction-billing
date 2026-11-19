@@ -1,4 +1,6 @@
 import { text } from './formatters.js';
+import { billStatus, isCancelled } from './bill-guard.js';
+import { isEstimate } from './bill-kinds.js';
 
 export const EMPTY_BILL_FILTERS = Object.freeze({
   search: '',
@@ -6,8 +8,16 @@ export const EMPTY_BILL_FILTERS = Object.freeze({
   projectId: '',
   dateFrom: '',
   dateTo: '',
-  payment: ''
+  payment: '',
+  stage: ''
 });
+
+/** 'estimate' | 'cancelled' | 'draft' | 'ready' | 'submitted' */
+export function billStage(bill) {
+  if (isEstimate(bill)) return 'estimate';
+  if (isCancelled(bill)) return 'cancelled';
+  return billStatus(bill);
+}
 
 /**
  * Filters bills for the dashboard.
@@ -16,7 +26,8 @@ export const EMPTY_BILL_FILTERS = Object.freeze({
 export function filterBills(bills, filters, getStatus) {
   const query = filters.search.trim().toLowerCase();
   return bills.filter((bill) =>
-    `${bill.number} ${bill.projectName} ${bill.client} ${bill.date}`.toLowerCase().includes(query) &&
+    `${bill.number} ${bill.name || ''} ${bill.projectName} ${bill.client} ${bill.date} ${bill.quotationLabel || ''}`.toLowerCase().includes(query) &&
+    (!filters.stage || billStage(bill) === filters.stage) &&
     (!filters.client || bill.client === filters.client) &&
     (!filters.projectId || bill.projectId === filters.projectId) &&
     (!filters.dateFrom || bill.date >= filters.dateFrom) &&

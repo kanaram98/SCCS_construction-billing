@@ -7,11 +7,19 @@ const goTo = async (user, name) => {
   await user.click(screen.getByRole('button', { name: 'Menu' }));
   await user.click(within(await screen.findByRole('navigation', { name: 'Main navigation' })).getByRole('button', { name }));
 };
+/** The sample bill after it has been marked ready (it goes to the client and can take payments). */
+const READY_SAMPLE = { ...SAMPLE_STATE, bills: SAMPLE_STATE.bills.map((bill, index) => (index === 0 ? { ...bill, status: 'ready' } : bill)) };
+/** Opens the ⋮ menu of a bill on the Bills page and taps an item. */
+const billMenu = async (user, number, item) => {
+  await goTo(user, 'Bills');
+  await user.click(await screen.findByRole('button', { name: `Actions for bill ${number}` }));
+  await user.click(screen.getByRole('menuitem', { name: item }));
+};
 const openSettings = (user) => user.click(screen.getByRole('button', { name: 'App settings' }));
 
 describe('Home', () => {
   it('opens on the business summary with KPIs and lists', async () => {
-    renderApp(SAMPLE_STATE);
+    renderApp(READY_SAMPLE); // a bill that has gone to the client counts as billed
     expect(await screen.findByRole('heading', { name: 'Namaste, Acme Interiors' })).toBeTruthy();
     expect(screen.getByText('Outstanding')).toBeTruthy();
     expect(screen.getAllByText('₹8,895').length).toBeGreaterThan(0); // 13,895 − 5,000 advance
@@ -181,7 +189,7 @@ describe('Entry screen', () => {
   });
 
   it('records a payment on the Amounts & payments tab', async () => {
-    const { user } = renderApp(SAMPLE_STATE);
+    const { user } = renderApp(READY_SAMPLE);
     await goTo(user, 'Entry');
     await user.click(await screen.findByRole('tab', { name: 'Amounts & payments' }));
     await user.click(await screen.findByRole('button', { name: 'Record payment' }));
@@ -197,9 +205,10 @@ describe('Entry screen', () => {
 });
 
 describe('Settings', () => {
-  it('validates and adds a work item rate on the Rates tab', async () => {
+  it('validates and adds a work item on the Standard rates tab (Add item is under the list)', async () => {
     const { user } = renderApp(SAMPLE_STATE);
-    await goTo(user, 'Rates');
+    await goTo(user, 'Quotation');
+    await user.click(await screen.findByRole('tab', { name: 'Standard rates' }));
     await user.click(await screen.findByRole('button', { name: 'Add item' }));
     const dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByRole('button', { name: 'Add item' }));
@@ -212,9 +221,10 @@ describe('Settings', () => {
     expect(savedState().rates.at(-1)).toMatchObject({ name: 'Wall putty', unit: 'sqft', rate: 12 });
   });
 
-  it('shows the rate quotation with editable terms', async () => {
+  it('shows the standard rate quotation with editable terms', async () => {
     const { user } = renderApp(SAMPLE_STATE);
-    await goTo(user, 'Rates');
+    await goTo(user, 'Quotation');
+    await user.click(await screen.findByRole('tab', { name: 'Standard rates' }));
     const quotation = await waitFor(() => document.querySelector('.quotation-document'));
     expect(within(quotation).getByText('Rate quotation')).toBeTruthy();
     expect(within(quotation).getByText('Floor tiles')).toBeTruthy();
@@ -240,9 +250,11 @@ describe('Settings', () => {
 describe('Project and PDF', () => {
   it('Bill details shows the project and client; the firm has its own tab', async () => {
     const { user } = renderApp(SAMPLE_STATE);
-    await goTo(user, 'Bill details');
-    expect(await screen.findByRole('heading', { name: 'Bill details' })).toBeTruthy();
+    await billMenu(user, 1, 'Edit details');
+    expect(await screen.findByRole('dialog', { name: 'Bill details' })).toBeTruthy();
     expect(screen.queryByText('Your firm')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     await goTo(user, 'Firm');
     expect(await screen.findByText('Your firm')).toBeTruthy();
     expect(screen.queryByText('Payments')).toBeNull();
@@ -253,8 +265,8 @@ describe('Project and PDF', () => {
     const linked = { ...SAMPLE_STATE, projects: [{ id: 'pa', name: 'Alpha site', client: 'Mr Alpha', status: 'running', version: 1 }] };
     linked.bills = linked.bills.map((entry, index) => (index === 0 ? { ...entry, projectId: 'pa', projectName: 'Alpha site', client: 'Mr Alpha' } : entry));
     const { user } = renderApp(linked);
-    await goTo(user, 'Bill details');
-    await screen.findByRole('heading', { name: 'Bill details' });
+    await billMenu(user, 1, 'Edit details');
+    await screen.findByRole('dialog', { name: 'Bill details' });
     expect(screen.queryByRole('combobox', { name: /Project/ })).toBeNull(); // shown as text, not a dropdown
     expect(screen.getAllByText('Alpha site').length).toBeGreaterThan(0);
     expect(screen.getByLabelText('Date').disabled).toBe(true);
@@ -266,6 +278,14 @@ describe('Project and PDF', () => {
     expect((await screen.findByRole('tab', { name: 'Preview' })).getAttribute('aria-selected')).toBe('true');
     const preview = document.querySelector('.print-preview');
     expect(within(preview).getByText(/Rupees Thirteen Thousand Eight Hundred Ninety-Five Only/)).toBeTruthy();
+    expect(preview.querySelector('.draft-stamp')).toBeTruthy(); // a draft prints with a DRAFT stamp
+  });
+
+  it('a ready bill prints without the DRAFT stamp', async () => {
+    const { user } = renderApp(READY_SAMPLE);
+    await goTo(user, 'PDF / Print');
+    await screen.findByRole('tab', { name: 'Preview' });
+    expect(document.querySelector('.print-preview .draft-stamp')).toBeNull();
   });
 });
 
@@ -659,7 +679,7 @@ describe('Apply a project advance to a bill', () => {
       ...SAMPLE_STATE,
       projects: [project],
       activeBillId: SAMPLE_STATE.bills[0].id,
-      bills: SAMPLE_STATE.bills.map((bill, index) => (index === 0 ? { ...bill, projectId: 'p1', advance: '0', payments: [] } : bill)),
+      bills: SAMPLE_STATE.bills.map((bill, index) => (index === 0 ? { ...bill, status: 'ready', projectId: 'p1', advance: '0', payments: [] } : bill)),
       advances: [{ id: 'a1', projectId: 'p1', date: '2026-11-02', amount: 5000, mode: 'cash', note: '', ...stamp }]
     });
     await goTo(user, 'Entry');
@@ -676,22 +696,42 @@ describe('Apply a project advance to a bill', () => {
   });
 });
 
-describe('Final bill', () => {
-  it('marks a bill final, freezing its prices, and the admin can reopen it', async () => {
+describe('Bill stages', () => {
+  it('marks a bill ready from the Bills page, freezing its prices, and can move it back to draft', async () => {
     const { user } = renderApp(SAMPLE_STATE);
-    await goTo(user, 'Bill details');
-    await user.click(await screen.findByRole('button', { name: 'Mark bill as final' }));
+    await billMenu(user, 1, 'Mark ready');
     const ask = await screen.findByRole('dialog');
-    await user.click(within(ask).getByRole('button', { name: 'Mark as final' }));
-    await waitFor(() => expect(savedState().bills[0].final).toBe(true));
+    await user.click(within(ask).getByRole('button', { name: 'Mark as ready' }));
+    await waitFor(() => expect(savedState().bills[0].status).toBe('ready'));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     const item = savedState().bills[0].sections[0].areas[0].items[0];
     expect(item.rateId).toBeUndefined();
     expect(item.sourceRateId).toBe('floor-tiles');
-    await user.click(await screen.findByRole('button', { name: 'Reopen' }));
+    await user.click(await screen.findByRole('button', { name: 'Actions for bill 1' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Back to draft' }));
     const again = await screen.findByRole('dialog');
-    await user.click(within(again).getByRole('button', { name: 'Reopen' }));
-    await waitFor(() => expect(savedState().bills[0].final).toBeFalsy());
+    // the sample bill carries an advance, so the admin gives a reason
+    await user.type(within(again).getByLabelText('Reason'), 'Client asked for a discount');
+    await user.click(within(again).getByRole('button', { name: 'Back to draft' }));
+    await waitFor(() => expect(savedState().bills[0].status).toBe('draft'));
     expect(savedState().bills[0].sections[0].areas[0].items[0].rateId).toBe('floor-tiles');
+  });
+
+  it('the Entry page shows the stage but changes happen from the Bills page', async () => {
+    const { user } = renderApp(SAMPLE_STATE);
+    await goTo(user, 'Entry');
+    expect(await screen.findByText(/Being worked on/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Mark ready' })).toBeNull();
+    await user.click(await screen.findByRole('button', { name: 'Manage in Bills' }));
+    expect(await screen.findByRole('heading', { name: 'Bills' })).toBeTruthy();
+  });
+
+  it('a draft takes no payments or advance until the bill is ready', async () => {
+    const { user } = renderApp(SAMPLE_STATE);
+    await goTo(user, 'Entry');
+    await user.click(await screen.findByRole('tab', { name: 'Amounts & payments' }));
+    expect(screen.queryByRole('button', { name: 'Record payment' })).toBeNull();
+    expect((await screen.findAllByText(/Mark the bill ready/)).length).toBeGreaterThan(0);
   });
 });
 

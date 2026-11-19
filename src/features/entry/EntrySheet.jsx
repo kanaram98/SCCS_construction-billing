@@ -15,6 +15,7 @@ import { getItemQuantity, getLineAmount } from '../../domain/calculations.js';
 import { getDimensionFields, usesCount } from '../../domain/rates.js';
 import { validateEntry } from '../../domain/validation.js';
 import { formatCurrency } from '../../domain/formatters.js';
+import { quotedRates } from '../../domain/quotations.js';
 import { tr as t, trn } from '../../i18n/translate.js';
 import WorkItemPicker from './WorkItemPicker.jsx';
 
@@ -86,7 +87,13 @@ function SheetBody({ section, area, focusItemId, onClose }) {
     return ids.reverse().filter((id) => data.rates.some((rate) => rate.id === id)).slice(0, 6);
   }, [bill.sections, data.rates]);
 
-  const rateOf = (row) => data.rates.find((rate) => rate.id === row.rateId) || row.fallback || null;
+  // New entries are priced from the bill's quotation (or the standard rates); a saved entry keeps its own price.
+  const quoted = useMemo(() => quotedRates(data.rates, data.quotations.find((entry) => entry.id === bill.quotationId)), [data.rates, data.quotations, bill.quotationId]);
+  const rateOf = (row) => {
+    const live = quoted.find((rate) => rate.id === row.rateId);
+    if (!live) return row.fallback || null;
+    return row.itemId && row.fallback && row.fallback.id === row.rateId ? { ...live, rate: row.fallback.rate } : live;
+  };
   const valuesOf = (row, rate) => ({ ...Object.fromEntries(FIELD_KEYS.map((key) => [key, row[key]])), name: rate.name, unit: rate.unit, type: rate.type, rate: rate.rate });
   const issuesOf = (row) => { const rate = rateOf(row); return row.rateId && rate ? validateEntry(row, rate) : []; };
   const amountOf = (row) => {
@@ -276,7 +283,7 @@ function SheetBody({ section, area, focusItemId, onClose }) {
                   <Box sx={{ flex: 1, minWidth: 0 }}>
                     <WorkItemPicker
                       compact
-                      rates={data.rates}
+                      rates={quoted.filter((rate) => !rate.archived || rate.id === row.rateId)}
                       value={row.rateId}
                       recentIds={recentIds}
                       inputProps={{ 'data-sheet-input': 'item', 'data-row': row.key, enterKeyHint: 'next' }}

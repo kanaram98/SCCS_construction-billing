@@ -90,6 +90,8 @@ export default function HomePage({ onNavigate }) {
         <Grid size={6}><Kpi label={t('Received')} value={formatCurrency(summary.totalReceived)} color="success.main" note={t('This month: {amount}', { amount: formatCurrency(summary.receivedThisMonth) })} /></Grid>
         <Grid size={6}><Kpi label={t('Total billed')} value={formatCurrency(summary.totalBilled)} note={trn(summary.billCount, '{count} bill', '{count} bills')} /></Grid>
         <Grid size={6}><Kpi label={t('Billed this month')} value={formatCurrency(summary.billedThisMonth)} /></Grid>
+        <Grid size={6}><Kpi label={t('Awaiting payment')} value={formatCurrency(summary.awaitingValue)} color="warning.dark" note={trn(summary.awaitingCount, '{count} ready bill with the client', '{count} ready bills with the client')} /></Grid>
+        <Grid size={6}><Kpi label={t('In progress')} value={formatCurrency(summary.draftValue)} note={trn(summary.draftCount, '{count} draft bill', '{count} draft bills')} /></Grid>
         <Grid size={12}><Kpi label={t('Open estimates')} value={formatCurrency(summary.openEstimateValue)} note={trn(summary.openEstimateCount, '{count} estimate not yet converted', '{count} estimates not yet converted')} color="info.main" /></Grid>
       </Grid>
 

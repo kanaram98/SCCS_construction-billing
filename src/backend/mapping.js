@@ -45,7 +45,8 @@ const REQUIRED_DEFAULTS = {
   templates: () => ({ name: '', type: 'area' }),
   projects: () => ({ name: '', clientId: '', client: '', address: '', status: 'running', agreedAmount: '', notes: '' }),
   advances: () => ({ projectId: '', amount: 0, mode: 'cash', note: '' }),
-  expenses: () => ({ projectId: '', amount: 0, category: 'other', note: '' })
+  expenses: () => ({ projectId: '', amount: 0, category: 'other', note: '' }),
+  quotations: () => ({ projectId: '', number: '', rev: 1, name: '', status: 'draft', lines: [] })
 };
 
 function record(collection, data) {
@@ -70,7 +71,7 @@ function attendanceDocuments(attendance) {
 export function toDocuments(raw, { by }) {
   if (!by) throw new Error('toDocuments needs the signed-in account (by).');
   const docs = [];
-  for (const collection of ['bills', 'rates', 'clients', 'templates', 'projects', 'advances', 'expenses']) {
+  for (const collection of ['bills', 'rates', 'clients', 'templates', 'projects', 'advances', 'expenses', 'quotations']) {
     (raw[collection] || []).forEach((item, order) => docs.push(record(collection, { ...withRecordMeta(item, by), order })));
   }
   const labour = raw.labour || {};
@@ -115,6 +116,7 @@ export function fromDocuments(docs, { local } = {}, now = new Date()) {
     projects: of(COLLECTIONS.projects).sort(byOrder).map(withoutOrder),
     advances: of(COLLECTIONS.advances).sort(byOrder).map(withoutOrder),
     expenses: of(COLLECTIONS.expenses).sort(byOrder).map(withoutOrder),
+    quotations: of(COLLECTIONS.quotations).sort(byOrder).map(withoutOrder),
     log: of(COLLECTIONS.history).sort(byTime),
     firm: settings.firm,
     quotation: settings.quotation,

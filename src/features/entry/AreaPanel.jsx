@@ -17,7 +17,7 @@ import EditIcon from '@mui/icons-material/EditOutlined';
 import { ActionMenu, useConfirm } from '../../components/ui';
 import RenameDialog from '../../components/ui/RenameDialog.jsx';
 import { getAreaTotal } from '../../domain/calculations.js';
-import { isFinal } from '../../domain/bill-final.js';
+import { isEntryLocked, lockState } from '../../domain/bill-guard.js';
 import { useUndoable } from '../../hooks/useUndoable.js';
 import GroupSummary from './GroupSummary.jsx';
 import EntryList from './EntryList.jsx';
@@ -44,7 +44,7 @@ export default function AreaPanel({ section, area, index, sections, open, visibl
 
   /** Opens the entry sheet (a final bill's measurements are locked). */
   function openSheet(itemId = '') {
-    if (isFinal(bill)) {
+    if (isEntryLocked(bill)) {
       window.dispatchEvent(new CustomEvent('bill-locked'));
       return;
     }
@@ -71,7 +71,7 @@ export default function AreaPanel({ section, area, index, sections, open, visibl
 
   /** A copy of this room right after it, opened for renaming. */
   function duplicateArea() {
-    if (isFinal(bill)) {
+    if (isEntryLocked(bill)) {
       window.dispatchEvent(new CustomEvent('bill-locked'));
       return;
     }

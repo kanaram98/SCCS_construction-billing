@@ -46,6 +46,7 @@ export const COLLECTIONS = Object.freeze({
   projects: 'projects',
   advances: 'advances',
   expenses: 'expenses',
+  quotations: 'quotations',
   settings: 'settings',
   workers: 'workers',
   labourPayments: 'labourPayments',
@@ -154,8 +155,23 @@ export const billSchema = z.strictObject({
   gstType: z.enum(['intra', 'inter']),
   advance: numberish,
   payments: z.array(billPayment).max(LIMITS.payments),
+  /** Stage of the bill: draft, ready (given to the client, takes payments) or submitted (closed). */
+  status: z.enum(['draft', 'ready', 'submitted']).optional(),
+  readyAt: isoTime.optional(),
+  submittedAt: isoTime.optional(),
+  /** Older versions of the app marked a final bill with these. */
   final: z.boolean().optional(),
   finalizedAt: isoTime.optional(),
+  /** Firm details as printed when the bill was made ready. */
+  firmSnapshot: z.looseObject({}).optional(),
+  /** The quotation this bill or estimate is priced from, and its label (Q-0003 v2) saved with the bill. */
+  quotationId: z.string().max(LIMITS.id).optional(),
+  quotationLabel: short.optional(),
+  cancelled: z.boolean().optional(),
+  cancelledAt: isoTime.optional(),
+  cancelReason: long.optional(),
+  /** Locks, unlocks and cancellations with their reasons. */
+  audit: z.array(z.looseObject({ at: isoTime, action: short, reason: long })).max(100).optional(),
   advanceAdjustments: z.array(z.strictObject({ id, advanceId: id, amount: z.number().finite().min(0), date: isoDate })).max(200).optional(),
   footer: long,
   sections: z.array(section).max(LIMITS.billSections),
@@ -172,7 +188,9 @@ export const rateSchema = z.strictObject({
   name: short,
   unit: z.string().max(20),
   type: z.enum(['area', 'length', 'lenw', 'volume', 'count', 'direct']),
-  rate: numberish
+  rate: numberish,
+  /** Hidden from new entries; bills that used it are unchanged. */
+  archived: z.boolean().optional()
 });
 
 export const clientSchema = z.strictObject({
@@ -204,6 +222,18 @@ export const projectSchema = z.strictObject({
   status: z.enum(['running', 'completed']),
   agreedAmount: numberish,
   notes: long
+});
+
+/** A numbered quotation for a project: a snapshot of work items and prices, draft until made final. */
+export const quotationRecordSchema = z.strictObject({
+  ...meta,
+  projectId: id,
+  number: z.string().max(30),
+  rev: z.int().min(1),
+  name: short,
+  status: z.enum(['draft', 'final']),
+  finalizedAt: isoTime.optional(),
+  lines: z.array(z.looseObject({ rateId: id, name: short, unit: z.string().max(20), type: z.string().max(20), rate: z.number().finite().min(0) })).max(300)
 });
 
 export const advanceSchema = z.strictObject({
@@ -318,7 +348,7 @@ const historyBase = {
 
 export const historyEntrySchema = z.strictObject({
   ...historyBase,
-  entity: z.enum(['bills', 'rates', 'clients', 'templates', 'projects', 'advances', 'expenses', 'firm', 'quotation']),
+  entity: z.enum(['bills', 'rates', 'clients', 'templates', 'projects', 'advances', 'expenses', 'quotations', 'firm', 'quotation']),
   refId: id,
   label: z.looseObject({}),
   fields: z.array(z.string().max(50)).max(100).optional(),
@@ -341,6 +371,7 @@ export const DOCUMENT_SCHEMAS = Object.freeze({
   projects: projectSchema,
   advances: advanceSchema,
   expenses: expenseSchema,
+  quotations: quotationRecordSchema,
   workers: workerSchema,
   labourPayments: labourPaymentSchema,
   attendance: attendanceMonthSchema,

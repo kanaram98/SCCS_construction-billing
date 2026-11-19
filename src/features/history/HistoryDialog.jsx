@@ -11,6 +11,7 @@ import UndoIcon from '@mui/icons-material/Undo';
 import { EmptyState, ResponsiveDialog, SelectField, useConfirm, useNotify } from '../../components/ui';
 import { useBilling } from '../../state/BillingContext.jsx';
 import { RECYCLE_DAYS, recycleBin, undoBlocker } from '../../domain/history.js';
+import { hasMoney, isFinal, isFrozen } from '../../domain/bill-guard.js';
 import { HISTORY_FILTERS, describeHistoryEntry, matchesFilter, recordName } from '../../domain/history-log.js';
 import { formatLogTime } from '../../domain/labour-log.js';
 import { getLanguage, tr as t } from '../../i18n/translate.js';
@@ -26,13 +27,23 @@ const BLOCKER_TEXT = {
   trimmed: 'Too old to undo'
 };
 
+/** Whether a recycle-bin item is a record of money (a bill with payments or in a series, an advance, an expense, a project). */
+function holdsMoney(raw, item) {
+  if (['advances', 'expenses', 'projects'].includes(item.entity)) return true;
+  if (item.entity !== 'bills') return false;
+  const record = (raw.bills || []).find((entry) => entry.id === item.id);
+  return Boolean(record && (hasMoney(record) || record.raSeriesId || isFinal(record)));
+}
+
 const ENTITY_NAMES = { bills: 'Bill', rates: 'Rate', clients: 'Client', templates: 'Template' };
 
 function Activity({ filter }) {
   const { raw, actions } = useBilling();
   const cloud = useCloud();
   const names = new Map(cloud.members.map((member) => [member.uid, member.name]));
-  const allowedUndo = (entry) => cloud.canUndo(entry);
+  // A settled or cancelled bill is read-only for the contractor, so he cannot undo changes made to it either.
+  const frozenBill = (entry) => entry.entity === 'bills' && isFrozen((raw.bills || []).find((bill) => bill.id === entry.refId || bill.id === entry.id));
+  const allowedUndo = (entry) => cloud.canUndo(entry) && (cloud.can('reopenBill') || !frozenBill(entry));
   const confirm = useConfirm();
   const notify = useNotify();
   const [shown, setShown] = useState(PAGE);
@@ -87,7 +98,13 @@ function RecycleBin({ filter }) {
 
   async function purge(item, name) {
     const ok = await confirm({ title: t('Delete forever?'), message: `${name}. ${t('This cannot be undone.')}`, confirmLabel: t('Delete forever'), danger: true });
-    if (ok) actions.history.purge(item.entity, item.id);
+    if (!ok) return;
+    // Money records get a second, plainly worded confirmation: once purged they are gone from the books.
+    if (holdsMoney(raw, item)) {
+      const again = await confirm({ title: t('This is a money record'), message: t('Payments, advances, expenses and bills with payments are part of your accounts. Deleting them forever changes your totals and cannot be undone. Delete anyway?'), confirmLabel: t('Yes, delete forever'), danger: true });
+      if (!again) return;
+    }
+    actions.history.purge(item.entity, item.id);
   }
 
   return (

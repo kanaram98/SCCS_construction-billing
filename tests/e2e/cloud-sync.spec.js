@@ -108,8 +108,9 @@ test('admin creates the workspace, invites the father, and changes sync both way
   await expect(father.getByText(/Sample: 2BHK flat/).first()).toBeVisible();
   await father.getByText(/Sample: 2BHK flat/).first().click(); // the open bill is per phone
 
-  // Rates: he can add, not change.
-  await goTo(father, 'Rates');
+  // Standard rates: he can add, not change.
+  await goTo(father, 'Quotation');
+  await father.getByRole('tab', { name: 'Standard rates' }).click();
   await expect(father.getByText('You can add rates. Only the admin can change or delete them.')).toBeVisible();
   await expect(father.getByRole('button', { name: /^Actions for / })).toHaveCount(0);
   await expect(father.getByRole('button', { name: 'Add item' })).toBeVisible();
@@ -122,10 +123,13 @@ test('admin creates the workspace, invites the father, and changes sync both way
   await expectTab(father, 'Reports', 0); // profit and cash are for the admin only
 
   // ── He edits the bill; it arrives on your phone ──
-  await goTo(father, 'Bill details');
-  await father.getByLabel(/Bill number/).fill('77');
-  await goTo(admin, 'Bill details');
-  await expect(admin.getByLabel(/Bill number/)).toHaveValue('77', { timeout: 20000 });
+  await goTo(father, 'Bills');
+  await father.getByRole('button', { name: /^Actions for bill/ }).first().click();
+  await father.getByRole('menuitem', { name: 'Rename' }).click(); // the sample bill has money on it, so its number is fixed
+  await father.getByRole('textbox', { name: 'Bill name' }).fill('Ground floor marble');
+  await father.getByRole('button', { name: 'Save' }).click();
+  await goTo(admin, 'Bills');
+  await expect(admin.getByText('Ground floor marble').first()).toBeVisible({ timeout: 20000 });
 
   // ── You change the firm name; it arrives on his phone ──
   await goTo(admin, 'Firm');
@@ -182,7 +186,7 @@ test('admin creates the workspace, invites the father, and changes sync both way
   await father.getByRole('button', { name: 'Sign out' }).click();
   await expect(father.getByText(/Signed out: only Labour is available/)).toBeVisible();
   await expectTab(father, 'Bills', 0);
-  await expectTab(father, 'Bill details', 0);
+  await expectTab(father, 'Find a bill', 0);
   await goTo(father, 'Labour');
   await father.getByRole('button', { name: 'Ramu', exact: true }).click(); // his calendar
   await expect(father.getByRole('button', { name: /: 1P$/ }).first()).toBeVisible();

@@ -71,11 +71,16 @@ export function isRateValid(rate) {
 }
 
 /**
- * Finds the current rate for a bill item. Items keep a snapshot of their rate,
- * which is used when the rate has since been deleted.
+ * Finds the work item behind a bill entry. The entry keeps the price it was made with
+ * (so changing a price never rewrites existing bills); if the work item is gone, the
+ * entry's own saved copy is used.
  */
 export function resolveRate(item, rates) {
-  return rates.find((rate) => rate.id === item.rateId) || item;
+  const live = rates.find((rate) => rate.id === item.rateId);
+  if (!live) return item;
+  // The price an entry was made with stays; name, unit and how it is measured follow the work item.
+  const own = item.rate;
+  return own === undefined || own === null || own === '' ? live : { ...live, rate: own };
 }
 
 /** Human-readable measurement summary for an entry, e.g. `12'0" × 10'6"`. */

@@ -10,8 +10,11 @@ import { formatUnits } from '../domain/labour.js';
 
 const row = (cells, bold = false) => ({ cells, bold });
 
+const SCOPE_TEXT = { submitted: 'Submitted bills only', ready: 'Submitted + Ready (pending)', all: 'All bills including drafts' };
+
 export function statementTables(s, t, money) {
   const summary = [
+    row([t('Bills included'), t(SCOPE_TEXT[s.scope] || SCOPE_TEXT.submitted)]),
     ...(s.agreed > 0 ? [row([t('Agreed amount'), money(s.agreed)])] : []),
     row([t('Billed (with tax)'), money(s.billed)]),
     ...(s.tax > 0 ? [row([t('of which tax'), money(s.tax)])] : []),
@@ -27,6 +30,15 @@ export function statementTables(s, t, money) {
     row([t('Cash in hand (received − costs)'), money(s.cash)], true)
   ];
   const tables = [{ title: t('Summary'), head: [t('Item'), t('Amount')], numericFrom: 1, rows: summary }];
+  if (s.byStage) {
+    const stage = (label, entry) => row([t(label), String(entry.count), money(entry.total), money(entry.balance)]);
+    tables.push({
+      title: t('Bills by stage'),
+      head: [t('Stage'), t('Bills'), t('Billed'), t('Balance')],
+      numericFrom: 1,
+      rows: [stage('Submitted', s.byStage.submitted), stage('Ready (waiting for payment)', s.byStage.ready), stage('Draft (in progress)', s.byStage.draft)]
+    });
+  }
 
   if (s.bills.length) {
     tables.push({

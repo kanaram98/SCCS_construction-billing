@@ -43,6 +43,11 @@ export const HISTORY_TITLES = Object.freeze({
   'expenses.delete': 'Expense deleted',
   'expenses.restore': 'Expense restored',
   'expenses.purge': 'Expense deleted forever',
+  'quotations.create': 'Quotation created',
+  'quotations.update': 'Quotation changed',
+  'quotations.delete': 'Quotation deleted',
+  'quotations.restore': 'Quotation restored',
+  'quotations.purge': 'Quotation deleted forever',
   'firm.update': 'Firm details changed',
   'quotation.update': 'Quotation changed'
 });
@@ -89,6 +94,10 @@ export const FIELD_LABELS = Object.freeze({
   mode: 'Paid by',
   category: 'Category',
   status: 'Status',
+  lines: 'Prices',
+  quotationId: 'Quotation',
+  quotationLabel: 'Quotation',
+  rev: 'Version',
   agreedAmount: 'Agreed amount',
   projectId: 'Project'
 });
@@ -100,6 +109,7 @@ export const HISTORY_FILTERS = Object.freeze({
   rates: 'Rates',
   clients: 'Clients',
   templates: 'Templates',
+  quotations: 'Quotations',
   money: 'Projects & money',
   settings: 'Firm & quotation'
 });
@@ -121,6 +131,7 @@ export function recordName(entity, label, t) {
   }
   if (entity === 'advances') return `${formatCurrency(label.amount)} · ${label.date || ''}`;
   if (entity === 'expenses') return [formatCurrency(label.amount), label.category && t(EXPENSE_NAMES[label.category] || label.category), label.date].filter(Boolean).join(' · ');
+  if (entity === 'quotations') return [label.number ? `${label.number}${label.rev > 1 ? ` v${label.rev}` : ''}` : '', label.name].filter(Boolean).join(' · ') || '—';
   if (entity === 'firm') return label.name || t('Firm details');
   if (entity === 'quotation') return label.title || t('Rate quotation');
   return label.name || '—';

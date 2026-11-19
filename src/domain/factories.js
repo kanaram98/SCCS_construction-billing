@@ -84,8 +84,14 @@ export function duplicateBill(source, number) {
     projectName: tr('{name} (copy)', { name: source.projectName || tr('Untitled') }),
     payments: [],
     advanceAdjustments: [],
-    final: undefined,
-    finalizedAt: undefined,
+    status: 'draft',
+    readyAt: undefined,
+    submittedAt: undefined,
+    firmSnapshot: undefined,
+    cancelled: undefined,
+    cancelledAt: undefined,
+    cancelReason: undefined,
+    audit: undefined,
     sections: cloneSections(copy.sections)
   };
 }

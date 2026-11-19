@@ -8,7 +8,9 @@
 .print-batch { display: none; }
 
 /* Paper */
-.paper { --paper-padding-mm: 5.3mm; max-width: 794px; margin: 0 auto; padding: 20px; border: 1px solid var(--paper-border); border-radius: 8px; background: white; color: #111; font-family: Inter, "Segoe UI", system-ui, sans-serif; }
+.paper { position: relative; overflow: hidden; --paper-padding-mm: 5.3mm; max-width: 794px; margin: 0 auto; padding: 20px; border: 1px solid var(--paper-border); border-radius: 8px; background: white; color: #111; font-family: Inter, "Segoe UI", system-ui, sans-serif; }
+/* DRAFT stamp over bills, estimates and quotations that are not final yet */
+.draft-stamp { position: absolute; top: 38%; left: 50%; z-index: 2; transform: translate(-50%, -50%) rotate(-28deg); color: rgba(200, 40, 40, .16); border: 6px solid rgba(200, 40, 40, .16); border-radius: 10px; padding: 0 28px; font-size: 90px; font-weight: 900; letter-spacing: .12em; pointer-events: none; user-select: none; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 .paper-header { margin-bottom: 12px; font-size: var(--print-font-size, 9pt); }
 .paper-header-content { font-size: var(--print-font-size, 9pt); }
 .paper table { width: 100%; border-collapse: collapse; font-size: var(--print-font-size, 9pt); }

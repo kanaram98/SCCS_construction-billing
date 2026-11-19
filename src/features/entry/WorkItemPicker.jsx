@@ -37,7 +37,7 @@ export default function WorkItemPicker({ rates, value, onChange, recentIds = [],
       disableClearable={Boolean(selected)}
       autoHighlight
       size={compact ? 'small' : 'medium'}
-      noOptionsText={t('No matching work item. Add it in Rates.')}
+      noOptionsText={t('No matching work item. Add it in Quotation › Standard rates.')}
       renderOption={({ key, ...props }, rate) => (
         <Box component="li" key={key} {...props} sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
           <span>

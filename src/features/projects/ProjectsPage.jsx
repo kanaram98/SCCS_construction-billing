@@ -135,7 +135,7 @@ function ProjectDetail({ project, onBack, onNavigate }) {
       {tab === 'bills' && (
         <>
           {!projectBills.length ? (
-            <EmptyState title={t('No bills yet')} description={t('Create a bill from the Bills tab and choose this project, or link a bill in Bill details.')} compact />
+            <EmptyState title={t('No bills yet')} description={t('Create a bill from the Bills tab and choose this project, or link a bill from its ⋮ menu on the Bills tab.')} compact />
           ) : (
             <Card>
               {projectBills.map((bill, index) => {

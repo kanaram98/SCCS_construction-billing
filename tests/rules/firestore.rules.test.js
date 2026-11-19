@@ -185,6 +185,50 @@ describe('what the contractor (your father) can and cannot do', () => {
     await assertFails(put(as(FATHER), bill, { ...bill.data, version: bill.data.version + 3, name: 42 }));
   });
 
+  it('a submitted or cancelled bill can only be changed by the admin; the contractor can still read it', async () => {
+    const bill = find(sampleDocs(FATHER), 'bills', 'bill-1');
+    const locked = { ...bill.data, version: bill.data.version + 1, status: 'submitted', submittedAt: NOW, audit: [{ at: NOW, action: 'submitted', reason: '' }] };
+    await assertSucceeds(put(as(ADMIN), bill, { ...locked, updatedBy: ADMIN.uid }));
+    await assertFails(put(as(FATHER), bill, { ...bill.data, version: bill.data.version + 2, name: 'Edited by father' }));
+    await assertSucceeds(getDoc(doc(as(FATHER), docPath(WS, 'bills', bill.id))));
+    // the admin reopens it, and then the contractor can work on it again
+    const reopened = { ...bill.data, version: bill.data.version + 2, status: 'ready', updatedBy: ADMIN.uid };
+    await assertSucceeds(put(as(ADMIN), bill, reopened));
+    await assertSucceeds(put(as(FATHER), bill, { ...reopened, version: bill.data.version + 3, updatedBy: FATHER.uid, name: 'Fine now' }));
+    // cancelling locks it the same way
+    await assertSucceeds(put(as(ADMIN), bill, { ...reopened, version: bill.data.version + 4, updatedBy: ADMIN.uid, cancelled: true, cancelledAt: NOW, cancelReason: 'mistake' }));
+    await assertFails(put(as(FATHER), bill, { ...reopened, version: bill.data.version + 5, updatedBy: FATHER.uid, name: 'Nope' }));
+  });
+
+  it('bills, rates and projects accept the new protection fields, with limits', async () => {
+    const docs = sampleDocs(FATHER);
+    const bill = find(docs, 'bills', 'bill-1');
+    await assertFails(put(as(ADMIN), bill, { ...bill.data, version: bill.data.version + 1, updatedBy: ADMIN.uid, status: 'closed' }));
+    await assertSucceeds(put(as(ADMIN), bill, { ...bill.data, version: bill.data.version + 1, updatedBy: ADMIN.uid, status: 'ready', readyAt: NOW, quotationId: 'q1', quotationLabel: 'Q-0001' }));
+    await assertFails(put(as(ADMIN), bill, { ...bill.data, version: bill.data.version + 1, updatedBy: ADMIN.uid, audit: 'x' }));
+    await assertSucceeds(put(as(ADMIN), bill, { ...bill.data, version: bill.data.version + 2, updatedBy: ADMIN.uid, firmSnapshot: { name: 'SCCS' } }));
+    const rate = find(docs, 'rates');
+    await assertSucceeds(put(as(ADMIN), rate, { ...rate.data, version: rate.data.version + 1, updatedBy: ADMIN.uid, archived: true }));
+    await assertFails(put(as(ADMIN), rate, { ...rate.data, version: rate.data.version + 2, updatedBy: ADMIN.uid, archived: 'yes' }));
+  });
+
+  it('a quotation: the contractor makes and edits drafts and can make one final; a final one only the admin changes', async () => {
+    const quote = { collection: 'quotations', id: 'q1' };
+    const draft = { id: 'q1', createdAt: NOW, updatedAt: NOW, deletedAt: null, version: 1, updatedBy: FATHER.uid, projectId: 'p1', number: 'Q-0001', rev: 1, name: 'Villa', status: 'draft', lines: [{ rateId: 'r1', name: 'Tiles', unit: 'sqft', type: 'area', rate: 80 }] };
+    await assertSucceeds(put(as(FATHER), quote, draft));
+    await assertSucceeds(put(as(FATHER), quote, { ...draft, version: 2, lines: [{ ...draft.lines[0], rate: 70 }] })); // the contractor edits a draft
+    const final = { ...draft, version: 3, status: 'final', finalizedAt: NOW };
+    await assertSucceeds(put(as(FATHER), quote, final)); // and makes it final
+    await assertFails(put(as(FATHER), quote, { ...final, version: 4, lines: [{ ...draft.lines[0], rate: 1 }] })); // a final one is frozen for him
+    await assertSucceeds(put(as(ADMIN), quote, { ...final, version: 4, updatedBy: ADMIN.uid, lines: [{ ...draft.lines[0], rate: 1 }] })); // the admin can
+    await assertFails(put(as(FATHER), quote, { ...draft, version: 9, status: 'closed' }));
+    await assertFails(put(as(ADMIN), quote, { ...final, version: 5, updatedBy: ADMIN.uid, lines: 'many' }));
+    await assertFails(put(as(ADMIN), quote, { ...final, version: 5, updatedBy: ADMIN.uid, hacked: true }));
+    await assertFails(deleteDoc(doc(as(ADMIN), docPath(WS, 'quotations', 'q1')))); // only from the recycle bin
+    await assertSucceeds(put(as(ADMIN), quote, { ...final, version: 5, updatedBy: ADMIN.uid, deletedAt: NOW }));
+    await assertSucceeds(deleteDoc(doc(as(ADMIN), docPath(WS, 'quotations', 'q1'))));
+  });
+
   it('a project holds the client details (optional fields, size limited)', async () => {
     const project = find(sampleDocs(FATHER), 'projects');
     const withClient = { ...project.data, clientPhone: '98765', clientAddress: 'Jaipur', clientGstin: '08ABCDE1234F1Z5' };

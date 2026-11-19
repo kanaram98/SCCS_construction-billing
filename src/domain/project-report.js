@@ -11,12 +11,13 @@
  *   cash         received − expenses (before labour)
  */
 import { getBillTotals } from './calculations.js';
-import { isEstimate } from './bill-kinds.js';
+import { billsInScope } from './report-scope.js';
 import { expensesByCategory, totalAmount } from './projects.js';
 import { roundTo2 } from './formatters.js';
 
-export function projectSummary(project, { bills = [], advances = [], expenses = [], rates = [] }) {
-  const projectBills = bills.filter((bill) => bill.projectId === project.id && !isEstimate(bill));
+/** The quick figures on the Projects screen: bills billed so far (submitted and ready) unless `scope` says otherwise. */
+export function projectSummary(project, { bills = [], advances = [], expenses = [], rates = [] }, { scope = 'ready' } = {}) {
+  const projectBills = billsInScope(bills.filter((bill) => bill.projectId === project.id), scope);
   const totals = projectBills.map((bill) => getBillTotals(bill, rates));
   const sum = (field) => roundTo2(totals.reduce((total, item) => total + item[field], 0));
   const applied = sum('adjusted');

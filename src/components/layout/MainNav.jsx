@@ -34,7 +34,7 @@ const ICONS = {
   [VIEWS.home]: <HomeIcon />,
   [VIEWS.rates]: <SellIcon />,
   [VIEWS.settings]: <SettingsIcon />,
-  [VIEWS.project]: <DescriptionIcon />,
+  [VIEWS.history]: <DescriptionIcon />,
   [VIEWS.firm]: <BusinessIcon />,
   [VIEWS.reports]: <AssessmentIcon />,
   [VIEWS.print]: <PictureAsPdfIcon />,

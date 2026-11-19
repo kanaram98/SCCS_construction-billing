@@ -17,6 +17,7 @@ test('every document made from a real state passes its validator', () => {
   const counts = Object.fromEntries(Object.values(COLLECTIONS).map((name) => [name, docs.filter((doc) => doc.collection === name).length]));
   assert.deepEqual(counts, {
     members: 0, invites: 0, // managed separately, not part of app data
+    quotations: 0,
     bills: 5, // 4 bills + the starting blank bill, now in the recycle bin
     rates: 3, clients: 1, templates: 1, projects: 1, advances: 1, expenses: 1, settings: 3, workers: 1, labourPayments: 1,
     attendance: 2, closedMonths: 1, history: counts.history, labourLog: counts.labourLog

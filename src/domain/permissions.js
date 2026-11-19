@@ -6,6 +6,8 @@
  *               measurements; adds rates, workers and payments/advances;
  *               fills the timesheet for today and the 2 days before;
  *               marks a worker as left or working; closes a month.
+ *               A settled or cancelled bill is read-only for him; only the admin
+ *               settles, cancels, reopens or moves a bill into a running series.
  *               He cannot edit or delete rates, workers (name, wage) or
  *               payments, change older timesheet days, unlock a month,
  *               delete forever, change firm details or manage people.
@@ -32,6 +34,9 @@ export const ADMIN_ONLY = Object.freeze([
   'unlockMonth',
   'editFirm',
   'reopenBill',
+  'newQuotationVersion',
+  'cancelBill',
+  'moveBill',
   'viewReports',
   'editRate',
   'deleteRate',
@@ -75,6 +80,7 @@ export function canUndo(role, entry, today = localToday()) {
     case 'rates':
     case 'projects':
     case 'advances':
+    case 'quotations':
     case 'firm':
     case 'payment':
     case 'month':
@@ -94,5 +100,5 @@ export function canUndo(role, entry, today = localToday()) {
 export function canRestore(role, entity) {
   if (role === 'admin') return true;
   if (role !== 'contractor') return false;
-  return !['rates', 'worker', 'payment', 'projects', 'advances'].includes(entity);
+  return !['rates', 'worker', 'payment', 'projects', 'advances', 'quotations'].includes(entity);
 }

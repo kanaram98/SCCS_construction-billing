@@ -5,6 +5,7 @@ import { createDefaultPrintSettings, normalizePrintSettings } from './print-sett
 import { createDefaultQuotation, normalizeQuotation } from './quotation.js';
 import { createLabourState, normalizeLabour } from './labour.js';
 import { COLLECTIONS, emptyExpiredBin, pruneHistory, withMeta } from './history.js';
+import { withStatus } from './bill-guard.js';
 
 /**
  * Shape of the persisted application state.
@@ -65,6 +66,7 @@ export function createInitialState() {
     projects: [],
     advances: [],
     expenses: [],
+    quotations: [],
     printSettings: createDefaultPrintSettings(),
     meta: { lastBackupAt: '', onboarded: false },
     preferences: { language: 'en', textSize: 'normal' },
@@ -109,6 +111,7 @@ export function hydrateState(saved, now = new Date()) {
     projects: arrayOr(saved.projects),
     advances: arrayOr(saved.advances),
     expenses: arrayOr(saved.expenses),
+    quotations: arrayOr(saved.quotations),
     printSettings: normalizePrintSettings(saved.printSettings),
     meta: { ...defaults.meta, ...savedMeta, onboarded },
     quotation: normalizeQuotation(saved.quotation),
@@ -118,6 +121,7 @@ export function hydrateState(saved, now = new Date()) {
     log: pruneHistory(saved.log, now)
   };
   for (const key of COLLECTIONS) state[key] = state[key].filter((record) => record?.id).map(withMeta);
+  state.bills = state.bills.map(withStatus); // older data marked a final bill with a flag
   return emptyExpiredBin(state, now);
 }
 

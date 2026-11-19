@@ -27,6 +27,7 @@ function itemName(raw, collection, id) {
   if (collection === 'bills' && item) return `${item.kind === 'estimate' ? 'Estimate' : 'Bill'} ${item.number}${item.projectName ? ` · ${item.projectName}` : ''}`;
   if (collection === 'labourPayments') return 'Labour payment';
   if (collection === 'advances') return item ? `Advance ₹${item.amount} · ${item.date}` : id;
+  if (collection === 'quotations') return item ? `Quotation ${item.number}${item.rev > 1 ? ` v${item.rev}` : ''}` : id;
   if (collection === 'expenses') return item ? `Expense ₹${item.amount} · ${item.date}` : id;
   return item?.name || id;
 }
@@ -43,7 +44,7 @@ export const SYNC_STATUS = Object.freeze({
 /** Where each versioned record list lives in the app state. */
 const RECORD_PATHS = Object.freeze({
   bills: ['bills'], rates: ['rates'], clients: ['clients'], templates: ['templates'],
-  projects: ['projects'], advances: ['advances'], expenses: ['expenses'],
+  projects: ['projects'], advances: ['advances'], expenses: ['expenses'], quotations: ['quotations'],
   workers: ['labour', 'workers'], labourPayments: ['labour', 'payments']
 });
 

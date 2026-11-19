@@ -20,6 +20,7 @@ import { VIEWS } from '../../config/app.js';
 import { localToday } from '../../domain/labour.js';
 import { formatCurrency } from '../../domain/formatters.js';
 import { PERIOD_LABELS, periodRange, projectStatement } from '../../domain/project-statement.js';
+import { DEFAULT_REPORT_SCOPE, REPORT_SCOPES } from '../../domain/report-scope.js';
 import { statementTables } from '../../documents/statement-tables.js';
 import { isShareCancelled } from '../../services/files.js';
 import { getLanguage, makeTranslator, tr as t } from '../../i18n/translate.js';
@@ -35,6 +36,8 @@ export default function ReportsPage({ onNavigate }) {
   const sheetRef = useRef(null);
   const [projectId, setProjectId] = useState(() => data.projects.find((project) => project.status === 'running')?.id || data.projects[0]?.id || '');
   const [periodKind, setPeriodKind] = useState('all');
+  /** Which bills the figures count: submitted only, plus ready (pending), or everything including drafts. */
+  const [scope, setScope] = useState(DEFAULT_REPORT_SCOPE);
   const [custom, setCustom] = useState({ from: '', to: '' });
   const [view, setView] = useState('summary'); // summary | pdf
   const [busy, setBusy] = useState(false);
@@ -42,7 +45,7 @@ export default function ReportsPage({ onNavigate }) {
   const docT = makeTranslator(language);
   const project = data.projects.find((entry) => entry.id === projectId) || null;
   const period = useMemo(() => periodRange(periodKind, { today: localToday(), ...custom }), [periodKind, custom]);
-  const statement = useMemo(() => (project ? projectStatement(project, data, period) : null), [project, data, period]);
+  const statement = useMemo(() => (project ? projectStatement(project, data, period, { scope }) : null), [project, data, period, scope]);
 
   async function exportAs(kind) {
     setBusy(true);
@@ -80,6 +83,9 @@ export default function ReportsPage({ onNavigate }) {
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
           <SelectField label={t('Period')} value={periodKind} options={Object.entries(PERIOD_LABELS).map(([value, label]) => ({ value, label: t(label) }))} onChange={setPeriodKind} />
+        </Grid>
+        <Grid size={12}>
+          <SelectField label={t('Bills included')} value={scope} options={Object.entries(REPORT_SCOPES).map(([value, label]) => ({ value, label: t(label) }))} onChange={setScope} helperText={scope === 'submitted' ? t('Only closed bills. Ready and draft bills are shown below but not counted.') : scope === 'ready' ? t('Includes bills waiting for payment. Drafts are shown below but not counted.') : t('Counts every bill, drafts included.')} />
         </Grid>
         {periodKind === 'custom' && (
           <>

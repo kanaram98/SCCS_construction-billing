@@ -30,7 +30,7 @@ export function sumAdjustments(bill) {
 /** How much of `advance` has been applied to bills (optionally ignoring one bill). */
 export function advanceApplied(advance, bills, exceptBillId = '') {
   return bills
-    .filter((bill) => bill.id !== exceptBillId)
+    .filter((bill) => bill.id !== exceptBillId && !bill.cancelled)
     .flatMap(getAdjustments)
     .filter((entry) => entry.advanceId === advance.id)
     .reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0);

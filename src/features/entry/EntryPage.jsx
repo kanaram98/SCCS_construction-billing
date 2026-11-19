@@ -31,10 +31,18 @@ import FloorPanel from './FloorPanel.jsx';
 import AreaPanel from './AreaPanel.jsx';
 import TemplatesDialog from './TemplatesDialog.jsx';
 import AmountsCard from '../project/AmountsCard.jsx';
-import { isFinal } from '../../domain/bill-final.js';
+import { lockState } from '../../domain/bill-guard.js';
+import BillStatusBar from './BillStatusBar.jsx';
 import PaymentsCard from '../project/PaymentsCard.jsx';
 
 const TABS = { measure: 'measure', amounts: 'amounts' };
+
+/** What a locked bill says when someone tries to change it. */
+function lockMessage(state) {
+  if (state === 'submitted') return t('This bill is submitted. Only the admin can reopen it.');
+  if (state === 'cancelled') return t('This bill is cancelled and cannot be changed.');
+  return t('This bill is ready. Use Back to draft to change it.');
+}
 
 export default function EntryPage({ onNavigate }) {
   const { data, bill, actions } = useBilling();
@@ -43,12 +51,11 @@ export default function EntryPage({ onNavigate }) {
   const disclosure = useEntryDisclosure(sections);
   const [tab, setTab] = useState(TABS.measure);
   const [templatesOpen, setTemplatesOpen] = useState(false);
-  const locked = isFinal(bill);
   useEffect(() => {
-    const inform = () => notify(t('This bill is final. Reopen it in Bill details to make changes.'), 'info');
+    const inform = () => notify(lockMessage(lockState(bill)), 'info');
     window.addEventListener('bill-locked', inform);
     return () => window.removeEventListener('bill-locked', inform);
-  }, [notify]);
+  }, [notify, bill]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
   const results = useMemo(() => searchEntries(sections, data.rates, query), [sections, data.rates, query]);
@@ -96,6 +103,8 @@ export default function EntryPage({ onNavigate }) {
         </Box>
       </Stack>
 
+      <BillStatusBar onNavigate={onNavigate} />
+
       <Paper variant="outlined" sx={{ mb: 1.5 }}>
         <Tabs value={tab} onChange={(_event, value) => setTab(value)} variant="fullWidth">
           <Tab value={TABS.measure} label={t('Measurements')} sx={{ minHeight: 44 }} />
@@ -103,7 +112,6 @@ export default function EntryPage({ onNavigate }) {
         </Tabs>
       </Paper>
 
-      {locked && <Alert severity="info" sx={{ mb: 1.5 }}>{t('This bill is final: prices are frozen and measurements are locked. Payments can still be added.')}</Alert>}
       {bill.isSample && (
         <Alert severity="info" sx={{ mb: 1.5 }}>{t('This is a sample bill to explore. Delete it from Bills when you are done.')}</Alert>
       )}
@@ -111,7 +119,7 @@ export default function EntryPage({ onNavigate }) {
       {tab === TABS.amounts ? (
         <>
           <IssuesAlert issues={errors} suffix={t('to fix before export')} />
-          <Box component="fieldset" disabled={locked} sx={{ border: 0, p: 0, m: 0, minWidth: 0 }}><AmountsCard /></Box>
+          <AmountsCard />
           {!isEstimate(bill) && <PaymentsCard />}
         </>
       ) : (

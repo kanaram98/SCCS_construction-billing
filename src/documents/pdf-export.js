@@ -8,6 +8,7 @@ import { drawLetterhead } from './letterhead-pdf.js';
 import { hasGst } from '../domain/calculations.js';
 import { billLabel, documentTitle } from '../domain/bill-kinds.js';
 import { makeTranslator } from '../i18n/translate.js';
+import { billStatus } from '../domain/bill-guard.js';
 
 const english = makeTranslator('en');
 import { deliverPdf } from './pdf-file.js';
@@ -210,6 +211,23 @@ function renderDocument(doc, documentType, { bill, rates, firm, settings, includ
   drawClosing(doc, { bill, rates, firm, settings, documentType, includeSignature, drawPageHeader, runningAccount });
 }
 
+/** A faint red DRAFT across every page of a bill that is not ready yet. */
+function drawDraftStamp(doc) {
+  const pages = doc.getNumberOfPages();
+  for (let page = 1; page <= pages; page += 1) {
+    doc.setPage(page);
+    const width = doc.internal.pageSize.getWidth();
+    const height = doc.internal.pageSize.getHeight();
+    doc.saveGraphicsState();
+    doc.setGState(new doc.GState({ opacity: 0.16 }));
+    doc.setTextColor(200, 40, 40);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(Math.round(width * 0.38));
+    doc.text('DRAFT', width / 2, height * 0.45, { align: 'center', angle: 28 });
+    doc.restoreGraphicsState();
+  }
+}
+
 export async function exportBillPdf(bill, rates, firm, printSettings, { shareText, runningAccount = null } = {}) {
   const settings = normalizePrintSettings(printSettings);
   const documents = getSelectedDocuments(settings);
@@ -229,5 +247,6 @@ export async function exportBillPdf(bill, rates, firm, printSettings, { shareTex
   });
 
   if (settings.pageNumbers) drawPageNumbers(doc, settings);
+  if (billStatus(bill) === 'draft') drawDraftStamp(doc);
   await deliverPdf(doc, bill, { shareText });
 }

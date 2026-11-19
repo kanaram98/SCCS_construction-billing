@@ -32,7 +32,7 @@ const loaders = {
   bills: () => import('./features/bills/BillsPage.jsx'),
   settings: () => import('./features/settings/SettingsPage.jsx'),
   rates: () => import('./features/rates/RatesPage.jsx'),
-  project: () => import('./features/project/ProjectPage.jsx'),
+  history: () => import('./features/bills/BillHistoryPage.jsx'),
   print: () => import('./features/print/PrintPage.jsx'),
   labour: () => import('./features/labour/LabourPage.jsx'),
   projects: () => import('./features/projects/ProjectsPage.jsx'),
@@ -44,7 +44,7 @@ const EntryPage = lazy(loaders.entry);
 const BillsPage = lazy(loaders.bills);
 const SettingsPage = lazy(loaders.settings);
 const RatesPage = lazy(loaders.rates);
-const ProjectPage = lazy(loaders.project);
+const BillHistoryPage = lazy(loaders.history);
 const PrintPage = lazy(loaders.print);
 const LabourPage = lazy(loaders.labour);
 const ProjectsPage = lazy(loaders.projects);
@@ -70,7 +70,7 @@ const PAGES = {
   [VIEWS.entry]: EntryPage,
   [VIEWS.settings]: SettingsPage,
   [VIEWS.rates]: RatesPage,
-  [VIEWS.project]: ProjectPage,
+  [VIEWS.history]: BillHistoryPage,
   [VIEWS.print]: PrintPage,
   [VIEWS.labour]: LabourPage,
   [VIEWS.projects]: ProjectsPage,

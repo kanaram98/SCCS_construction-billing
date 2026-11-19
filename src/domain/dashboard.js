@@ -3,6 +3,7 @@
  * figures; estimates are reported separately.
  */
 import { getBillTotals } from './calculations.js';
+import { billStatus, isCounted } from './bill-guard.js';
 import { getPayments } from './payments.js';
 import { isEstimate } from './bill-kinds.js';
 import { text } from './formatters.js';
@@ -18,10 +19,14 @@ const monthKey = (date) => String(date || '').slice(0, 7);
  * @param {object[]} rates
  * @param {Date} [now]
  */
-export function getDashboardSummary(bills, rates, now = new Date()) {
+export function getDashboardSummary(allBills, rates, now = new Date()) {
+  const bills = allBills.filter(isCounted); // cancelled bills count nowhere
   const today = now.toISOString().slice(0, 10);
   const thisMonth = today.slice(0, 7);
-  const real = bills.filter((bill) => !isEstimate(bill)).map((bill) => ({ bill, totals: getBillTotals(bill, rates) }));
+  // Money figures count bills given to the client (ready and submitted); drafts are work in progress.
+  const real = bills.filter((bill) => !isEstimate(bill) && billStatus(bill) !== 'draft').map((bill) => ({ bill, totals: getBillTotals(bill, rates) }));
+  const drafts = bills.filter((bill) => !isEstimate(bill) && billStatus(bill) === 'draft').map((bill) => getBillTotals(bill, rates));
+  const awaiting = real.filter(({ bill, totals }) => billStatus(bill) === 'ready' && totals.balance > 0);
   const estimates = bills.filter(isEstimate).map((bill) => ({ bill, totals: getBillTotals(bill, rates) }));
   const sum = (list, pick) => list.reduce((total, entry) => total + pick(entry), 0);
 
@@ -51,6 +56,10 @@ export function getDashboardSummary(bills, rates, now = new Date()) {
 
   return {
     billCount: real.length,
+    draftCount: drafts.length,
+    draftValue: drafts.reduce((total, totals) => total + totals.total, 0),
+    awaitingCount: awaiting.length,
+    awaitingValue: awaiting.reduce((total, { totals }) => total + totals.balance, 0),
     totalBilled: sum(real, ({ totals }) => totals.total),
     totalReceived: sum(real, ({ totals }) => Math.min(totals.paid, totals.total)),
     outstanding: sum(withBalance, ({ totals }) => totals.balance),

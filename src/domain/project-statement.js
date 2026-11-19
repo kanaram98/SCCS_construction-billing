@@ -9,7 +9,7 @@
  * Labour is wages earned on attendance marked "at" this project (see Attendance).
  */
 import { getBillTotals } from './calculations.js';
-import { isEstimate } from './bill-kinds.js';
+import { billsInScope, DEFAULT_REPORT_SCOPE, stageBreakdown } from './report-scope.js';
 import { expensesByCategory, totalAmount } from './projects.js';
 import { roundTo2 } from './formatters.js';
 
@@ -35,9 +35,13 @@ export function labourForProject(labour, projectId, period = {}) {
   return { rows: list, units: roundTo2(list.reduce((sum, row) => sum + row.units, 0)), cost: roundTo2(list.reduce((sum, row) => sum + row.cost, 0)) };
 }
 
-export function projectStatement(project, { bills = [], advances = [], expenses = [], rates = [], labour = { attendance: {}, workers: [] } }, period = {}) {
-  const billRows = bills
-    .filter((bill) => bill.projectId === project.id && !isEstimate(bill) && inPeriod(bill.date, period))
+/**
+ * `scope` says which bills the money figures count (see report-scope.js): only submitted ones, submitted +
+ * ready (pending), or all including drafts. `byStage` always shows every stage, whatever the scope.
+ */
+export function projectStatement(project, { bills = [], advances = [], expenses = [], rates = [], labour = { attendance: {}, workers: [] } }, period = {}, { scope = DEFAULT_REPORT_SCOPE } = {}) {
+  const projectBills = bills.filter((bill) => bill.projectId === project.id && inPeriod(bill.date, period));
+  const billRows = billsInScope(projectBills, scope)
     .sort((a, b) => a.date.localeCompare(b.date))
     .map((bill) => ({ bill, number: bill.number, date: bill.date, ...getBillTotals(bill, rates) }));
   const sum = (field) => roundTo2(billRows.reduce((total, row) => total + row[field], 0));
@@ -56,6 +60,8 @@ export function projectStatement(project, { bills = [], advances = [], expenses 
   return {
     project,
     period,
+    scope,
+    byStage: stageBreakdown(projectBills, rates),
     agreed: Number(project.agreedAmount) || 0,
     bills: billRows,
     billed,

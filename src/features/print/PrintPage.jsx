@@ -14,6 +14,8 @@ import { getExportErrors } from '../../domain/validation.js';
 import { PRINT_DOCUMENTS, getSelectedDocuments, isSignatureVisible } from '../../domain/print-settings.js';
 import { usePdfExport } from './usePdfExport.js';
 import { getRunningAccount } from '../../domain/bill-kinds.js';
+import BillPicker from './BillPicker.jsx';
+import { firmForBill } from '../../domain/bill-final.js';
 import PrintPageStyle from './PrintPageStyle.jsx';
 import PreviewTab from './PreviewTab.jsx';
 import DocumentSelection from './DocumentSelection.jsx';
@@ -27,12 +29,17 @@ import { useCloud } from '../account/CloudProvider.jsx';
 const TABS = { preview: 'preview', settings: 'settings' };
 
 /** PDF / Print screen: a Preview tab (default) and a Settings tab. */
-export default function PrintPage() {
-  const { data, bill, actions } = useBilling();
-  const { firm, rates, printSettings } = data;
+export default function PrintPage({ focus = {} }) {
+  const { data, bill: activeBill, actions } = useBilling();
+  /** Any bill can be printed, not only the open one (older bills, a bill found from its ⋮ menu). */
+  const [pickedId, setPickedId] = useState(focus.billId || '');
+  const bill = data.bills.find((entry) => entry.id === pickedId) || activeBill;
+  const { rates, printSettings } = data;
   const cloud = useCloud();
   const notify = useNotify();
   const firmEditable = cloud.can('editFirm');
+  /** A final bill prints the firm details as they were when it was made final. */
+  const firm = useMemo(() => firmForBill(bill, data.firm), [bill, data.firm]);
   /** Signature size and position belong to the firm details: admin only. */
   const firmOnly = (change) => (firmEditable ? change : () => notify(t('Only the admin can change the signature.'), 'info'));
   const print = actions.print;
@@ -65,6 +72,8 @@ export default function PrintPage() {
   return (
     <section className="print-page">
       <PrintPageStyle settings={printSettings} />
+
+      <div className="no-print"><BillPicker bills={data.bills} value={bill} onChange={setPickedId} /></div>
 
       <Paper variant="outlined" className="no-print" sx={{ mb: 2 }}>
         <Tabs value={tab} onChange={(_event, value) => setTab(value)} variant="fullWidth" aria-label={t('PDF and print')}>

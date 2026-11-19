@@ -24,25 +24,33 @@ import { relabelGeneratedNames } from '../domain/relabel.js';
 import { createWorker } from '../domain/labour.js';
 import * as labourOps from '../domain/labour-ops.js';
 import * as history from '../domain/history.js';
-import { finalizeBill, isFinal, reopenBill } from '../domain/bill-final.js';
+import { backToDraft, markReady } from '../domain/bill-final.js';
+import { attachToSeries, canTakePayment, cancelBill, deleteBlocker, isDraft, isEntryLocked, isFrozen, isReady, lockedFields, reopenSubmitted, restoreCancelled, submitBill } from '../domain/bill-guard.js';
+import { addLine, createQuotation, finalizeQuotation, isQuotationFinal, itemIds, newQuotationVersion, quotationLabel, quotedRates, removeLine, repriceBill, repriceDrafts, setLinePrice } from '../domain/quotations.js';
 import { convertEstimateToBill, createNextRunningBill, nextNumberFor } from '../domain/bill-kinds.js';
 import { DEFAULT_SIGNATURE_LAYOUT, normalizeSignatureLayout } from '../domain/signature-layout.js';
 import { moveDocument, normalizePrintSettings, toggleDocument } from '../domain/print-settings.js';
 import { tr } from '../i18n/translate.js';
 
 /** Applies `updater` to the active bill within the full state. */
-const PROJECT_FIELDS = ['projectId', 'projectName', 'client', 'clientId', 'clientPhone', 'clientAddress', 'clientGstin'];
-
-/** The date a bill was made never changes, and neither does its project (and client) once it is linked. */
+/**
+ * Some fields never change after the fact: the date, the project and client once linked, and
+ * (see bill-guard) prices, client, GST and the bill number once the bill is final, paid or locked.
+ */
 function lockBillIdentity(updater, bill) {
   if (typeof updater !== 'object' || updater === null) return updater;
-  const locked = ['date', ...(bill?.projectId ? PROJECT_FIELDS : [])];
+  const locked = lockedFields(bill);
   return Object.fromEntries(Object.entries(updater).filter(([key]) => !locked.includes(key)));
 }
 
 /** The untouched bill a new install starts with: nothing in it, no project, not a sample. */
 function isBlankStarter(bill) {
   return !bill.projectId && !bill.projectName && !bill.client && !bill.isSample && !(bill.sections || []).length && !(bill.payments || []).length && !bill.kind;
+}
+
+/** Applies `updater` to the bill with this id. */
+function updateBillById(state, billId, updater) {
+  return { ...state, bills: state.bills.map((bill) => (bill.id === billId ? tree.applyPatch(bill, updater) : bill)) };
 }
 
 function updateActiveBill(state, updater) {
@@ -86,7 +94,7 @@ function createBillActions({ data, setData }) {
     /** Creates a bill from an estimate and marks the estimate as converted. Returns the new bill. */
     convertEstimate(estimateId) {
       const estimate = data.bills.find((entry) => entry.id === estimateId);
-      if (!estimate) return null;
+      if (!estimate || !isReady(estimate)) return null; // only a final estimate becomes a bill
       const bill = convertEstimateToBill(estimate, data.bills);
       setData((current) => ({
         ...current,
@@ -113,9 +121,14 @@ function createBillActions({ data, setData }) {
     },
     duplicate(source) {
       // A duplicate starts a fresh bill: not part of the source's running-bill series.
-      insertAndOpen({ ...duplicateBill(source, nextNumberFor(data.bills, source.kind === 'estimate' ? 'estimate' : 'bill')), raSeriesId: undefined, raNumber: undefined, convertedBillId: undefined, sourceEstimateId: undefined });
+      const copy = { ...duplicateBill(source, nextNumberFor(data.bills, source.kind === 'estimate' ? 'estimate' : 'bill')), raSeriesId: undefined, raNumber: undefined, convertedBillId: undefined, sourceEstimateId: undefined };
+      // A copy is a new draft: it is priced from the project's current quotation.
+      insertAndOpen(repriceBill(copy, quotedRates(data.rates, data.quotations.find((entry) => entry.id === copy.quotationId))));
     },
+    /** Deletes (to the recycle bin) a bill nothing depends on. Bills with money, a final/locked state or a running series must be cancelled instead. */
     remove(billId) {
+      const target = data.bills.find((entry) => entry.id === billId);
+      if (!target || deleteBlocker(target)) return false;
       setData((current) => {
         const remaining = current.bills.filter((entry) => entry.id !== billId);
         if (!remaining.length) {
@@ -128,14 +141,55 @@ function createBillActions({ data, setData }) {
           activeBillId: current.activeBillId === billId ? remaining[0].id : current.activeBillId
         };
       });
+      return true;
     },
-    /** Locks the active bill and freezes its prices. */
-    finalize() {
-      setData((current) => updateActiveBill(current, (bill) => finalizeBill(bill, current.rates)));
+    /** Draft → ready: prices, measurements, client and firm details are frozen; the bill can take payments. */
+    markReady(billId) {
+      setData((current) => updateBillById(current, billId, (bill) => markReady(bill, current.rates, new Date(), current.firm)));
     },
-    /** Unlocks the active bill (admin). */
-    reopen() {
-      setData((current) => updateActiveBill(current, (bill) => reopenBill(bill, current.rates)));
+    /** Ready → draft so it can be edited again (the contractor only before any money is on it; the admin always, with a reason). */
+    backToDraft(billId, { reason = '', admin = false } = {}) {
+      setData((current) => updateBillById(current, billId, (bill) => backToDraft(bill, current.rates, { reason, admin })));
+    },
+    /** Ready → submitted: the payment is in, the bill is closed and moves to the Submitted tab. `reason` explains any balance left unpaid. */
+    submit(billId, reason = '') {
+      setData((current) => updateBillById(current, billId, (bill) => submitBill(bill, { reason })));
+    },
+    /** The admin reopens the active submitted bill (back to ready), with a reason. */
+    reopenSubmitted(billId, reason) {
+      setData((current) => updateBillById(current, billId, (bill) => reopenSubmitted(bill, reason)));
+    },
+    /** Attaches a quotation to a draft bill (or none = standard rates); `reprice` re-prices its entries to it. */
+    attachQuotation(billId, quotationId, { reprice = false } = {}) {
+      setData((current) => updateBillById(current, billId, (bill) => {
+        if (!isDraft(bill)) return bill;
+        const quotation = current.quotations.find((entry) => entry.id === quotationId) || null;
+        const next = { ...bill, quotationId: quotation?.id, quotationLabel: quotation ? quotationLabel(quotation) : undefined };
+        return reprice ? repriceBill(next, quotedRates(current.rates, quotation)) : next;
+      }));
+    },
+    /** Voids a bill that cannot be deleted; it stays on record and is left out of totals. */
+    cancel(billId, reason) {
+      setData((current) => ({ ...current, bills: current.bills.map((entry) => (entry.id === billId ? cancelBill(entry, reason) : entry)) }));
+    },
+    restoreCancelled(billId, reason) {
+      setData((current) => ({ ...current, bills: current.bills.map((entry) => (entry.id === billId ? restoreCancelled(entry, reason) : entry)) }));
+    },
+    /** Makes a bill the next running bill after `sourceId` (same project only). Returns whether it was done. */
+    makeRunningBillOf(billId, sourceId) {
+      const target = data.bills.find((entry) => entry.id === billId);
+      const source = data.bills.find((entry) => entry.id === sourceId);
+      const result = target && source ? attachToSeries(data.bills, target, source) : null;
+      if (!result) return false;
+      setData((current) => ({
+        ...current,
+        bills: current.bills.map((entry) => {
+          if (entry.id === billId) return result.bill;
+          if (entry.id === sourceId && result.sourcePatch) return { ...entry, ...result.sourcePatch };
+          return entry;
+        })
+      }));
+      return true;
     },
     /** Patches the active bill with an object or `(bill) => bill` updater. */
     update(updater) {
@@ -145,9 +199,9 @@ function createBillActions({ data, setData }) {
 }
 
 function createEntryActions({ data, bill, setData }) {
-  // A final bill's measurements are locked.
+  // A final, settled or cancelled bill's measurements are locked.
   const updateBill = (updater) => setData((current) => {
-    if (isFinal(current.bills.find((entry) => entry.id === current.activeBillId))) {
+    if (isEntryLocked(current.bills.find((entry) => entry.id === current.activeBillId))) {
       if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bill-locked'));
       return current;
     }
@@ -177,7 +231,8 @@ function createEntryActions({ data, bill, setData }) {
       return area;
     },
     addItem(sectionId, areaId, rateId, values) {
-      const rate = data.rates.find((entry) => entry.id === rateId);
+      // Priced from the project's active quotation when it has one.
+      const rate = quotedRates(data.rates, data.quotations.find((entry) => entry.id === bill.quotationId)).find((entry) => entry.id === rateId);
       if (!rate) return null;
       const item = createItem(rate, values);
       updateBill((current) => tree.appendItems(current, sectionId, areaId, [item]));
@@ -251,7 +306,10 @@ function createTemplateActions({ data, bill, setData }) {
       const template = data.templates.find((entry) => entry.id === templateId);
       const operation = tree.applyTemplate(bill, template, targetSectionId);
       if (!operation) return null;
-      setData((current) => updateActiveBill(current, operation.apply));
+      // Entries from a template take today's prices (the project's quotation when it has one).
+      const prices = quotedRates(data.rates, data.quotations.find((entry) => entry.id === bill.quotationId));
+      const before = itemIds(bill);
+      setData((current) => updateActiveBill(current, (active) => repriceBill(tree.applyPatch(active, operation.apply), prices, before)));
       return operation.result;
     }
   };
@@ -265,14 +323,36 @@ function createRateActions({ setData }) {
       setData((current) => ({ ...current, rates: [...current.rates, rate] }));
       return rate;
     },
-    update(rateId, patch) {
-      setData((current) => ({
-        ...current,
-        rates: current.rates.map((rate) => rate.id === rateId ? { ...rate, ...patch } : rate)
-      }));
+    /**
+     * Changes a work item. A new price applies to entries made from now on; entries already
+     * on bills keep their price unless `updateDrafts` is set, which also re-prices the entries
+     * in draft bills (projects whose quotation sets its own price are left alone).
+     */
+    update(rateId, patch, { updateDrafts = false } = {}) {
+      setData((current) => {
+        const rates = current.rates.map((rate) => rate.id === rateId ? { ...rate, ...patch } : rate);
+        if (!updateDrafts || patch.rate === undefined) return { ...current, rates };
+        const bills = repriceDrafts(current.bills, rateId, (bill) => {
+          const quotation = current.quotations.find((entry) => entry.id === bill.quotationId);
+          return quotation?.lines.some((entry) => entry.rateId === rateId) ? null : patch.rate; // a quotation's own price stays
+        });
+        return { ...current, rates, bills };
+      });
     },
+    /** Hides a work item from new entries; bills that used it are unchanged. */
+    archive(rateId) {
+      setData((current) => ({ ...current, rates: current.rates.map((rate) => rate.id === rateId ? { ...rate, archived: true } : rate) }));
+    },
+    unarchive(rateId) {
+      setData((current) => ({ ...current, rates: current.rates.map((rate) => { if (rate.id !== rateId) return rate; const { archived: _archived, ...rest } = rate; return rest; }) }));
+    },
+    /** Deletes a work item no bill uses; one that is in use is archived instead. */
     remove(rateId) {
-      setData((current) => ({ ...current, rates: current.rates.filter((rate) => rate.id !== rateId) }));
+      setData((current) => {
+        const used = current.bills.some((bill) => (bill.sections || []).some((section) => (section.areas || []).some((area) => (area.items || []).some((item) => item.rateId === rateId || item.sourceRateId === rateId))));
+        if (used) return { ...current, rates: current.rates.map((rate) => rate.id === rateId ? { ...rate, archived: true } : rate) };
+        return { ...current, rates: current.rates.filter((rate) => rate.id !== rateId) };
+      });
     }
   };
 }
@@ -355,14 +435,17 @@ function createPrintActions({ setData }) {
 
 /** Payments recorded against the active bill. */
 function createPaymentActions({ setData }) {
-  const updatePayments = (updater) => setData((current) => updateActiveBill(current, (bill) => ({
-    ...bill,
-    payments: updater(Array.isArray(bill.payments) ? bill.payments : [])
-  })));
+  // A payment is recorded while the bill is ready (the client is paying it). Existing ones can be corrected until it is submitted.
+  const updatePayments = (updater, { adding = false } = {}) => setData((current) => updateActiveBill(current, (bill) => (
+    (adding ? !canTakePayment(bill) : isFrozen(bill)) ? bill : {
+      ...bill,
+      payments: updater(Array.isArray(bill.payments) ? bill.payments : [])
+    }
+  )));
   return {
     add(values) {
       const payment = createPayment(values);
-      updatePayments((payments) => [...payments, payment]);
+      updatePayments((payments) => [...payments, payment], { adding: true });
       return payment;
     },
     update(paymentId, values) {
@@ -463,6 +546,46 @@ function createHistoryActions({ setRaw }) {
   };
 }
 
+/** Quotations (see domain/quotations.js). Only drafts change; a final quotation is replaced by a new version. */
+function createQuotationRecordActions({ data, setData }) {
+  const patchDraft = (id, change) => setData((current) => ({
+    ...current,
+    quotations: current.quotations.map((quotation) => (quotation.id === id && !isQuotationFinal(quotation) ? change(quotation) : quotation))
+  }));
+  return {
+    /** A new draft quotation for a project, copied from today's standard rates. Returns it. */
+    add(projectId, name) {
+      const quotation = createQuotation({ projectId, name, rates: data.rates, quotations: data.quotations });
+      setData((current) => ({ ...current, quotations: [quotation, ...current.quotations] }));
+      return quotation;
+    },
+    rename: (id, name) => patchDraft(id, (quotation) => ({ ...quotation, name: String(name || '').trim() || quotation.name })),
+    setPrice: (id, rateId, price) => patchDraft(id, (quotation) => setLinePrice(quotation, rateId, price)),
+    removeLine: (id, rateId) => patchDraft(id, (quotation) => removeLine(quotation, rateId)),
+    /** Adds a work item (by id, or a just-made rate object) to a draft quotation. */
+    addLine: (id, rateOrId) => patchDraft(id, (quotation) => { const rate = typeof rateOrId === 'object' ? rateOrId : data.rates.find((entry) => entry.id === rateOrId); return rate ? addLine(quotation, rate) : quotation; }),
+    /** Freezes the quotation: its prices are saved for good. */
+    finalize(id) {
+      setData((current) => ({ ...current, quotations: current.quotations.map((quotation) => (quotation.id === id ? finalizeQuotation(quotation) : quotation)) }));
+    },
+    /** A new draft copy of a quotation (same number, next version). Returns it. */
+    newVersion(id) {
+      const source = data.quotations.find((entry) => entry.id === id);
+      if (!source) return null;
+      const copy = newQuotationVersion(data.quotations, source);
+      setData((current) => ({ ...current, quotations: [copy, ...current.quotations] }));
+      return copy;
+    },
+    /** Deletes a quotation no bill uses (to the recycle bin). */
+    remove(id) {
+      const used = data.bills.some((bill) => bill.quotationId === id);
+      if (used) return false;
+      setData((current) => ({ ...current, quotations: current.quotations.filter((quotation) => quotation.id !== id) }));
+      return true;
+    }
+  };
+}
+
 export function createActions(context) {
   return {
     history: createHistoryActions(context),
@@ -507,6 +630,8 @@ export function createActions(context) {
         return linked;
       }
     },
+    /** Quotations: numbered price sets for a project. A draft is edited freely; a final one only gets a new version (admin). */
+    quotations: createQuotationRecordActions(context),
     advances: createListActions(context, 'advances', createAdvance),
     expenses: createListActions(context, 'expenses', createExpense),
     firm: createFirmActions(context),

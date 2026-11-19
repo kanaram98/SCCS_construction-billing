@@ -2,49 +2,39 @@ import Grid from '@mui/material/Grid';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import { useBilling } from '../../state/BillingContext.jsx';
-import { useCloud } from '../account/CloudProvider.jsx';
-import { isEstimate } from '../../domain/bill-kinds.js';
-import { isFinal } from '../../domain/bill-final.js';
-import { Card, Notice, SelectField, TextField, useConfirm, useNotify } from '../../components/ui';
+import { isCancelled, isEntryLocked, isNumberLocked, isSubmitted } from '../../domain/bill-guard.js';
+import { quotationLabel } from '../../domain/quotations.js';
+import { Card, Notice, SelectField, TextField } from '../../components/ui';
 import { getRequiredDetailErrors, isBillNumberTaken } from '../../domain/validation.js';
 import { text } from '../../domain/formatters.js';
 import { billFieldsFromProject } from '../../domain/projects.js';
 import { hasGst } from '../../domain/calculations.js';
 import { tr as t } from '../../i18n/translate.js';
 
-/** Which project (and so which client) this bill is for, its number, date and level names. */
+const AUDIT_LABELS = {
+  ready: 'Marked ready',
+  'back-to-draft': 'Moved back to draft',
+  submitted: 'Submitted',
+  'submitted-unpaid': 'Submitted with a balance',
+  reopened: 'Reopened',
+  cancelled: 'Cancelled',
+  restored: 'Cancellation undone',
+  'running-bill': 'Made a running bill'
+};
+
+/** Which project (and so which client) this bill is for, its quotation, number, date and level names. */
 export default function BillDetailsCard({ onNavigate }) {
   const { data, bill, actions } = useBilling();
   const update = actions.bills.update;
-  const cloud = useCloud();
-  const confirm = useConfirm();
-  const notify = useNotify();
   const project = data.projects.find((entry) => entry.id === bill.projectId);
   const required = getRequiredDetailErrors(bill, data.firm);
   const numberError = !text(bill.number)
     ? t('Bill number is required.')
     : isBillNumberTaken(data.bills, bill) ? t('This bill number is already in use.') : '';
-  async function markFinal() {
-    const ok = await confirm({
-      title: t('Mark this bill as final?'),
-      message: t('Prices are frozen at today’s rates and measurements are locked. Payments can still be added. Only the admin can reopen it.'),
-      confirmLabel: t('Mark as final')
-    });
-    if (!ok) return;
-    actions.bills.finalize();
-    notify(t('Bill marked as final.'), 'success');
-  }
-
-  async function reopen() {
-    const ok = await confirm({
-      title: t('Reopen this bill?'),
-      message: t('Items follow the current Rates list again, so the amounts may change.'),
-      confirmLabel: t('Reopen')
-    });
-    if (!ok) return;
-    actions.bills.reopen();
-    notify(t('Bill reopened.'), 'info');
-  }
+  const locked = isEntryLocked(bill);
+  const closed = isSubmitted(bill) || isCancelled(bill);
+  const audit = Array.isArray(bill.audit) ? bill.audit : [];
+  const attached = data.quotations.find((entry) => entry.id === bill.quotationId);
 
   const clientLines = [bill.client, bill.clientPhone, hasGst(bill) ? bill.clientGstin : '', bill.clientAddress].filter(Boolean);
 
@@ -85,33 +75,38 @@ export default function BillDetailsCard({ onNavigate }) {
             <Notice tone="info">{t('This bill is not linked to a project. Choose one above, or add the project in Projects first.')}</Notice>
           </Grid>
         )}
+        {(bill.quotationId || bill.quotationLabel) && (
+          <Grid size={12}>
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>{t('Quotation')}</Typography>
+            <Typography variant="body2" color="text.secondary">{attached ? `${quotationLabel(attached)} · ${attached.name}` : bill.quotationLabel}</Typography>
+            <Typography variant="caption" color="text.secondary">{t('Change it from the bill’s ⋮ menu: Attach quotation.')}</Typography>
+          </Grid>
+        )}
         <Grid size={12}>
-          <TextField label={t('Bill name')} helperText={t('Optional, e.g. Ground floor marble work. Shown in the Bills list.')} value={bill.name || ''} onChange={(name) => update({ name: name.trim() ? name : undefined })} />
+          <TextField label={t('Bill name')} disabled={closed} helperText={t('Optional, e.g. Ground floor marble work. Shown in the Bills list.')} value={bill.name || ''} onChange={(name) => update({ name: name.trim() ? name : undefined })} />
         </Grid>
         <Grid size={6}>
-          <TextField label={t('Bill number')} required value={bill.number} error={numberError} onChange={(number) => update({ number })} />
+          <TextField label={t('Bill number')} required value={bill.number} error={numberError} disabled={isNumberLocked(bill)} helperText={isNumberLocked(bill) ? t('Fixed once the bill is ready or has payments.') : undefined} onChange={(number) => update({ number })} />
         </Grid>
         <Grid size={6}>
           <TextField label={t('Date')} type="date" value={bill.date} disabled helperText={t('Fixed when the bill is made.')} onChange={() => {}} />
         </Grid>
-        {!isEstimate(bill) && (
+        <Grid size={6}>
+          <TextField label={t('First level name')} disabled={locked} helperText={t('e.g. Floor')} value={bill.firstLevelName} onChange={(firstLevelName) => update({ firstLevelName })} />
+        </Grid>
+        <Grid size={6}>
+          <TextField label={t('Second level name')} disabled={locked} helperText={t('e.g. Room')} value={bill.secondLevelName} onChange={(secondLevelName) => update({ secondLevelName })} />
+        </Grid>
+        {audit.length > 0 && (
           <Grid size={12}>
-            {isFinal(bill) ? (
-              <Notice tone="info" sx={{ mb: 0 }}>
-                {t('This bill is final: prices are frozen and measurements are locked.')}
-                {cloud.can('reopenBill') && <Button size="small" onClick={reopen} sx={{ ml: 1 }}>{t('Reopen')}</Button>}
-              </Notice>
-            ) : (
-              <Button variant="outlined" onClick={markFinal}>{t('Mark bill as final')}</Button>
-            )}
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>{t('Stage history')}</Typography>
+            {audit.slice().reverse().map((entry, index) => (
+              <Typography key={index} variant="caption" color="text.secondary" component="div">
+                {entry.at.slice(0, 10)} · {t(AUDIT_LABELS[entry.action] || entry.action)}{entry.reason ? ` — ${entry.reason}` : ''}
+              </Typography>
+            ))}
           </Grid>
         )}
-        <Grid size={6}>
-          <TextField label={t('First level name')} helperText={t('e.g. Floor')} value={bill.firstLevelName} onChange={(firstLevelName) => update({ firstLevelName })} />
-        </Grid>
-        <Grid size={6}>
-          <TextField label={t('Second level name')} helperText={t('e.g. Room')} value={bill.secondLevelName} onChange={(secondLevelName) => update({ secondLevelName })} />
-        </Grid>
       </Grid>
     </Card>
   );

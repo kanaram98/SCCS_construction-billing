@@ -12,13 +12,13 @@
  *     are merged into one entry that keeps the state from before the edits.
  *
  * Log entry: { id, at, entity, action, refId?, label, fields?, before?, revertOf? }
- * entity: 'bills' | 'rates' | 'clients' | 'templates' | 'projects' | 'advances' | 'expenses' | 'firm' | 'quotation'
+ * entity: 'bills' | 'rates' | 'clients' | 'templates' | 'projects' | 'advances' | 'expenses' | 'quotations' | 'firm' | 'quotation'
  * action: 'create' | 'update' | 'delete' | 'restore' | 'purge' | 'conflict'
  *   (conflict: another device saved a newer version; `before` holds this device's version)
  */
 import { newId } from './ids.js';
 
-export const COLLECTIONS = Object.freeze(['bills', 'rates', 'clients', 'templates', 'projects', 'advances', 'expenses']);
+export const COLLECTIONS = Object.freeze(['bills', 'rates', 'clients', 'templates', 'projects', 'advances', 'expenses', 'quotations']);
 export const SINGLETONS = Object.freeze(['firm', 'quotation']);
 
 export const RECYCLE_DAYS = 30;
@@ -68,6 +68,7 @@ const withoutKeys = (record, keys) => Object.fromEntries(Object.entries(record).
 export function labelOf(entity, record) {
   if (!record) return {};
   if (entity === 'bills') return { kind: record.kind, number: record.number, raNumber: record.raNumber, projectName: record.projectName };
+  if (entity === 'quotations') return { number: record.number, rev: record.rev, name: record.name };
   if (entity === 'firm') return { name: record.name };
   if (entity === 'quotation') return { title: record.title };
   if (entity === 'advances') return { amount: record.amount, date: record.date, projectId: record.projectId };

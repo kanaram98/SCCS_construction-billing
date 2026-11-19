@@ -27,7 +27,7 @@ export const VIEWS = Object.freeze({
   bills: 'bills',
   entry: 'entry',
   rates: 'rates',
-  project: 'project',
+  history: 'history',
   print: 'print',
   labour: 'labour',
   settings: 'settings'
@@ -42,8 +42,8 @@ export const NAVIGATION = Object.freeze([
   { id: VIEWS.labour, label: 'Labour' },
   { id: VIEWS.expenses, label: 'Expenses' },
   { id: VIEWS.reports, label: 'Reports' },
-  { id: VIEWS.rates, label: 'Rates' },
+  { id: VIEWS.rates, label: 'Quotation' },
   { id: VIEWS.firm, label: 'Firm' },
-  { id: VIEWS.project, label: 'Bill details' },
+  { id: VIEWS.history, label: 'Find a bill' },
   { id: VIEWS.print, label: 'PDF / Print', shortLabel: 'PDF' }
 ]);

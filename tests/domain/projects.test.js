@@ -8,7 +8,7 @@ import { recordChanges, liveState, recycleBin, restoreRecord } from '../../src/d
 import { createInitialState } from '../../src/domain/app-state.js';
 
 const rates = [{ id: 'r', type: 'count', rate: 1000 }];
-const bill = (extra) => ({ id: 'b1', number: '1', projectId: 'p1', advance: '500', payments: [{ id: 'x', amount: 300 }], sections: [{ areas: [{ items: [{ rateId: 'r', count: 2 }] }] }], ...extra });
+const bill = (extra) => ({ id: 'b1', status: 'ready', number: '1', projectId: 'p1', advance: '500', payments: [{ id: 'x', amount: 300 }], sections: [{ areas: [{ items: [{ rateId: 'r', count: 2 }] }] }], ...extra });
 
 test('validators ask for a project, a date and an amount', () => {
   assert.equal(hasErrors(getProjectErrors(createProject({ name: 'Villa', client: 'Asha' }))), false);

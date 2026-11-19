@@ -12,16 +12,16 @@ const EMPTY_RATE = { name: '', unit: '', type: 'area', rate: '' };
  * Single form for adding a work item or editing an existing one.
  * Errors show for a field once it has been edited, and for all fields after a save attempt.
  */
-export default function RateFormDialog({ open, rate, onSave, onClose }) {
+export default function RateFormDialog({ open, rate, priceOnly = false, onSave, onClose }) {
   return (
     <ResponsiveDialog open={open} title={rate ? t('Edit work item') : t('Add work item')} onClose={onClose} maxWidth="xs">
       {/* Remount per opening so the form starts from the chosen rate. */}
-      {open && <RateForm key={rate?.id || 'new'} rate={rate} onSave={onSave} onClose={onClose} />}
+      {open && <RateForm key={rate?.id || 'new'} rate={rate} priceOnly={priceOnly} onSave={onSave} onClose={onClose} />}
     </ResponsiveDialog>
   );
 }
 
-function RateForm({ rate, onSave, onClose }) {
+function RateForm({ rate, priceOnly, onSave, onClose }) {
   const [values, setValues] = useState(() => (rate ? { ...rate } : { ...EMPTY_RATE }));
   const [touched, setTouched] = useState({});
   const [submitted, setSubmitted] = useState(false);
@@ -43,16 +43,16 @@ function RateForm({ rate, onSave, onClose }) {
   return (
     <Grid container spacing={2} component="form" onSubmit={save} noValidate sx={{ pt: 1 }}>
       <Grid size={12}>
-        <TextField label={t('Item name')} required autoFocus value={values.name} error={errorFor('name')} placeholder={t('e.g. Wall putty')} onChange={update('name')} />
+        <TextField label={t('Item name')} required autoFocus={!priceOnly} disabled={priceOnly} value={values.name} error={errorFor('name')} placeholder={t('e.g. Wall putty')} onChange={update('name')} />
       </Grid>
       <Grid size={12}>
-        <SelectField label={t('Measured as')} value={values.type} options={TYPE_OPTIONS} error={errorFor('type')} onChange={update('type')} />
+        <SelectField label={t('Measured as')} disabled={priceOnly} value={values.type} options={TYPE_OPTIONS} error={errorFor('type')} onChange={update('type')} />
       </Grid>
       <Grid size={6}>
-        <TextField label={t('Unit')} required value={values.unit} error={errorFor('unit')} placeholder={t('sqft')} onChange={update('unit')} />
+        <TextField label={t('Unit')} required disabled={priceOnly} value={values.unit} error={errorFor('unit')} placeholder={t('sqft')} onChange={update('unit')} />
       </Grid>
       <Grid size={6}>
-        <TextField label={t('Rate (₹)')} required type="number" min="0" step="any" value={values.rate} error={errorFor('rate')} onChange={update('rate')} />
+        <TextField label={t('Rate (₹)')} required autoFocus={priceOnly} type="number" min="0" step="any" value={values.rate} error={errorFor('rate')} onChange={update('rate')} />
       </Grid>
       <Grid size={12} sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
         <Button onClick={onClose}>{t('Cancel')}</Button>

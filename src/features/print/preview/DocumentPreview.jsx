@@ -4,6 +4,7 @@ import { formatCurrency } from '../../../domain/formatters.js';
 import { getFooterLines, getPageWidthMm, resolveBillLanguage } from '../../../domain/print-settings.js';
 import { getLanguage, makeTranslator } from '../../../i18n/translate.js';
 import { buildPaymentBlock } from '../../../documents/payment-block.js';
+import { billStatus } from '../../../domain/bill-guard.js';
 import PaperHeader from './PaperHeader.jsx';
 import PaymentDetails from './PaymentDetails.jsx';
 import SignatureFooter from './SignatureFooter.jsx';
@@ -65,6 +66,7 @@ export default function DocumentPreview({
       className={['paper', 'print-document', repeatHeader && 'paper-header-repeat', className].filter(Boolean).join(' ')}
       style={pageStyle}
     >
+      {billStatus(bill) === 'draft' && <div className="draft-stamp" aria-hidden="true">{t('DRAFT')}</div>}
       <header className="paper-header">{header}</header>
       <table>
         <thead>

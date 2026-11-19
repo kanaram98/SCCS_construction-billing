@@ -27,6 +27,7 @@ const RECORD_LISTS = Object.freeze({
   projects: ['projects'],
   advances: ['advances'],
   expenses: ['expenses'],
+  quotations: ['quotations'],
   workers: ['labour', 'workers'],
   labourPayments: ['labour', 'payments']
 });

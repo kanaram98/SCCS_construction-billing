@@ -16,7 +16,7 @@ import { BILL_SORTS } from '../../domain/bill-filters.js';
 import { tr as t } from '../../i18n/translate.js';
 
 /** Search box with a collapsible panel for client, date and status filters. */
-export default function BillFilters({ filters, sort, onSortChange, clientNames, projects = [], resultCount, totalCount, onChange, onClear }) {
+export default function BillFilters({ filters, sort, onSortChange, clientNames, projects = [], resultCount, totalCount, onChange, onClear, placeholder = t('Search bill no., project or client') }) {
   const [expanded, setExpanded] = useState(false);
   const activeCount = ['client', 'projectId', 'dateFrom', 'dateTo', 'payment'].filter((key) => filters[key]).length;
 
@@ -26,7 +26,7 @@ export default function BillFilters({ filters, sort, onSortChange, clientNames, 
         <TextField
           type="search"
           value={filters.search}
-          placeholder={t('Search bill no., project or client')}
+          placeholder={placeholder}
           onChange={(value) => onChange('search', value)}
           slotProps={{
             input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> },

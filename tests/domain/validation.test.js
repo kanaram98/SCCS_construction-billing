@@ -54,7 +54,7 @@ test('export errors include missing details and duplicate bill numbers', () => {
   assert.deepEqual(errors, [
     'Add at least one work item before exporting a bill.',
     'Bill number is already used by another bill.',
-    'Choose the project in Bill details.',
+    'Choose the project: open the bill’s ⋮ menu on the Bills page, then Link to a project.',
     'Enter your firm name in the Firm tab.'
   ]);
 });

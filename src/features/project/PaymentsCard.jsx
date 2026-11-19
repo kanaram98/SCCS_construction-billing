@@ -24,6 +24,8 @@ import ApplyAdvanceDialog from './ApplyAdvanceDialog.jsx';
 import ReceiptDialog from '../receipts/ReceiptDialog.jsx';
 import { billPaymentReceipt } from '../../domain/receipt.js';
 import ReceiptIcon from '@mui/icons-material/ReceiptOutlined';
+import { canTakePayment, isFrozen } from '../../domain/bill-guard.js';
+import { useCloud } from '../account/CloudProvider.jsx';
 import { tr as t } from '../../i18n/translate.js';
 
 const STATUS_COLORS = { paid: 'success', partial: 'warning', unpaid: 'default' };
@@ -43,6 +45,11 @@ export default function PaymentsCard() {
   const notify = useNotify();
   const undoable = useUndoable();
   const reminder = useWhatsAppReminder();
+  const cloud = useCloud();
+  // The contractor adds payments; only the admin changes or removes one. A settled or cancelled bill takes none.
+  const canChange = cloud.can('editPayment');
+  const frozen = isFrozen(bill);
+  const takes = canTakePayment(bill); // payments and advances only while the bill is ready
   /** null = closed, 'new' = adding, otherwise the payment being edited. */
   const [editing, setEditing] = useState(null);
   const [applying, setApplying] = useState(false);
@@ -101,11 +108,12 @@ export default function PaymentsCard() {
                   label={t('Actions for payment on {date}', { date: payment.date })}
                   items={[
                     { label: t('Receipt'), icon: <ReceiptIcon fontSize="small" />, onClick: () => setReceipt(billPaymentReceipt({ bill, payment, rates: data.rates })) },
-                    { label: t('Edit'), icon: <EditIcon fontSize="small" />, onClick: () => setEditing(payment) },
+                    { label: t('Edit'), icon: <EditIcon fontSize="small" />, onClick: () => setEditing(payment), hidden: !canChange || frozen },
                     {
                       label: t('Delete'),
                       icon: <DeleteIcon fontSize="small" />,
                       danger: true,
+                      hidden: !canChange || frozen,
                       onClick: () => undoable(t('Payment deleted.'), () => actions.payments.remove(payment.id))
                     }
                   ]}
@@ -131,7 +139,7 @@ export default function PaymentsCard() {
                 <ActionMenu
                   size="small"
                   label={t('Actions for advance adjustment on {date}', { date: entry.date })}
-                  items={[{ label: t('Remove'), icon: <DeleteIcon fontSize="small" />, danger: true, onClick: () => undoable(t('Adjustment removed.'), () => actions.bills.update({ advanceAdjustments: adjustments.filter((item) => item.id !== entry.id) })) }]}
+                  items={[{ label: t('Remove'), icon: <DeleteIcon fontSize="small" />, danger: true, hidden: !canChange || frozen, onClick: () => undoable(t('Adjustment removed.'), () => actions.bills.update({ advanceAdjustments: adjustments.filter((item) => item.id !== entry.id) })) }]}
                 />
               )}
             >
@@ -141,13 +149,14 @@ export default function PaymentsCard() {
         </List>
       )}
 
-      <Button fullWidth variant="outlined" startIcon={<AddIcon />} onClick={() => setEditing('new')}>{t('Record payment')}</Button>
-      {choices.length > 0 && totals.balance > 0 && (
+      {!takes && <Typography variant="caption" color="text.secondary" component="p" sx={{ mb: 1 }}>{frozen ? t('This bill is submitted or cancelled, so payments cannot be changed. Only the admin can reopen it.') : t('Mark the bill ready (it goes to the client) to record payments or apply an advance.')}</Typography>}
+      {takes && <Button fullWidth variant="outlined" startIcon={<AddIcon />} onClick={() => setEditing('new')}>{t('Record payment')}</Button>}
+      {takes && choices.length > 0 && totals.balance > 0 && (
         <Button fullWidth variant="outlined" onClick={() => setApplying(true)} sx={{ mt: 1 }}>{t('Apply project advance')}</Button>
       )}
       <ReceiptDialog receipt={receipt} onClose={() => setReceipt(null)} />
       <ApplyAdvanceDialog open={applying} choices={choices} balance={Math.max(0, totals.balance)} onApply={apply} onClose={() => setApplying(false)} />
-      {totals.balance > 0 && (
+      {takes && totals.balance > 0 && (
         <Button fullWidth startIcon={<WhatsAppIcon />} onClick={() => reminder.remind(bill)} sx={{ mt: 1, color: '#128C7E' }}>
           {t('Remind on WhatsApp')}
         </Button>

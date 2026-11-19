@@ -1,5 +1,6 @@
 import { formatCurrency, todayIso } from '../../domain/formatters.js';
 import { periodText, statementTables } from '../../documents/statement-tables.js';
+import { REPORT_SCOPES } from '../../domain/report-scope.js';
 import Letterhead from '../print/preview/Letterhead.jsx';
 
 /** Printable project statement with the firm letterhead (also rendered off screen for Hindi PDFs). */
@@ -14,7 +15,7 @@ export default function ProjectStatementDocument({ statement, firm, t }) {
             firm={firm}
             t={t}
             title={t('Project statement')}
-            meta={[project.name, periodText(statement.period, t), t('Date: {date}', { date: todayIso() })]}
+            meta={[project.name, periodText(statement.period, t), t(REPORT_SCOPES[statement.scope] || REPORT_SCOPES.submitted), t('Date: {date}', { date: todayIso() })]}
             billTo={{ label: t('Client'), lines: [project.client, project.clientPhone, project.clientAddress, project.address && t('Site: {address}', { address: project.address })] }}
           />
         </div>

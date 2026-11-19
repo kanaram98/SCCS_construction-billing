@@ -6,13 +6,14 @@ import { QUOTATION_COLUMNS, quotationRows, splitLines, validUntil } from '../../
  * Printable rate quotation (A4-style paper). `t` uses the bill language.
  * Rendered on screen as a preview and used for printing and Hindi PDFs.
  */
-export default function QuotationDocument({ quotation, rates, firm, t, className = '' }) {
+export default function QuotationDocument({ quotation, rates, firm, t, className = '', draft = false }) {
   const today = todayIso();
   const until = validUntil(quotation, today);
   const terms = splitLines(quotation.terms);
 
   return (
     <article className={`paper print-document quotation-document ${className}`} style={{ '--print-font-size': '10pt' }}>
+      {draft && <div className="draft-stamp" aria-hidden="true">{t('DRAFT')}</div>}
       <header className="paper-header">
         <div className="paper-header-content">
           <Letterhead

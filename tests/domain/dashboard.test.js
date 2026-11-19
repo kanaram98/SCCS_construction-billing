@@ -8,11 +8,11 @@ const now = new Date('2026-11-17T10:00:00Z');
 
 const bills = [
   // 5,000 billed this month, 1,000 advance (counts as received this month), 500 paid this month
-  { id: 'a', number: '1', date: '2026-11-05', client: 'Ravi', advance: '1000', payments: [{ date: '2026-11-10', amount: 500 }], sections: items(5) },
+  { id: 'a', status: 'ready', number: '1', date: '2026-11-05', client: 'Ravi', advance: '1000', payments: [{ date: '2026-11-10', amount: 500 }], sections: items(5) },
   // old bill, unpaid → overdue
-  { id: 'b', number: '2', date: '2026-09-01', client: 'Meera', sections: items(3) },
+  { id: 'b', status: 'ready', number: '2', date: '2026-09-01', client: 'Meera', sections: items(3) },
   // fully paid last month
-  { id: 'c', number: '3', date: '2026-10-20', client: 'Ravi', advance: '2000', sections: items(2) },
+  { id: 'c', status: 'ready', number: '3', date: '2026-10-20', client: 'Ravi', advance: '2000', sections: items(2) },
   // open estimate, and a converted one
   { id: 'e1', number: '1', kind: 'estimate', date: '2026-11-01', sections: items(7) },
   { id: 'e2', number: '2', kind: 'estimate', date: '2026-10-01', convertedBillId: 'c', sections: items(1) }

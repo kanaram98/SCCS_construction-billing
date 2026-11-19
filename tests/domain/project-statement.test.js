@@ -8,7 +8,7 @@ import { createLabourState } from '../../src/domain/labour.js';
 
 const rates = [{ id: 'r', type: 'count', rate: 1000 }];
 const project = createProject({ id: 'p1', name: 'Villa', client: 'Asha', agreedAmount: '100000' });
-const bill = (extra) => ({ id: 'b1', number: '1', date: '2026-11-05', projectId: 'p1', advance: '500', payments: [{ id: 'x', amount: 300 }], taxRate: 0, sections: [{ areas: [{ items: [{ rateId: 'r', count: 10 }] }] }], ...extra });
+const bill = (extra) => ({ id: 'b1', status: 'submitted', number: '1', date: '2026-11-05', projectId: 'p1', advance: '500', payments: [{ id: 'x', amount: 300 }], taxRate: 0, sections: [{ areas: [{ items: [{ rateId: 'r', count: 10 }] }] }], ...extra });
 const worker = (id, wage) => ({ id, name: id.toUpperCase(), dailyWage: wage, active: true });
 
 function labourWith(entries) {
@@ -48,7 +48,7 @@ test('statement adds up billing, money in, costs, earning and cash', () => {
   assert.equal(s.earning, 8300);
   assert.equal(s.cash, 1100);
   const tables = statementTables(s, (text) => text, (n) => `₹${n}`);
-  assert.deepEqual(tables.map((table) => table.title), ['Summary', 'Bills', 'Advances from the client', 'Site expenses', 'Labour cost']);
+  assert.deepEqual(tables.map((table) => table.title), ['Summary', 'Bills by stage', 'Bills', 'Advances from the client', 'Site expenses', 'Labour cost']);
 });
 
 test('a period limits every part of the statement', () => {
