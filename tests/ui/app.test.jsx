@@ -481,6 +481,20 @@ describe('History and recycle bin', () => {
     expect(screen.getAllByRole('heading', { name: 'Bills', hidden: true }).length).toBeGreaterThan(0); // no blank screen
   }, 30000);
 
+  it('Delete everything also unlocks a closed month when there are no workers left', async () => {
+    const { user } = renderApp({ ...SAMPLE_STATE, labour: { closedMonths: { '2026-10': { closedAt: '2026-11-01T10:00:00.000Z' } } } });
+    await goTo(user, 'Bills');
+    await user.click(await screen.findByRole('button', { name: 'History' }));
+    const history = await screen.findByRole('dialog');
+    await user.click(within(history).getByRole('tab', { name: 'Recently deleted' }));
+    await user.click(await within(history).findByRole('button', { name: 'Delete everything…' }));
+    const ask = (await screen.findAllByRole('dialog')).at(-1);
+    await user.type(within(ask).getByLabelText(/Type DELETE/), 'DELETE');
+    await user.click(within(ask).getByRole('button', { name: 'Delete everything' }));
+    expect(await screen.findByText('Everything is deleted.', {}, { timeout: 15000 })).toBeTruthy();
+    await waitFor(() => expect(savedState().labour.closedMonths).toEqual({}));
+  }, 30000);
+
   it('undoes an edit to firm details from Settings', async () => {
     const { user } = renderApp(SAMPLE_STATE);
     await goTo(user, 'Firm');

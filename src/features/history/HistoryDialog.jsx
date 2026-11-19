@@ -120,7 +120,7 @@ function RecycleBin({ filter }) {
       mark(step.id, 'busy');
       show('steps');
       await pause(400);
-      if (step.count) actions.history.deleteStep(step.id);
+      if (step.count || step.id === 'workers') actions.history.deleteStep(step.id); // the labour step also unlocks closed months, even with no workers left
       await pause(250);
       mark(step.id, 'done');
       show('steps');
