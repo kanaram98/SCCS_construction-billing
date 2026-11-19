@@ -19,17 +19,17 @@ export function createSampleBill(number, rates, { gstEnabled = false } = {}) {
     sections: [
       createSection(tr('Ground floor'), [
         createArea(tr('Hall'), [
-          item('floor-tiles', { length: '14.6', width: '12.0', count: 1, note: tr('Vitrified 2×2') }),
-          item('skirting', { length: '14.6', count: 2 })
+          item('pcc-tile-leveling', { length: '14.6', width: '12.0', count: 1, note: tr('Vitrified 2×2') }),
+          item('granite-moulding', { length: '14.6', count: 2 })
         ]),
         createArea(tr('Kitchen'), [
-          item('floor-tiles', { length: '10.0', width: '8.0', count: 1 }),
-          item('gas-hole', { count: 1 })
+          item('pcc-tile-leveling', { length: '10.0', width: '8.0', count: 1 }),
+          item('dhar-polish', { length: '8.0', count: 1 })
         ])
       ]),
       createSection(tr('First floor'), [
         createArea(tr('Bedroom'), [
-          item('floor-tiles', { length: '12.0', width: '11.6', count: 1 })
+          item('pcc-tile-leveling', { length: '12.0', width: '11.6', count: 1 })
         ])
       ])
     ]

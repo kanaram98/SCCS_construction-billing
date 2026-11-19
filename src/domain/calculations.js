@@ -18,6 +18,8 @@ export function getItemQuantity(item, rate) {
     length: length * count,
     lenw: length * count,
     volume: length * width * height * count,
+    perimeter: 2 * (length + width) * count,
+    wall: 2 * (length + width) * height * count,
     count,
     direct: nonNegativeNumber(item.quantity)
   }[rate?.type] || 0;
@@ -119,6 +121,7 @@ export function aggregateItemTotals(bill, rates) {
       const group = grouped.get(key) || {
         name: rate.name || item.name,
         unit: rate.unit || item.unit,
+        type: rate.type,
         rate: rate.rate,
         quantity: 0,
         amount: 0

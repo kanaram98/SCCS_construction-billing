@@ -17,6 +17,7 @@ import {
   getTaxLines
 } from '../domain/calculations.js';
 import { resolveRate, usesCount, usesDimension } from '../domain/rates.js';
+import { formatQuantity } from '../domain/formatters.js';
 import { formatDimension } from '../domain/measurements.js';
 import { amountInWordsFor } from '../domain/amount-in-words.js';
 import { makeTranslator } from '../i18n/translate.js';
@@ -49,7 +50,7 @@ function numbered(label, index, settings) {
 function itemRow(documentType, item, rate, index, context) {
   const { settings, money } = context;
   const name = `${numbered(item.name || context.t('Work item'), index, settings)}${item.note ? `\n${item.note}` : ''}`;
-  const quantity = String(getItemQuantity(item, rate));
+  const quantity = formatQuantity(getItemQuantity(item, rate), rate.type);
   if (documentType === 'measurement') {
     const dimension = (key) => usesDimension(rate.type, key) ? formatDimension(item[key]) : '';
     return row('normal', [
@@ -166,13 +167,29 @@ function itemTotalRows(bill, context) {
   return [
     ...groups.map((group, index) => row('normal', [
       numbered(group.name, index, settings),
-      String(group.quantity),
+      formatQuantity(group.quantity, group.type),
       group.unit || '',
       money(group.rate),
       money(group.amount)
     ])),
     amountRow('grandTotal', context.t('Item totals'), money(groups.reduce((sum, group) => sum + group.amount, 0)))
   ];
+}
+
+/**
+ * A measurement sheet leaves out a dimension column (Nos, Length, Width, Height) that no entry fills in, so a
+ * sheet with no heights has no Height column. The Item, Qty and Unit columns always stay.
+ */
+function dropEmptyMeasurementColumns(columns, chunks) {
+  const full = columns.length;
+  const entries = chunks.flat().filter((entry) => entry.kind === 'normal' && entry.cells.length === full);
+  const drop = new Set(entries.length ? [1, 2, 3, 4].filter((index) => entries.every((entry) => entry.cells[index] === '')) : []);
+  if (!drop.size) return { columns, chunks };
+  const keep = (cells) => cells.filter((_cell, index) => !drop.has(index));
+  return {
+    columns: keep(columns),
+    chunks: chunks.map((chunk) => chunk.map((entry) => (entry.cells.length === full ? { ...entry, cells: keep(entry.cells) } : entry)))
+  };
 }
 
 /**
@@ -189,6 +206,7 @@ export function buildDocument(documentType, bill, rates, settings, { money, lang
 
   const chunks = detailChunks(documentType, bill, context);
   if (documentType === 'bill') chunks[chunks.length - 1].push(...billTotalRows(bill, context));
+  if (documentType === 'measurement') return dropEmptyMeasurementColumns(columns, chunks);
   return { columns, chunks };
 }
 

@@ -296,7 +296,7 @@ describe('First use', () => {
     const welcome = await screen.findByRole('dialog', { name: 'Welcome to Construction Billing' });
     await user.click(within(welcome).getByRole('button', { name: 'See a sample bill' }));
     expect(await screen.findByText(/This is a sample bill to explore/)).toBeTruthy();
-    expect(screen.getAllByText('₹34,440').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('₹12,545').length).toBeGreaterThan(0);
     expect(savedState().meta.onboarded).toBe(true);
   });
 

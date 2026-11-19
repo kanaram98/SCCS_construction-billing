@@ -6,7 +6,8 @@ const normalize = (value) => String(value ?? '').toLowerCase();
 export function itemMatches(item, rates, query) {
   const rate = resolveRate(item, rates);
   const haystack = [rate.name, item.name, item.note, rate.unit, describeMeasurement(item, rate)].map(normalize).join(' ');
-  return haystack.includes(query);
+  const squash = (value) => value.replace(/\s+/g, ''); // 12'6" finds 12' 6"
+  return haystack.includes(query) || squash(haystack).includes(squash(query));
 }
 
 /**

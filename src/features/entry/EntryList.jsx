@@ -9,7 +9,7 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import DeleteIcon from '@mui/icons-material/DeleteOutlined';
 import { ActionMenu } from '../../components/ui';
-import { formatCurrency } from '../../domain/formatters.js';
+import { formatCurrency, formatQuantity } from '../../domain/formatters.js';
 import { getItemQuantity, getLineAmount } from '../../domain/calculations.js';
 import { describeMeasurement, resolveRate } from '../../domain/rates.js';
 import { tr as t } from '../../i18n/translate.js';
@@ -30,7 +30,7 @@ export default function EntryList({ items, rates, canCopy, canMove = true, readO
                 </Typography>
               </Stack>
               <Typography variant="caption" color="text.secondary" component="div" noWrap>
-                {describeMeasurement(item, rate)} · {getItemQuantity(item, rate)} {rate.unit} × {formatCurrency(rate.rate)}
+                {describeMeasurement(item, rate)} · {formatQuantity(getItemQuantity(item, rate), rate.type)} {rate.unit} × {formatCurrency(rate.rate)}
               </Typography>
             </CardActionArea>
             {!readOnly && <Box sx={{ pr: 0.25 }}>

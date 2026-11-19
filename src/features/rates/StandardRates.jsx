@@ -8,6 +8,7 @@ import { useUndoable } from '../../hooks/useUndoable.js';
 import { tr as t } from '../../i18n/translate.js';
 import { useCloud } from '../account/CloudProvider.jsx';
 import { rateUsage } from '../../domain/quotations.js';
+import { missingCivilRates } from '../../domain/rates.js';
 import RatesTable from './RatesTable.jsx';
 import RateFormDialog from './RateFormDialog.jsx';
 import PriceChangeDialog from './PriceChangeDialog.jsx';
@@ -26,6 +27,7 @@ export default function StandardRates() {
   const [editing, setEditing] = useState(null);
   /** A price change waiting for the choice: update draft bills too, or new entries only. */
   const [pricing, setPricing] = useState(null);
+  const missing = missingCivilRates(data.rates).length;
   const printable = useMemo(() => data.rates.filter((rate) => !rate.archived), [data.rates]);
   const exporter = useQuotationExport({ quotation: data.quotation, rates: printable });
 
@@ -90,7 +92,10 @@ export default function StandardRates() {
             ? t('Tap a row to edit. A new price applies to new entries; existing entries keep the price they were made with.')
             : t('You can add rates. Only the admin can change or delete them.')}
         </Typography>
-        <Button fullWidth variant="outlined" startIcon={<AddIcon />} onClick={() => setEditing('new')} sx={{ mb: 2 }}>{t('Add item')}</Button>
+        <Button fullWidth variant="outlined" startIcon={<AddIcon />} onClick={() => setEditing('new')} sx={{ mb: missing ? 1 : 2 }}>{t('Add item')}</Button>
+        {missing > 0 && (
+          <Button fullWidth variant="text" onClick={() => { actions.rates.addMissingCivil(); notify(t('{count} civil work rates added.', { count: missing })); }} sx={{ mb: 2 }}>{t('Add the civil work rates ({count})', { count: missing })}</Button>
+        )}
       </div>
 
       <QuotationSheet quotation={data.quotation} rates={printable} exporter={exporter} />

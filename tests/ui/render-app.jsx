@@ -24,7 +24,13 @@ export const SAMPLE_STATE = {
     ]
   }, { id: 'b2', number: '2', date: '2026-10-01', projectName: 'Office fitout', client: 'Other Co', sections: [] }],
   activeBillId: 'b1',
-  firm: { name: 'Acme Interiors' }
+  firm: { name: 'Acme Interiors' },
+  // The starter rates are the firm's own quotation; these tests use a small made-up price list.
+  rates: [
+    { id: 'floor-tiles', name: 'Floor tiles', unit: 'sqft', type: 'area', rate: 85 },
+    { id: 'skirting', name: 'Skirting', unit: 'rft', type: 'length', rate: 30 },
+    { id: 'gas-hole', name: 'Gas hole', unit: 'nos', type: 'count', rate: 250 }
+  ]
 };
 
 /** Renders the whole app, optionally with saved data, and returns a user-event instance. */

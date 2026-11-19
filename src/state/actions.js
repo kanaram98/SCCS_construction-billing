@@ -14,7 +14,7 @@ import {
   duplicateBill,
   nextLevelName
 } from '../domain/factories.js';
-import { createRate } from '../domain/rates.js';
+import { createRate, missingCivilRates } from '../domain/rates.js';
 import { billFieldsFromProject, createAdvance, createExpense, createProject, projectsFromBills } from '../domain/projects.js';
 import { newId } from '../domain/ids.js';
 import { createTemplate } from '../domain/templates.js';
@@ -328,6 +328,13 @@ function createRateActions({ setData }) {
       const rate = { id: newId(), ...createRate(), ...values };
       setData((current) => ({ ...current, rates: [...current.rates, rate] }));
       return rate;
+    },
+    /** Adds several ready-made work items at once (the civil work rates). Items whose name is already there are skipped. */
+    addMissingCivil() {
+      setData((current) => {
+        const missing = missingCivilRates(current.rates).filter((rate) => !current.rates.some((entry) => entry.id === rate.id));
+        return missing.length ? { ...current, rates: [...current.rates, ...missing] } : current;
+      });
     },
     /**
      * Changes a work item. A new price applies to entries made from now on; entries already

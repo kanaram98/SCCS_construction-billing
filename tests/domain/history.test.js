@@ -53,23 +53,23 @@ test('undo puts the bill back as it was before the edits', () => {
 
 test('removing a record is a soft delete; it can be restored, undone or purged', () => {
   let raw = start();
-  raw = apply(raw, (live) => ({ ...live, rates: live.rates.filter((rate) => rate.id !== 'skirting') }), at(1));
+  raw = apply(raw, (live) => ({ ...live, rates: live.rates.filter((rate) => rate.id !== 'granite-moulding') }), at(1));
   const deletion = raw.log.at(-1);
-  assert.ok(raw.rates.find((rate) => rate.id === 'skirting').deletedAt);
-  assert.equal(liveState(raw).rates.some((rate) => rate.id === 'skirting'), false);
-  assert.deepEqual(recycleBin(raw).map((item) => [item.entity, item.id]), [['rates', 'skirting']]);
+  assert.ok(raw.rates.find((rate) => rate.id === 'granite-moulding').deletedAt);
+  assert.equal(liveState(raw).rates.some((rate) => rate.id === 'granite-moulding'), false);
+  assert.deepEqual(recycleBin(raw).map((item) => [item.entity, item.id]), [['rates', 'granite-moulding']]);
 
   // Unrelated changes keep the deleted record.
   raw = apply(raw, (live) => ({ ...live, rates: live.rates.map((rate) => ({ ...rate, rate: rate.rate + 1 })) }), at(2));
-  assert.ok(raw.rates.find((rate) => rate.id === 'skirting').deletedAt);
+  assert.ok(raw.rates.find((rate) => rate.id === 'granite-moulding').deletedAt);
 
-  raw = restoreRecord(raw, 'rates', 'skirting', at(3));
-  assert.equal(liveState(raw).rates.some((rate) => rate.id === 'skirting'), true);
+  raw = restoreRecord(raw, 'rates', 'granite-moulding', at(3));
+  assert.equal(liveState(raw).rates.some((rate) => rate.id === 'granite-moulding'), true);
   const restore = raw.log.at(-1);
   raw = undoEntry(raw, restore.id, at(4)); // undo the restore: deleted again
-  assert.ok(raw.rates.find((rate) => rate.id === 'skirting').deletedAt);
-  raw = purgeRecord(raw, 'rates', 'skirting', at(5));
-  assert.equal(raw.rates.some((rate) => rate.id === 'skirting'), false);
+  assert.ok(raw.rates.find((rate) => rate.id === 'granite-moulding').deletedAt);
+  raw = purgeRecord(raw, 'rates', 'granite-moulding', at(5));
+  assert.equal(raw.rates.some((rate) => rate.id === 'granite-moulding'), false);
   assert.equal(raw.log.at(-1).action, 'purge');
   assert.equal(undoBlocker(raw, restore), 'reverted');
   assert.equal(undoBlocker(raw, deletion), 'missing'); // deleted forever

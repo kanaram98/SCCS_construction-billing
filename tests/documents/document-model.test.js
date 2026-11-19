@@ -49,10 +49,27 @@ test('page break settings control chunking', () => {
 });
 
 test('measurement sheet only shows the dimensions a work item uses', () => {
-  const { chunks } = buildDocument('measurement', bill, rates, settings({ pageBreak: 'none' }), { money });
+  const { columns, chunks } = buildDocument('measurement', bill, rates, settings({ pageBreak: 'none' }), { money });
   const rows = chunks[0].filter((row) => row.kind === 'normal');
-  assert.deepEqual(rows[0].cells, ['Floor tiles\nMatt', '1', `10'0"`, `10'0"`, '', '100', 'sqft']);
-  assert.deepEqual(rows[1].cells, ['Gas hole', '2', '', '', '', '2', 'nos']);
+  // no entry has a height, so there is no Height column
+  assert.deepEqual(columns, ['Item', 'Nos', 'Length', 'Width', 'Qty', 'Unit']);
+  assert.deepEqual(rows[0].cells, ['Floor tiles\nMatt', '1', `10' 0"`, `10' 0"`, '100.00', 'sqft']);
+  assert.deepEqual(rows[1].cells, ['Gas hole', '2', '', '', '2', 'nos']);
+  // bands and headings keep their single cell
+  assert.ok(chunks[0].filter((row) => row.kind === 'section' || row.kind === 'area').every((row) => row.cells.length === 1));
+});
+
+test('a measurement sheet keeps a column when any entry fills it, and drops all four when none do', () => {
+  const withHeight = { ...bill, sections: [{ id: 's', name: 'GF', areas: [{ id: 'a', name: 'Room', items: [
+    { id: 'v', name: 'Volume', rateId: 'vol', length: '10', width: '10', height: '2', count: 1 },
+    { id: 'g', name: 'Gas hole', rateId: 'hole', count: 1 }
+  ] }] }] };
+  const volume = [...rates, { id: 'vol', name: 'Volume', unit: 'cft', type: 'volume', rate: 5 }];
+  assert.deepEqual(buildDocument('measurement', withHeight, volume, settings({ pageBreak: 'none' }), { money }).columns, ['Item', 'Nos', 'Length', 'Width', 'Height', 'Qty', 'Unit']);
+  const onlyCounts = { ...bill, sections: [{ id: 's', name: 'GF', areas: [{ id: 'a', name: 'Room', items: [{ id: 'g', name: 'Gas hole', rateId: 'hole', count: 2 }] }] }] };
+  assert.deepEqual(buildDocument('measurement', onlyCounts, rates, settings({ pageBreak: 'none' }), { money }).columns, ['Item', 'Nos', 'Qty', 'Unit']);
+  // an empty bill keeps the full header
+  assert.deepEqual(buildDocument('measurement', { ...bill, sections: [] }, rates, settings({ pageBreak: 'none' }), { money }).columns, ['Item', 'Nos', 'Length', 'Width', 'Height', 'Qty', 'Unit']);
 });
 
 test('summary and item totals', () => {

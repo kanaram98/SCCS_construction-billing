@@ -6,24 +6,28 @@ import IconButton from '@mui/material/IconButton';
 import Link from '@mui/material/Link';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import CalculateIcon from '@mui/icons-material/CalculateOutlined';
 import DeleteIcon from '@mui/icons-material/DeleteOutlined';
 import { ResponsiveDialog, TextField, useConfirm, useNotify } from '../../components/ui';
 import { useBilling } from '../../state/BillingContext.jsx';
 import { getItemQuantity, getLineAmount } from '../../domain/calculations.js';
-import { describeMeasurement, getDimensionFields, resolveRate, usesCount } from '../../domain/rates.js';
+import { ENTRY_FORMULAS, UNIT_CHOICES, describeMeasurement, formulaLabel, getDimensionFields, measuredAs, resolveRate, usesCount } from '../../domain/rates.js';
 import { validateEntry } from '../../domain/validation.js';
-import { formatCurrency } from '../../domain/formatters.js';
+import { formatCurrency, formatQuantity } from '../../domain/formatters.js';
 import { quotedRates } from '../../domain/quotations.js';
 import { tr as t, trn } from '../../i18n/translate.js';
+import FeetInchCalculator from './FeetInchCalculator.jsx';
 import WorkItemPicker from './WorkItemPicker.jsx';
 
 const SHORT_LABELS = { length: 'Length', width: 'Width', height: 'Height' };
-const FIELD_KEYS = ['count', 'length', 'width', 'height', 'quantity', 'note'];
-const BLANK = { itemId: null, rateId: '', count: '1', length: '', width: '', height: '', quantity: '1', note: '' };
+const FIELD_KEYS = ['count', 'length', 'width', 'height', 'quantity', 'note', 'calc', 'calcUnit'];
+const BLANK = { itemId: null, rateId: '', calc: '', calcUnit: '', count: '1', length: '', width: '', height: '', quantity: '1', note: '' };
 
 const formFromItem = (item) => ({
   itemId: item.id,
   rateId: item.rateId,
+  calc: item.calc ?? '',
+  calcUnit: item.calcUnit ?? '',
   count: item.count ?? '1',
   length: item.length ?? '',
   width: item.width ?? '',
@@ -55,11 +59,15 @@ function SheetBody({ section, area, focusItemId, onClose }) {
     return item ? formFromItem(item) : { ...BLANK };
   });
   const [touched, setTouched] = useState(false);
+  const [showFormulas, setShowFormulas] = useState(false);
+  const [calculator, setCalculator] = useState(false);
 
   // New entries are priced from the bill's quotation (or the standard rates); a saved entry keeps its own price.
   const quoted = useMemo(() => quotedRates(data.rates, data.quotations.find((entryQuotation) => entryQuotation.id === bill.quotationId)), [data.rates, data.quotations, bill.quotationId]);
   const editing = form.itemId ? area.items.find((item) => item.id === form.itemId) : null;
-  const rate = form.rateId ? (editing && editing.rateId === form.rateId ? resolveRate(editing, quoted) : quoted.find((entryRate) => entryRate.id === form.rateId) || null) : null;
+  // The work item as priced. The entry may measure it its own way (form.calc); `rate` is the work item as measured here.
+  const baseRate = form.rateId ? (editing && editing.rateId === form.rateId ? resolveRate({ ...editing, calc: '', calcUnit: '' }, quoted) : quoted.find((entryRate) => entryRate.id === form.rateId) || null) : null;
+  const rate = baseRate ? measuredAs(baseRate, form.calc, form.calcUnit) : baseRate;
   const issues = rate ? validateEntry(form, rate) : [];
   const amount = rate && !issues.length ? getLineAmount(form, rate) : null;
   const fields = rate ? getDimensionFields(rate.type) : [];
@@ -86,13 +94,13 @@ function SheetBody({ section, area, focusItemId, onClose }) {
   }, 40);
 
   const update = (changes) => setForm((current) => ({ ...current, ...changes }));
-  const pickRate = (rateId) => { update({ rateId }); setTouched(true); if (rateId) focusField(); };
+  const pickRate = (rateId) => { update({ rateId, calc: rateId === form.rateId ? form.calc : '', calcUnit: rateId === form.rateId ? form.calcUnit : '' }); setShowFormulas(false); setTouched(true); if (rateId) focusField(); };
 
   /** Saves the form as a new entry, or as the change to the entry being edited. Returns true when saved. */
   function save() {
     setTouched(true);
     if (!rate || !form.rateId || issues.length) return false;
-    const values = { ...Object.fromEntries(FIELD_KEYS.map((key) => [key, form[key]])), name: rate.name, unit: rate.unit, type: rate.type, rate: rate.rate };
+    const values = { ...Object.fromEntries(FIELD_KEYS.map((key) => [key, form[key]])), calc: form.calc === baseRate.type ? '' : form.calc, calcUnit: rate.type === 'direct' && form.calcUnit.trim() !== baseRate.unit ? form.calcUnit.trim() : '', name: baseRate.name, unit: baseRate.unit, type: baseRate.type, rate: baseRate.rate };
     if (form.itemId) entry.updateItem(section.id, area.id, form.itemId, values);
     else if (!entry.addItem(section.id, area.id, form.rateId, values)) return false;
     return true;
@@ -102,7 +110,7 @@ function SheetBody({ section, area, focusItemId, onClose }) {
     const wasEditing = Boolean(form.itemId);
     if (!save()) return;
     if (wasEditing) setForm({ ...BLANK });
-    else setForm({ ...BLANK, rateId: form.rateId }); // same work item again; only the measurements are cleared
+    else setForm({ ...BLANK, rateId: form.rateId, calc: form.calc, calcUnit: form.calcUnit }); // same work item, way of measuring and unit again; only the measurements are cleared
     setTouched(false);
     if (wasEditing) window.setTimeout(() => bodyRef.current?.querySelector('[data-sheet-input="item"]')?.focus(), 40);
     else focusField();
@@ -187,7 +195,41 @@ function SheetBody({ section, area, focusItemId, onClose }) {
             onChange={pickRate}
           />
           {rate && (
-            <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+            <Box sx={{ mt: 1 }}>
+              <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ minWidth: 0 }}>
+                  {t('Measured as')}: <strong>{t(formulaLabel(rate.type))}</strong> · <strong>{rate.unit}</strong>{' '}
+                  <Link component="button" type="button" underline="hover" variant="caption" onClick={() => setShowFormulas((current) => !current)}>{showFormulas ? t('Hide') : t('Change')}</Link>
+                </Typography>
+                <Button size="small" startIcon={<CalculateIcon fontSize="small" />} onClick={() => setCalculator(true)} sx={{ flexShrink: 0 }}>{t('Calculator')}</Button>
+              </Stack>
+              {showFormulas && (
+                <Box sx={{ mt: 0.75 }}>
+                  <Stack direction="row" sx={{ gap: 0.75, flexWrap: 'wrap' }}>
+                    {ENTRY_FORMULAS.map((formula) => (
+                      <Chip key={formula.id} size="small" label={t(formula.label)} color={rate.type === formula.id ? 'primary' : 'default'} variant={rate.type === formula.id ? 'filled' : 'outlined'}
+                        onClick={() => { update({ calc: formula.id === baseRate.type ? '' : formula.id }); setTouched(true); }} />
+                    ))}
+                  </Stack>
+                  {rate.type === 'direct' && (
+                    <Box sx={{ mt: 0.75 }}>
+                      <TextField size="small" label={t('Unit')} value={form.calcUnit || baseRate.unit} onChange={(value) => { update({ calcUnit: value }); setTouched(true); }} slotProps={{ htmlInput: { maxLength: 20 }, inputLabel: { shrink: true } }} sx={{ maxWidth: 160 }} />
+                      <Stack direction="row" sx={{ gap: 0.75, flexWrap: 'wrap', mt: 0.75 }}>
+                        {[...new Set([baseRate.unit, ...UNIT_CHOICES])].filter(Boolean).map((unit) => (
+                          <Chip key={unit} size="small" label={unit} color={rate.unit === unit ? 'primary' : 'default'} variant={rate.unit === unit ? 'filled' : 'outlined'} onClick={() => { update({ calcUnit: unit === baseRate.unit ? '' : unit }); setTouched(true); }} />
+                        ))}
+                      </Stack>
+                    </Box>
+                  )}
+                  <Typography variant="caption" color="text.secondary" component="div" sx={{ mt: 0.5 }}>
+                    {t('Quantity')} = {t(ENTRY_FORMULAS.find((formula) => formula.id === rate.type)?.formula || '')}. {rate.type === 'direct' ? t('Type any unit. The price is for each {unit}.', { unit: rate.unit }) : t('The unit goes with the way of measuring. The price is for each {unit}.', { unit: rate.unit })}
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          )}
+          {rate && (
+            <Stack direction="row" sx={{ mt: 1, gap: 1, flexWrap: 'wrap', alignItems: 'flex-end' }}>
               {usesCount(rate.type) && <Field label={t('Nos')} value={form.count} name="count" onChange={(value) => { update({ count: value }); setTouched(true); }} />}
               {fields.map((field) => (
                 <Field key={field.key} label={t(SHORT_LABELS[field.key] || field.label)} value={form[field.key]} name={field.key} unit="ft.in" onChange={(value) => { update({ [field.key]: value }); setTouched(true); }} />
@@ -198,7 +240,7 @@ function SheetBody({ section, area, focusItemId, onClose }) {
           {rate && (
             <Stack direction="row" sx={{ mt: 0.75, alignItems: 'center', justifyContent: 'space-between' }}>
               <Typography variant="caption" color={touched && pending && issues.length ? 'error' : 'text.secondary'} sx={{ flex: 1, minWidth: 0 }}>
-                {touched && pending && issues.length ? issues[0] : issues.length ? '' : `${getItemQuantity(form, rate)} ${rate.unit} × ${formatCurrency(rate.rate)}`}
+                {touched && pending && issues.length ? issues[0] : issues.length ? '' : `${describeMeasurement(form, rate)} → ${formatQuantity(getItemQuantity(form, rate), rate.type)} ${rate.unit} × ${formatCurrency(rate.rate)}`}
               </Typography>
               <Typography variant="subtitle1" color={amount === null ? 'text.disabled' : 'primary'} sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>{amount === null ? '—' : formatCurrency(amount)}</Typography>
             </Stack>
@@ -224,7 +266,7 @@ function SheetBody({ section, area, focusItemId, onClose }) {
                       <Typography variant="body2" noWrap sx={{ fontWeight: 600 }}>{itemRate.name}{item.note ? ` · ${item.note}` : ''}</Typography>
                       <Typography variant="body2" color="primary" sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>{formatCurrency(getLineAmount(item, itemRate))}</Typography>
                     </Stack>
-                    <Typography variant="caption" color="text.secondary" component="div" noWrap>{describeMeasurement(item, itemRate)} · {getItemQuantity(item, itemRate)} {itemRate.unit} × {formatCurrency(itemRate.rate)}</Typography>
+                    <Typography variant="caption" color="text.secondary" component="div" noWrap>{describeMeasurement(item, itemRate)} · {formatQuantity(getItemQuantity(item, itemRate), itemRate.type)} {itemRate.unit} × {formatCurrency(itemRate.rate)}</Typography>
                   </Box>
                   <IconButton aria-label={t('Delete entry {number}', { number: index + 1 })} onClick={() => remove(item)} color="error" size="small"><DeleteIcon fontSize="small" /></IconButton>
                 </Stack>
@@ -233,6 +275,13 @@ function SheetBody({ section, area, focusItemId, onClose }) {
           </Box>
         )}
       </Box>
+      <FeetInchCalculator
+        open={calculator}
+        targets={fields.map((field) => ({ key: field.key, label: SHORT_LABELS[field.key] || field.label }))}
+        onUse={(key, text) => { update({ [key]: text }); setTouched(true); }}
+        onUseQuantity={rate && !usesCount(rate.type) ? (value) => { update({ quantity: value }); setTouched(true); } : undefined}
+        onClose={() => setCalculator(false)}
+      />
     </ResponsiveDialog>
   );
 }
@@ -248,7 +297,7 @@ function Field({ label, value, name, unit, onChange }) {
       placeholder={unit ? '0.0' : ''}
       onChange={onChange}
       slotProps={{ htmlInput: { 'data-sheet-input': name, enterKeyHint: 'next', onFocus: (event) => event.target.select(), style: { minHeight: 28 } }, inputLabel: { shrink: true } }}
-      sx={{ flex: 1, minWidth: 0 }}
+      sx={{ flex: '1 1 64px', minWidth: 0, maxWidth: 110 }}
     />
   );
 }

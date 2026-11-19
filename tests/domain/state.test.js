@@ -62,9 +62,9 @@ test('sample bill uses the default work items and adds up', async () => {
   assert.equal(sample.number, '3');
   assert.equal(sample.isSample, true);
   assert.deepEqual(countBillContents(sample), { sections: 2, areas: 3, items: 5 });
-  // 14'6"×12' = 174 sqft, 10×8 = 80, 12'×11'6" = 138 → 392 sqft × 85 = 33,320;
-  // skirting 14'6"×2 = 29 rft × 30 = 870; gas hole 250 → 34,440
-  assert.equal(getBillTotals(sample, DEFAULT_RATES).total, 34440);
+  // 14'6"×12' = 174 sqft, 10×8 = 80, 12'×11'6" = 138 → 392 sqft × 25 = 9,800;
+  // granite moulding 14'6"×2 = 29 rft × 85 = 2,465; dhar polish 8 rft × 35 = 280 → 12,545
+  assert.equal(getBillTotals(sample, DEFAULT_RATES).total, 12545);
 });
 
 test('default branding fills an empty firm once, and stays removed', async () => {
