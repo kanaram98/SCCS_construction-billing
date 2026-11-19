@@ -529,7 +529,7 @@ describe('History and recycle bin', () => {
 });
 
 describe('Projects, advances and expenses', () => {
-  it('deletes an empty project but refuses one that still has records', async () => {
+  it('deletes a project that never started (its advances go with it) but refuses one that has bills, expenses or attendance', async () => {
     const { user } = renderApp(SAMPLE_STATE);
     await goTo(user, 'Projects');
     const addProject = async (name) => {
@@ -553,8 +553,21 @@ describe('Projects, advances and expenses', () => {
     await user.click(within(advance).getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     await user.click(screen.getByRole('button', { name: 'Delete project' }));
-    expect(await screen.findByText(/still has 1 advance/)).toBeTruthy();
-    expect(savedState().projects.find((entry) => entry.name === 'Busy site').deletedAt).toBeFalsy();
+    const ask = await screen.findByRole('dialog');
+    expect(within(ask).getByText(/Its 1 advance/)).toBeTruthy(); // says the advance goes too
+    await user.click(within(ask).getByRole('button', { name: 'Delete' }));
+    await waitFor(() => expect(savedState().projects.find((entry) => entry.name === 'Busy site').deletedAt).toBeTruthy());
+    expect(savedState().advances.filter((entry) => !entry.deletedAt)).toHaveLength(0);
+    expect(savedState().advances.filter((entry) => entry.deletedAt)).toHaveLength(1); // in the recycle bin, not lost
+  });
+
+  it('refuses to delete a project that has an expense', async () => {
+    const { user } = renderApp({ ...SAMPLE_STATE, projects: [{ id: 'pa', name: 'Alpha site', client: 'Mr Alpha', status: 'running', version: 1 }], expenses: [{ id: 'e1', projectId: 'pa', date: '2026-11-01', amount: 100, category: 'food', note: '', version: 1 }] });
+    await goTo(user, 'Projects');
+    await user.click(await screen.findByText('Alpha site'));
+    await user.click(await screen.findByRole('button', { name: 'Delete project' }));
+    expect(await screen.findByText(/still has 1 expense/)).toBeTruthy();
+    expect(savedState().projects.find((entry) => entry.id === 'pa').deletedAt).toBeFalsy();
   });
 
   it('adds a project, an advance from the client and a site expense, and lists the expense day by day', async () => {

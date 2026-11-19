@@ -73,23 +73,36 @@ function ProjectDetail({ project, onBack, onNavigate }) {
   const canEditProject = cloud.can('editProject');
   const canDeleteProject = cloud.can('deleteProject');
 
-  /** Only a project with nothing under it can be deleted; otherwise says what is still there. */
+  /**
+   * A project that never started can be deleted: only advances may be under it, and they go with it (the confirmation
+   * says so, and Undo brings both back). A project with bills, expenses or attendance says what is still there.
+   */
   async function removeProject() {
     const used = projectUsage(data, project.id);
     const parts = [
       used.bills && trn(used.bills, '{count} bill', '{count} bills'),
-      used.advances && trn(used.advances, '{count} advance', '{count} advances'),
       used.expenses && trn(used.expenses, '{count} expense', '{count} expenses'),
       used.labourMarks && trn(used.labourMarks, '{count} attendance mark', '{count} attendance marks')
     ].filter(Boolean);
     if (parts.length) {
-      notify(t('This project still has {things}. Delete or move those first, or mark the project Completed.', { things: parts.join(', ') }), 'error');
+      notify(t('This project still has {things}. Delete or move those first, or mark the project Completed.', { things: parts.concat(used.advances ? [trn(used.advances, '{count} advance', '{count} advances')] : []).join(', ') }), 'error');
       return;
     }
-    const ok = await confirm({ title: t('Delete this project?'), message: project.name, confirmLabel: t('Delete'), danger: true });
+    const total = advances.reduce((sum, advance) => sum + Number(advance.amount || 0), 0);
+    const ok = await confirm({
+      title: t('Delete this project?'),
+      message: advances.length
+        ? `${project.name}\n${t('Its {things} ({amount}) will be deleted too. Be sure the money was returned or moved to another project. Undo brings them back.', { things: trn(advances.length, '{count} advance', '{count} advances'), amount: formatCurrency(total) })}`
+        : project.name,
+      confirmLabel: t('Delete'),
+      danger: true
+    });
     if (!ok) return;
     onBack();
-    undoable(t('Project deleted.'), () => actions.projects.remove(project.id));
+    undoable(t('Project deleted.'), () => {
+      advances.forEach((advance) => actions.advances.remove(advance.id));
+      actions.projects.remove(project.id);
+    });
   }
 
   async function removeAdvance(advance) {
