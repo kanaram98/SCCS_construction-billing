@@ -10,6 +10,7 @@ import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
 import { createSyncEngine } from '../../src/backend/cloud-sync.js';
 import { inviteMember, joinWorkspace, listMembers, removeMember } from '../../src/backend/session.js';
 import { createInitialState } from '../../src/domain/app-state.js';
+import * as historyOps from '../../src/domain/history.js';
 import { liveState, recordChanges } from '../../src/domain/history.js';
 import * as labourOps from '../../src/domain/labour-ops.js';
 import { buildSampleState } from '../backend/sample-state.js';
@@ -202,4 +203,47 @@ describe('sync between two phones', () => {
     const stranger = { uid: 'stranger', email: 'stranger@example.com' };
     expect(await joinWorkspace({ db: dbFor(stranger), fs: firestore }, WS, stranger)).toMatchObject({ status: 'no-access' });
   });
+});
+
+describe('Delete everything as the admin', () => {
+  it('reaches the cloud completely: workers, payments and attendance (even in a closed month) are gone and nothing stays waiting', async () => {
+    const admin = phone(ADMIN, buildSampleState()); // one worker with a payment and attendance, one month closed
+    expect(await joinWorkspace(admin.cloud, WS, ADMIN)).toMatchObject({ status: 'member' });
+    await admin.engine.start();
+    const count = async (collection) => (await firestore.getDocs(firestore.collection(admin.cloud.db, `workspaces/${WS}/${collection}`))).size;
+    expect(await count('workers')).toBe(1);
+    expect(await count('labourPayments')).toBe(1);
+
+    const now = new Date();
+    for (const step of historyOps.WIPE_STEPS) {
+      if (step.id === 'workers') admin.raw = { ...admin.raw, labour: labourOps.deleteAllLabour(admin.raw.labour, now) };
+      else admin.raw = historyOps.deleteStep(admin.raw, step.id, now);
+    }
+    await admin.engine.push();
+    expect(admin.engine.pendingCount()).toBe(0);
+
+    // Empty recycle bin, as the app does it
+    const cleared = historyOps.emptyRecycleBin(admin.raw);
+    let labour = cleared.labour;
+    for (const payment of labour.payments.filter((entry) => entry.deletedAt)) labour = labourOps.purgeDeletedPayment(labour, payment.id, now);
+    for (const worker of labour.workers.filter((entry) => entry.deletedAt)) labour = labourOps.purgeDeletedWorker(labour, worker.id, now);
+    admin.raw = { ...cleared, labour };
+    await admin.engine.push();
+    await admin.engine.push(); // the payments that moved to the bin with their worker are removed by the next emptying
+    labour = admin.raw.labour;
+    for (const payment of labour.payments.filter((entry) => entry.deletedAt)) labour = labourOps.purgeDeletedPayment(labour, payment.id, now);
+    admin.raw = { ...admin.raw, labour };
+    await admin.engine.push();
+
+    expect(admin.engine.pendingCount()).toBe(0);
+    expect(admin.problems || []).toEqual([]);
+    expect(admin.refused).toBeUndefined();
+    expect(await count('workers')).toBe(0);
+    expect(await count('labourPayments')).toBe(0);
+    expect(await count('bills')).toBe(0);
+    const marks = await firestore.getDocs(firestore.collection(admin.cloud.db, `workspaces/${WS}/attendance`));
+    expect(marks.docs.every((item) => Object.values(item.data().marks || {}).every((day) => Object.keys(day).length === 0))).toBe(true);
+    expect(admin.raw.labour.workers).toEqual([]);
+    expect(admin.raw.labour.payments).toEqual([]);
+  }, 60000);
 });

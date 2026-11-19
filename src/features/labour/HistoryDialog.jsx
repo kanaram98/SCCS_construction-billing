@@ -10,7 +10,7 @@ import RestoreIcon from '@mui/icons-material/Restore';
 import UndoIcon from '@mui/icons-material/Undo';
 import { EmptyState, ResponsiveDialog, SelectField, useConfirm, useNotify } from '../../components/ui';
 import { RECYCLE_DAYS, isDateClosed } from '../../domain/labour.js';
-import { recycleBin, revertBlocker } from '../../domain/labour-ops.js';
+import { purgeBlocker, recycleBin, revertBlocker } from '../../domain/labour-ops.js';
 import { describeEntry, entryInvolves, formatLogTime } from '../../domain/labour-log.js';
 import { formatCurrency } from '../../domain/formatters.js';
 import { PAYMENT_MODES } from '../../domain/payments.js';
@@ -100,7 +100,10 @@ function RecycleBin({ workerId }) {
       confirmLabel: t('Delete forever'),
       danger: true
     });
-    if (ok) (item.type === 'worker' ? actions.purgeWorker : actions.purgePayment)(item.id);
+    if (!ok) return;
+    const blocked = item.type === 'worker' ? purgeBlocker(raw, item.id) : [];
+    if (blocked.length) { notify(t('Cannot delete forever: this worker has records in the closed month {months}. Unlock the month first.', { months: blocked.join(', ') }), 'warning'); return; }
+    (item.type === 'worker' ? actions.purgeWorker : actions.purgePayment)(item.id);
   }
 
   return (

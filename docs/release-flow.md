@@ -33,3 +33,7 @@ Firebase Hosting keeps every release. Console → Hosting → Release history �
 ## First sign-in on test
 
 Test has its own members and data. Sign in on the test address with the admin account (listed in `OWNER_EMAILS` of `.env.staging`) and it creates the test workspace. Invite your other account from Settings the same way as on live.
+
+## "Delete everything" is for the test copy only
+
+The admin's "Delete everything…" button exists only in the test copy (it is shown when the build is not the live app). The live app never shows it. Single deletes, the recycle bin and "Empty recycle bin" work everywhere.

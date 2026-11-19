@@ -79,6 +79,7 @@ export function planUpload(raw, syncState, { by, blocked = {} }) {
   const docs = toDocuments(raw, { by });
   const ops = [];
   const sent = { ...syncState.sent };
+  const deleted = { ...(syncState.deleted || {}) }; // records this device removed, and the version they had
   const present = new Set();
 
   for (const doc of docs) {
@@ -99,6 +100,7 @@ export function planUpload(raw, syncState, { by, blocked = {} }) {
     const [collection, id] = key.split('/');
     if (RECORD_LISTS[collection] || collection === 'closedMonths') {
       ops.push({ kind: 'delete', collection, id });
+      if (RECORD_LISTS[collection]) deleted[key] = baseVersion(syncState, key);
       delete sent[key];
     }
   }
@@ -132,7 +134,7 @@ export function planUpload(raw, syncState, { by, blocked = {} }) {
     if (remove.length) ops.push({ kind: 'marks', collection: 'attendance', id: month, set: {}, remove, isNew: false });
     delete marks[month];
   }
-  return { ops, sent, marks };
+  return { ops, sent, marks, deleted };
 }
 
 /** Where a new bill goes in a newest-first list. */
@@ -205,7 +207,7 @@ function conflictEntry(collection, local, now, by) {
  */
 export function applyIncoming(raw, docs, syncState, now = new Date(), { by = '', force = false } = {}) {
   let next = raw;
-  const state = { sent: { ...syncState.sent }, marks: structuredClone(syncState.marks || {}), pulledAt: syncState.pulledAt };
+  const state = { ...syncState, sent: { ...syncState.sent }, marks: structuredClone(syncState.marks || {}), pulledAt: syncState.pulledAt, deleted: { ...(syncState.deleted || {}) } };
   const conflicts = [];
 
   for (const doc of docs) {
@@ -221,7 +223,14 @@ export function applyIncoming(raw, docs, syncState, now = new Date(), { by = '',
         // Deleted forever in the cloud (only possible from the recycle bin).
         if (local) next = setIn(next, path, list.filter((item) => item.id !== doc.id));
         delete state.sent[key];
+        delete state.deleted[key];
         continue;
+      }
+      // A record this device removed forever can still arrive as an older copy (the cloud's change feed is behind).
+      // It is ignored, so it does not come back and get uploaded again; a newer version means someone else changed it.
+      if (!force && !local && state.deleted[key] !== undefined) {
+        if (data.version <= state.deleted[key]) continue;
+        delete state.deleted[key];
       }
       const base = baseVersion(state, key);
       const changedHere = local && Number(local.version) > base;

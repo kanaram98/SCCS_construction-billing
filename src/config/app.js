@@ -5,6 +5,12 @@ export const APP_NAME = 'Construction Billing';
 /** 'test' in the test copy of the app (built with .env.staging); anything else is the real app. */
 export const APP_ENV = import.meta.env?.VITE_APP_ENV || 'live';
 
+/**
+ * "Delete everything" is a testing tool: it is offered in the test copy only, never in the real app.
+ * (Tests of the screen switch it on with VITE_ENABLE_WIPE.)
+ */
+export const WIPE_ENABLED = APP_ENV !== 'live' || import.meta.env?.VITE_ENABLE_WIPE === 'true';
+
 export const STORAGE_KEYS = Object.freeze({
   state: 'construction_billing_react_v1'
 });

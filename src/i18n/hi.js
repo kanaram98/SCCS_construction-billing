@@ -1489,5 +1489,6 @@ export default {
   'Type lengths as feet.inches: 15.4 means 15 ft 4 in. Inches go from 0 to 11. A third part is a part of an inch: 10.10.5 is 10 ft 10½ in.': 'लंबाई फ़ीट.इंच में लिखें: 15.4 यानी 15 फ़ीट 4 इंच। इंच 0 से 11 तक। तीसरा भाग इंच का हिस्सा है: 10.10.5 यानी 10 फ़ीट 10½ इंच।',
   'The price is for each {unit}.': 'दाम प्रति {unit} है।',
   'Type any unit. The price is for each {unit}.': 'कोई भी इकाई लिखें। दाम प्रति {unit} है।',
-  'The unit goes with the way of measuring. The price is for each {unit}.': 'इकाई नाप के तरीके के साथ तय होती है। दाम प्रति {unit} है।'
+  'The unit goes with the way of measuring. The price is for each {unit}.': 'इकाई नाप के तरीके के साथ तय होती है। दाम प्रति {unit} है।',
+  'Cannot delete forever: this worker has records in the closed month {months}. Unlock the month first.': 'हमेशा के लिए नहीं हटा सकते: इस कारीगर के रिकॉर्ड बंद महीने {months} में हैं। पहले महीना खोलें।'
 };

@@ -18,6 +18,7 @@ import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 import { EmptyState, ResponsiveDialog, SelectField, TextField, useConfirm, useNotify } from '../../components/ui';
 import { useBilling } from '../../state/BillingContext.jsx';
+import { WIPE_ENABLED } from '../../config/app.js';
 import { RECYCLE_DAYS, WIPE_STEPS, recycleBin, undoBlocker, wipeCounts } from '../../domain/history.js';
 import { hasMoney, isFinal, isFrozen } from '../../domain/bill-guard.js';
 import { HISTORY_FILTERS, describeHistoryEntry, matchesFilter, recordName } from '../../domain/history-log.js';
@@ -131,7 +132,9 @@ function RecycleBin({ filter }) {
     show('empty');
     await pause(500);
     actions.history.emptyRecycleBin();
-    await pause(400);
+    await pause(2500);
+    const emptied = Date.now();
+    while ((await cloud.pendingChanges()) > 0 && Date.now() - emptied < 60000) await pause(1000); // the deletes reach the cloud too
     show('done');
   }
 
@@ -142,7 +145,7 @@ function RecycleBin({ filter }) {
   const eraseTools = canPurge && (
     <>
       <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
-        <Button size="small" color="error" variant="outlined" disabled={running} onClick={() => { setWord(''); setWiping(true); }}>{t('Delete everything…')}</Button>
+        {WIPE_ENABLED && <Button size="small" color="error" variant="outlined" disabled={running} onClick={() => { setWord(''); setWiping(true); }}>{t('Delete everything…')}</Button>}
         {items.length > 0 && <Button size="small" color="error" disabled={running} onClick={() => { actions.history.emptyRecycleBin(); notify(t('Recycle bin emptied.'), 'success'); }}>{t('Empty recycle bin')}</Button>}
       </Stack>
       <Dialog open={wiping} onClose={() => setWiping(false)} maxWidth="xs" fullWidth>

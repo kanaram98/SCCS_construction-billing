@@ -161,7 +161,7 @@ export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState
     status(SYNC_STATUS.syncing, plan.ops.length);
     const previous = syncState;
     const printsSent = { ...plan.sent }; // fingerprints of what is being sent (plan.sent is edited below when a write fails)
-    syncState = { ...syncState, sent: plan.sent, marks: plan.marks };
+    syncState = { ...syncState, sent: plan.sent, marks: plan.marks, deleted: plan.deleted };
     persist();
     inFlight += plan.ops.length;
     onPending(inFlight);
@@ -180,6 +180,7 @@ export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState
       // Not sent: forget it so the next push tries again (or the conflict below resolves it).
       if (previous.sent[key] === undefined) delete syncState.sent[key];
       else syncState.sent[key] = previous.sent[key];
+      if (op.kind === 'delete' && syncState.deleted) delete syncState.deleted[key]; // the delete did not happen
       if (op.kind === 'marks') syncState.marks[op.id] = previous.marks?.[op.id];
       rejected.push({ op, error: result.reason });
     });
@@ -191,7 +192,9 @@ export function createSyncEngine({ db, fs, wid, uid, getRaw, applyRaw, loadState
       const fresh = (await Promise.all(rejected.map(({ op }) => fs.getDocFromServer(fs.doc(db, docPath(wid, op.collection, op.id)))
         .then((snap) => snapshotDoc(op.collection, snap))
         .catch((error) => { if (error?.code === 'permission-denied') cannotRead = true; return null; })))).filter((doc) => doc?.exists);
-      const newer = fresh.filter((doc) => doc.data.version === undefined || doc.data.version > baseOf(previous, doc));
+      // Attendance has no version and no conflicts, so a refused write there (a closed month) is a permission problem:
+      // the cloud copy is put back instead of being merged and sent again.
+      const newer = fresh.filter((doc) => (doc.data.version === undefined ? doc.collection !== 'attendance' : doc.data.version > baseOf(previous, doc)));
       const refused = fresh.filter((doc) => !newer.includes(doc));
       receive(newer);
       if (refused.length) {

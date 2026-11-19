@@ -559,9 +559,7 @@ function createHistoryActions({ setRaw }) {
     /** Admin: one step of "Delete everything" (see WIPE_STEPS). The app always keeps one blank bill to work in. */
     deleteStep: (stepId) => setRaw((raw) => {
       const now = new Date();
-      let next = stepId === 'workers'
-        ? { ...raw, labour: (raw.labour?.workers || []).filter((worker) => !worker.deletedAt).reduce((current, worker) => labourOps.deleteWorker(current, worker.id, now), raw.labour) }
-        : history.deleteStep(raw, stepId, now);
+      let next = stepId === 'workers' ? { ...raw, labour: labourOps.deleteAllLabour(raw.labour, now) } : history.deleteStep(raw, stepId, now);
       if (!next.bills.some((bill) => !bill.deletedAt)) {
         const fresh = history.stampNew(createBill('1'), now);
         next = { ...next, bills: [...next.bills, fresh], activeBillId: fresh.id };
@@ -573,8 +571,9 @@ function createHistoryActions({ setRaw }) {
       const now = new Date();
       const cleared = history.emptyRecycleBin(raw);
       let labour = cleared.labour;
-      for (const worker of (labour?.workers || []).filter((entry) => entry.deletedAt)) labour = labourOps.purgeDeletedWorker(labour, worker.id, now);
+      // Payments already in the bin go first; a worker's payments that are not in the bin yet are moved there with the worker.
       for (const payment of (labour?.payments || []).filter((entry) => entry.deletedAt)) labour = labourOps.purgeDeletedPayment(labour, payment.id, now);
+      for (const worker of (labour?.workers || []).filter((entry) => entry.deletedAt)) labour = labourOps.purgeDeletedWorker(labour, worker.id, now);
       return { ...cleared, labour };
     })
   };

@@ -97,11 +97,39 @@ function setWorkerDeleted(labour, workerId, deletedAt, now, action, extra) {
     { entity: 'worker', action, refId: workerId, workerId, before: pick(worker, WORKER_FIELDS), ...extra }, now);
 }
 
-/** Permanently removes a deleted worker and their records (from the recycle bin). */
+/** The closed (locked) months that still hold this worker's attendance or payments. Their records can't be removed until the month is unlocked. */
+export function purgeBlocker(labour, workerId) {
+  const months = new Set();
+  for (const [date, marks] of Object.entries(labour.attendance || {})) if (marks?.[workerId] && isDateClosed(labour, date)) months.add(date.slice(0, 7));
+  for (const payment of labour.payments || []) if (payment.workerId === workerId && isDateClosed(labour, payment.date)) months.add(payment.date.slice(0, 7));
+  return [...months].sort();
+}
+
+/**
+ * Permanently removes a deleted worker and their attendance (from the recycle bin). Does nothing while a closed
+ * month still holds their records. The server only deletes what is already in the recycle bin, so payments that
+ * are not there yet are moved there now and are removed the next time the bin is emptied.
+ */
 export function purgeDeletedWorker(labour, workerId, now = new Date()) {
   const worker = labour.workers.find((entry) => entry.id === workerId);
-  if (!worker?.deletedAt) return labour;
-  return addLog(purgeWorker(labour, workerId), { entity: 'worker', action: 'purge', refId: workerId, workerId, before: pick(worker, WORKER_FIELDS) }, now);
+  if (!worker?.deletedAt || purgeBlocker(labour, workerId).length) return labour;
+  const { workers, attendance } = purgeWorker(labour, workerId);
+  const payments = labour.payments
+    .filter((payment) => !(payment.workerId === workerId && payment.deletedAt))
+    .map((payment) => (payment.workerId === workerId ? touch(payment, { deletedAt: now.toISOString() }, now) : payment));
+  return addLog({ ...labour, workers, attendance, payments }, { entity: 'worker', action: 'purge', refId: workerId, workerId, before: pick(worker, WORKER_FIELDS) }, now);
+}
+
+/**
+ * "Delete everything" for labour: closed months are unlocked first (their records could not be removed otherwise),
+ * then every payment and every worker goes to the recycle bin.
+ */
+export function deleteAllLabour(labour, now = new Date()) {
+  let next = labour;
+  for (const month of Object.keys(next.closedMonths || {})) next = unlockMonth(next, month, now);
+  for (const payment of next.payments.filter((entry) => !entry.deletedAt)) next = deletePayment(next, payment.id, now);
+  for (const worker of next.workers.filter((entry) => !entry.deletedAt)) next = deleteWorker(next, worker.id, now);
+  return next;
 }
 
 // ── Payments ──────────────────────────────────────────────────────────

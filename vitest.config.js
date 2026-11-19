@@ -8,6 +8,7 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['tests/ui/**/*.test.jsx'],
     setupFiles: ['tests/ui/setup.js'],
-    testTimeout: 20000
+    testTimeout: 20000,
+    env: { VITE_ENABLE_WIPE: 'true' }
   }
 });

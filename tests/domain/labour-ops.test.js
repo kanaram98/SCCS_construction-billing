@@ -141,3 +141,38 @@ test('a worker who left keeps their records; deleting one with records is detect
   labour = ops.updateWorker(labour, 'w1', { active: true, leftOn: '', joinedOn: '2026-12-01' }, at(11));
   assert.deepEqual([labour.workers[0].active, labour.workers[0].leftOn, labour.workers[0].joinedOn], [true, '', '2026-12-01']);
 });
+
+test('a worker with records in a closed month is not purged until the month is unlocked; payments go to the bin first', () => {
+  const now = (minute) => new Date(`2026-11-10T10:${String(minute).padStart(2, '0')}:00Z`);
+  const ramesh = createWorker({ id: 'w1', name: 'Ramesh', dailyWage: 700 }, now(0));
+  let labour = ops.addWorker(createLabourState(), ramesh, now(0));
+  labour = ops.markAttendance(labour, '2026-10-30', [{ worker: ramesh, units: 1 }], now(1));
+  labour = ops.markAttendance(labour, '2026-11-02', [{ worker: ramesh, units: 1 }], now(2));
+  labour = ops.addPayment(labour, { workerId: 'w1', date: '2026-11-03', amount: 500, mode: 'cash' }, now(3));
+  labour = ops.closeMonth(labour, '2026-10', now(4));
+  labour = ops.deleteWorker(labour, 'w1', now(5));
+  assert.deepEqual(ops.purgeBlocker(labour, 'w1'), ['2026-10']);
+  assert.equal(ops.purgeDeletedWorker(labour, 'w1', now(6)).workers.length, 1); // locked month: nothing happens
+
+  labour = ops.unlockMonth(labour, '2026-10', now(7));
+  assert.deepEqual(ops.purgeBlocker(labour, 'w1'), []);
+  const purged = ops.purgeDeletedWorker(labour, 'w1', now(8));
+  assert.equal(purged.workers.length, 0);
+  assert.deepEqual(purged.attendance, {});
+  // the payment was live: it moves to the recycle bin now and is removed the next time the bin is emptied
+  assert.equal(purged.payments.length, 1);
+  assert.ok(purged.payments[0].deletedAt);
+  assert.equal(ops.purgeDeletedPayment(purged, purged.payments[0].id, now(9)).payments.length, 0);
+});
+
+test('deleting all labour unlocks months and puts every payment and worker in the bin', () => {
+  const now = new Date('2026-11-10T10:00:00Z');
+  const ramesh = createWorker({ id: 'w1', name: 'Ramesh', dailyWage: 700 }, now);
+  let labour = ops.addWorker(createLabourState(), ramesh, now);
+  labour = ops.addPayment(labour, { workerId: 'w1', date: '2026-10-03', amount: 500, mode: 'cash' }, now);
+  labour = ops.closeMonth(labour, '2026-10', now);
+  const wiped = ops.deleteAllLabour(labour, now);
+  assert.deepEqual(wiped.closedMonths, {});
+  assert.ok(wiped.workers.every((worker) => worker.deletedAt));
+  assert.ok(wiped.payments.every((payment) => payment.deletedAt));
+});
