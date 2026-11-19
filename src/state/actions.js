@@ -548,13 +548,17 @@ function createHistoryActions({ setRaw }) {
     undo: (entryId) => apply(history.undoEntry, entryId),
     restore: (entity, id) => apply(history.restoreRecord, entity, id),
     purge: (entity, id) => apply(history.purgeRecord, entity, id),
-    /** Admin: moves every bill, quotation, project, advance, expense, client and worker to the recycle bin. */
-    deleteEverything: () => setRaw((raw) => {
+    /** Admin: one step of "Delete everything" (see WIPE_STEPS). The app always keeps one blank bill to work in. */
+    deleteStep: (stepId) => setRaw((raw) => {
       const now = new Date();
-      const cleared = history.deleteEverything(raw, now);
-      const labour = (cleared.labour?.workers || []).filter((worker) => !worker.deletedAt)
-        .reduce((current, worker) => labourOps.deleteWorker(current, worker.id, now), cleared.labour);
-      return { ...cleared, labour };
+      let next = stepId === 'workers'
+        ? { ...raw, labour: (raw.labour?.workers || []).filter((worker) => !worker.deletedAt).reduce((current, worker) => labourOps.deleteWorker(current, worker.id, now), raw.labour) }
+        : history.deleteStep(raw, stepId, now);
+      if (!next.bills.some((bill) => !bill.deletedAt)) {
+        const fresh = history.stampNew(createBill('1'), now);
+        next = { ...next, bills: [...next.bills, fresh], activeBillId: fresh.id };
+      }
+      return next;
     }),
     /** Admin: permanently removes everything in the recycle bin. */
     emptyRecycleBin: () => setRaw((raw) => {
@@ -586,6 +590,8 @@ function createQuotationRecordActions({ data, setData }) {
     removeLine: (id, rateId) => patchDraft(id, (quotation) => removeLine(quotation, rateId)),
     /** Adds a work item (by id, or a just-made rate object) to a draft quotation. */
     addLine: (id, rateOrId) => patchDraft(id, (quotation) => { const rate = typeof rateOrId === 'object' ? rateOrId : data.rates.find((entry) => entry.id === rateOrId); return rate ? addLine(quotation, rate) : quotation; }),
+    /** Adds a brand-new work item that lives only in this draft quotation (it is not added to the standard rates). */
+    addNewLine: (id, values) => patchDraft(id, (quotation) => addLine(quotation, { id: newId(), ...createRate(), ...values })),
     /** Freezes the quotation: its prices are saved for good. */
     finalize(id) {
       setData((current) => ({ ...current, quotations: current.quotations.map((quotation) => (quotation.id === id ? finalizeQuotation(quotation) : quotation)) }));

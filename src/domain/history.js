@@ -192,11 +192,37 @@ export function purgeRecord(raw, entity, id, now = new Date()) {
 /** What "Delete everything" clears. Rates, saved templates and the firm's details stay. */
 export const WIPE_COLLECTIONS = Object.freeze(['bills', 'quotations', 'projects', 'advances', 'expenses', 'clients']);
 
+/** The steps of "Delete everything", in order, so the screen can show progress. Workers are handled with the labour data. */
+export const WIPE_STEPS = Object.freeze([
+  { id: 'estimates', label: 'Estimates', entity: 'bills', match: (record) => record.kind === 'estimate' },
+  { id: 'bills', label: 'Bills', entity: 'bills', match: (record) => record.kind !== 'estimate' },
+  { id: 'quotations', label: 'Quotations', entity: 'quotations' },
+  { id: 'advances', label: 'Advances', entity: 'advances' },
+  { id: 'expenses', label: 'Expenses', entity: 'expenses' },
+  { id: 'projects', label: 'Projects', entity: 'projects' },
+  { id: 'clients', label: 'Clients', entity: 'clients' },
+  { id: 'workers', label: 'Workers and attendance' }
+]);
+
+const liveOf = (raw, step) => (raw[step.entity] || []).filter((record) => !record.deletedAt && (!step.match || step.match(record)));
+
+/** How many live records each step will delete, by step id. */
+export function wipeCounts(raw) {
+  return Object.fromEntries(WIPE_STEPS.map((step) => [step.id, step.entity
+    ? liveOf(raw, step).length
+    : (raw.labour?.workers || []).filter((worker) => !worker.deletedAt).length]));
+}
+
+/** Moves the live records of one wipe step to the recycle bin (workers are done by the caller). */
+export function deleteStep(raw, stepId, now = new Date()) {
+  const step = WIPE_STEPS.find((entry) => entry.id === stepId);
+  if (!step?.entity) return raw;
+  return liveOf(raw, step).reduce((current, record) => deleteRecord(current, step.entity, record.id, now), raw);
+}
+
 /** Moves every live bill, quotation, project, advance, expense and client to the recycle bin. */
 export function deleteEverything(raw, now = new Date()) {
-  return WIPE_COLLECTIONS.reduce((current, entity) => (raw[entity] || [])
-    .filter((record) => !record.deletedAt)
-    .reduce((inner, record) => deleteRecord(inner, entity, record.id, now), current), raw);
+  return WIPE_STEPS.reduce((current, step) => deleteStep(current, step.id, now), raw);
 }
 
 /** Permanently removes everything in the recycle bin (the records were already deleted and uploaded). */

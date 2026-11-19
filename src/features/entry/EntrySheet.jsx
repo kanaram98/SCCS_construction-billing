@@ -1,18 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import Link from '@mui/material/Link';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { alpha } from '@mui/material/styles';
-import AddIcon from '@mui/icons-material/Add';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DeleteIcon from '@mui/icons-material/DeleteOutlined';
 import { ResponsiveDialog, TextField, useConfirm, useNotify } from '../../components/ui';
 import { useBilling } from '../../state/BillingContext.jsx';
 import { getItemQuantity, getLineAmount } from '../../domain/calculations.js';
-import { getDimensionFields, usesCount } from '../../domain/rates.js';
+import { describeMeasurement, getDimensionFields, resolveRate, usesCount } from '../../domain/rates.js';
 import { validateEntry } from '../../domain/validation.js';
 import { formatCurrency } from '../../domain/formatters.js';
 import { quotedRates } from '../../domain/quotations.js';
@@ -21,10 +19,9 @@ import WorkItemPicker from './WorkItemPicker.jsx';
 
 const SHORT_LABELS = { length: 'Length', width: 'Width', height: 'Height' };
 const FIELD_KEYS = ['count', 'length', 'width', 'height', 'quantity', 'note'];
+const BLANK = { itemId: null, rateId: '', count: '1', length: '', width: '', height: '', quantity: '1', note: '' };
 
-const blankRow = (key, rateId = '') => ({ key, itemId: null, rateId, count: '1', length: '', width: '', height: '', quantity: '1', note: '', saved: '', touched: false });
-const rowFromItem = (item) => withSaved({
-  key: item.id,
+const formFromItem = (item) => ({
   itemId: item.id,
   rateId: item.rateId,
   count: item.count ?? '1',
@@ -32,33 +29,19 @@ const rowFromItem = (item) => withSaved({
   width: item.width ?? '',
   height: item.height ?? '',
   quantity: item.quantity ?? '1',
-  note: item.note ?? '',
-  saved: '',
-  touched: false,
-  fallback: { id: item.rateId, name: item.name, unit: item.unit, type: item.type, rate: item.rate }
+  note: item.note ?? ''
 });
-function snapshot(row) {
-  return JSON.stringify([row.rateId, ...FIELD_KEYS.map((key) => String(row[key] ?? ''))]);
-}
-/** An entry that is already saved starts out equal to what is saved, so leaving it alone saves nothing. */
-function withSaved(row) {
-  return { ...row, saved: snapshot(row) };
-}
 
-/** A row with nothing typed yet (only a work item, or nothing): neither saved nor counted as unfinished. */
-const isUntouched = (row) => !row.itemId && !row.length && !row.width && !row.height && !row.note && row.count === '1' && row.quantity === '1';
+/** Nothing typed beyond the work item itself. */
+const isUntouched = (form) => !form.length && !form.width && !form.height && !form.note && form.count === '1' && form.quantity === '1';
 
 /**
- * Paper-first entry: every entry of one room as an editable row. Type straight down the list;
- * "Next" on the keyboard moves from field to field and on to a new row. Each row is saved as soon as
- * it is complete and you move away from it, so nothing is lost if the phone is closed.
+ * Add the entries of one room. A small form at the top (work item, measurements, Add) and the entries
+ * already in the room listed below it. After Add the form keeps the work item and clears the
+ * measurements, so the same kind of entry is quick to repeat. Tap an entry below to change it.
  */
 export default function EntrySheet({ open, section, area, focusItemId = '', onClose }) {
-  return (
-    <>
-      {open && <SheetBody key={`${area.id}:${focusItemId}`} section={section} area={area} focusItemId={focusItemId} onClose={onClose} />}
-    </>
-  );
+  return <>{open && <SheetBody key={`${area.id}:${focusItemId}`} section={section} area={area} focusItemId={focusItemId} onClose={onClose} />}</>;
 }
 
 function SheetBody({ section, area, focusItemId, onClose }) {
@@ -66,13 +49,23 @@ function SheetBody({ section, area, focusItemId, onClose }) {
   const { entry } = actions;
   const notify = useNotify();
   const confirm = useConfirm();
-  const counter = useRef(0);
-  const nextKey = () => `new-${(counter.current += 1)}`;
   const bodyRef = useRef(null);
-  const [rows, setRows] = useState(() => [...area.items.map(rowFromItem), blankRow(`new-${(counter.current += 1)}`)]);
-  const [shake, setShake] = useState(false);
+  const [form, setForm] = useState(() => {
+    const item = focusItemId && area.items.find((entryItem) => entryItem.id === focusItemId);
+    return item ? formFromItem(item) : { ...BLANK };
+  });
+  const [touched, setTouched] = useState(false);
 
-  /** Work items used lately in this bill, newest first, so the usual ones are one tap away. */
+  // New entries are priced from the bill's quotation (or the standard rates); a saved entry keeps its own price.
+  const quoted = useMemo(() => quotedRates(data.rates, data.quotations.find((entryQuotation) => entryQuotation.id === bill.quotationId)), [data.rates, data.quotations, bill.quotationId]);
+  const editing = form.itemId ? area.items.find((item) => item.id === form.itemId) : null;
+  const rate = form.rateId ? (editing && editing.rateId === form.rateId ? resolveRate(editing, quoted) : quoted.find((entryRate) => entryRate.id === form.rateId) || null) : null;
+  const issues = rate ? validateEntry(form, rate) : [];
+  const amount = rate && !issues.length ? getLineAmount(form, rate) : null;
+  const fields = rate ? getDimensionFields(rate.type) : [];
+  const total = area.items.reduce((sum, item) => sum + getLineAmount(item, resolveRate(item, quoted)), 0);
+
+  /** Work items used lately in this bill, newest first. */
   const recentIds = useMemo(() => {
     const ids = [];
     for (const sectionEntry of bill.sections || []) {
@@ -84,256 +77,168 @@ function SheetBody({ section, area, focusItemId, onClose }) {
         }
       }
     }
-    return ids.reverse().filter((id) => data.rates.some((rate) => rate.id === id)).slice(0, 6);
-  }, [bill.sections, data.rates]);
+    return ids.reverse().filter((id) => quoted.some((entryRate) => entryRate.id === id && !entryRate.archived)).slice(0, 5);
+  }, [bill.sections, quoted]);
 
-  // New entries are priced from the bill's quotation (or the standard rates); a saved entry keeps its own price.
-  const quoted = useMemo(() => quotedRates(data.rates, data.quotations.find((entry) => entry.id === bill.quotationId)), [data.rates, data.quotations, bill.quotationId]);
-  const rateOf = (row) => {
-    const live = quoted.find((rate) => rate.id === row.rateId);
-    if (!live) return row.fallback || null;
-    return row.itemId && row.fallback && row.fallback.id === row.rateId ? { ...live, rate: row.fallback.rate } : live;
-  };
-  const valuesOf = (row, rate) => ({ ...Object.fromEntries(FIELD_KEYS.map((key) => [key, row[key]])), name: rate.name, unit: rate.unit, type: rate.type, rate: rate.rate });
-  const issuesOf = (row) => { const rate = rateOf(row); return row.rateId && rate ? validateEntry(row, rate) : []; };
-  const amountOf = (row) => {
-    const rate = rateOf(row);
-    if (!rate || issuesOf(row).length) return null;
-    return getLineAmount(row, rate);
-  };
-  const total = rows.reduce((sum, row) => sum + (amountOf(row) || 0), 0);
-  const unfinished = rows.filter((row) => row.rateId && !isUntouched(row) && issuesOf(row).length);
+  const focusField = (name) => window.setTimeout(() => {
+    const inputs = [...(bodyRef.current?.querySelectorAll('[data-sheet-input]') || [])].filter((element) => !element.disabled);
+    (name ? inputs.find((element) => element.dataset.sheetInput === name) : inputs.find((element) => element.dataset.sheetInput !== 'item' && element.dataset.sheetInput !== 'count') || inputs.find((element) => element.dataset.sheetInput === 'count'))?.focus();
+  }, 40);
 
-  function patch(key, changes) {
-    setShake(false);
-    setRows((current) => current.map((row) => (row.key === key ? { ...row, ...changes } : row)));
+  const update = (changes) => setForm((current) => ({ ...current, ...changes }));
+  const pickRate = (rateId) => { update({ rateId }); setTouched(true); if (rateId) focusField(); };
+
+  /** Saves the form as a new entry, or as the change to the entry being edited. Returns true when saved. */
+  function save() {
+    setTouched(true);
+    if (!rate || !form.rateId || issues.length) return false;
+    const values = { ...Object.fromEntries(FIELD_KEYS.map((key) => [key, form[key]])), name: rate.name, unit: rate.unit, type: rate.type, rate: rate.rate };
+    if (form.itemId) entry.updateItem(section.id, area.id, form.itemId, values);
+    else if (!entry.addItem(section.id, area.id, form.rateId, values)) return false;
+    return true;
   }
 
-  /** Saves a complete row (new or changed); an unfinished row stays on screen only. */
-  function commit(row) {
-    const rate = rateOf(row);
-    if (!rate || !row.rateId || issuesOf(row).length) return;
-    const now = snapshot(row);
-    if (row.itemId && row.saved === now) return;
-    if (row.itemId) {
-      entry.updateItem(section.id, area.id, row.itemId, valuesOf(row, rate));
-      patch(row.key, { saved: now });
-    } else {
-      const item = entry.addItem(section.id, area.id, row.rateId, valuesOf(row, rate));
-      if (item) patch(row.key, { itemId: item.id, saved: now });
-    }
+  function add() {
+    const wasEditing = Boolean(form.itemId);
+    if (!save()) return;
+    if (wasEditing) setForm({ ...BLANK });
+    else setForm({ ...BLANK, rateId: form.rateId }); // same work item again; only the measurements are cleared
+    setTouched(false);
+    if (wasEditing) window.setTimeout(() => bodyRef.current?.querySelector('[data-sheet-input="item"]')?.focus(), 40);
+    else focusField();
   }
 
-  function inputs() {
-    return [...(bodyRef.current?.querySelectorAll('[data-sheet-input]') || [])].filter((element) => !element.disabled);
-  }
-
-  function focusRowFirstField(key) {
-    window.setTimeout(() => {
-      const fields = inputs().filter((element) => element.dataset.row === key);
-      // the measurement first: how many (Nos) is nearly always 1, so it is reached by tapping, not typed through
-      const numbers = fields.filter((element) => element.dataset.sheetInput !== 'item');
-      (numbers.find((element) => element.dataset.sheetInput !== 'count') || numbers[0] || fields[0])?.focus();
-    }, 40);
-  }
-
-  function focusNewRowItem(key) {
-    window.setTimeout(() => inputs().find((element) => element.dataset.row === key && element.dataset.sheetInput === 'item')?.focus(), 60);
-  }
-
-  /** Enter / the keyboard's Next key: on to the next field, then the next row, adding one at the end. */
-  function advance(element) {
-    const list = inputs();
-    const index = list.indexOf(element);
-    const next = list[index + 1];
-    if (next && next.dataset.row === element.dataset.row && next.dataset.sheetInput !== 'item') { next.focus(); return; }
-    // end of this row: save it, then go to the following row's work item (or a new row)
-    const key = element.dataset.row;
-    const row = rows.find((entryRow) => entryRow.key === key);
-    if (row) commit({ ...row, touched: true });
-    const following = list.slice(index + 1).find((candidate) => candidate.dataset.sheetInput === 'item');
-    if (following) { following.focus(); return; }
-    const created = nextKey();
-    setRows((current) => [...current, blankRow(created)]);
-    focusNewRowItem(created);
-  }
-
-  function addRow() {
-    const created = nextKey();
-    setRows((current) => [...current, blankRow(created)]);
-    focusNewRowItem(created);
-  }
-
-  function repeatRow(row) {
-    const created = nextKey();
-    setRows((current) => {
-      const index = current.findIndex((entryRow) => entryRow.key === row.key);
-      const copy = { ...row, key: created, itemId: null, saved: '', touched: true, fallback: undefined };
-      return [...current.slice(0, index + 1), copy, ...current.slice(index + 1)];
-    });
-    focusRowFirstField(created);
-  }
-
-  async function removeRow(row) {
-    if (row.itemId) {
-      const rate = rateOf(row);
-      const ok = await confirm({ title: t('Delete this entry?'), message: rate?.name || '', confirmLabel: t('Delete'), danger: true });
-      if (!ok) return;
-      entry.removeItem(section.id, area.id, row.itemId);
-    }
-    setRows((current) => {
-      const left = current.filter((entryRow) => entryRow.key !== row.key);
-      return left.length ? left : [blankRow(nextKey())];
-    });
-  }
-
-  function onRowBlur(event, row) {
-    if (event.currentTarget.contains(event.relatedTarget)) return;
-    patch(row.key, { touched: true });
-    commit({ ...row, touched: true });
+  async function remove(item) {
+    const ok = await confirm({ title: t('Delete this entry?'), message: resolveRate(item, quoted).name, confirmLabel: t('Delete'), danger: true });
+    if (!ok) return;
+    entry.removeItem(section.id, area.id, item.id);
+    if (form.itemId === item.id) setForm({ ...BLANK });
   }
 
   function onKeyDown(event) {
-    if (event.key !== 'Enter' || event.defaultPrevented || !event.target.dataset?.sheetInput) return; // defaultPrevented: the list just took the choice
-    if (event.target.dataset.sheetInput === 'item' && event.target.getAttribute('aria-expanded') === 'true') return; // choosing from the list
+    if (event.key !== 'Enter' || event.defaultPrevented || !event.target.dataset?.sheetInput) return;
+    if (event.target.dataset.sheetInput === 'item') return; // choosing from the list
     event.preventDefault();
-    advance(event.target);
+    const inputs = [...(bodyRef.current?.querySelectorAll('[data-sheet-input]') || [])].filter((element) => !element.disabled && element.dataset.sheetInput !== 'item');
+    const next = inputs[inputs.indexOf(event.target) + 1];
+    if (next) next.focus();
+    else add(); // Enter in the last box adds the entry
   }
 
-  // Start where the user tapped: a tapped entry, or the first empty row.
   useEffect(() => {
-    const target = focusItemId ? rows.find((row) => row.itemId === focusItemId) : rows.find((row) => !row.itemId);
-    if (!target) return;
-    if (focusItemId) focusRowFirstField(target.key);
-    else focusNewRowItem(target.key);
+    if (focusItemId) focusField();
+    else window.setTimeout(() => bodyRef.current?.querySelector('[data-sheet-input="item"]')?.focus(), 80);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const pending = form.rateId && !isUntouched(form);
+  const unfinished = Boolean(pending && issues.length);
+
   async function finish() {
-    rows.forEach((row) => commit({ ...row, touched: true }));
-    if (unfinished.length) {
-      setShake(true);
-      notify(trn(unfinished.length, '{count} entry is not finished. Fill in its measurements or delete it.', '{count} entries are not finished. Fill in their measurements or delete them.'), 'warning');
+    if (pending && !issues.length) save(); // whatever is typed is not lost
+    if (unfinished) {
+      setTouched(true);
+      notify(trn(1, '{count} entry is not finished. Fill in its measurements or delete it.', '{count} entries are not finished. Fill in their measurements or delete them.'), 'warning');
       return;
     }
     onClose();
   }
 
   async function close() {
-    if (unfinished.length) {
-      const ok = await confirm({
-        title: t('Leave without saving?'),
-        message: trn(unfinished.length, '{count} unfinished entry will not be saved.', '{count} unfinished entries will not be saved.'),
-        confirmLabel: t('Leave'),
-        danger: true
-      });
+    if (unfinished) {
+      const ok = await confirm({ title: t('Leave without saving?'), message: trn(1, '{count} unfinished entry will not be saved.', '{count} unfinished entries will not be saved.'), confirmLabel: t('Leave'), danger: true });
       if (!ok) return;
-    }
-    rows.forEach((row) => commit({ ...row, touched: true }));
+    } else if (pending && !issues.length) save();
     onClose();
   }
-
-  const saved = rows.filter((row) => row.itemId).length;
 
   return (
     <ResponsiveDialog
       open
       onClose={close}
-      title={`${area.name}`}
-      actions={(
-        <>
-          <Button startIcon={<AddIcon />} onClick={addRow}>{t('Add row')}</Button>
-          <Button variant="contained" onClick={finish}>{t('Done')}</Button>
-        </>
-      )}
+      title={area.name}
+      actions={<Button variant="contained" onClick={finish}>{t('Done')}</Button>}
     >
       <Box ref={bodyRef} onKeyDown={onKeyDown}>
-        <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'baseline', mb: 1.5, position: 'sticky', top: -16, zIndex: 2, bgcolor: 'background.paper', py: 0.5 }}>
-          <Typography variant="body2" color="text.secondary">{trn(saved, '{count} entry saved', '{count} entries saved')}</Typography>
+        <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'baseline', mb: 1 }}>
+          <Typography variant="body2" color="text.secondary">{trn(area.items.length, '{count} entry saved', '{count} entries saved')}</Typography>
           <Typography variant="subtitle1" color="primary" sx={{ fontWeight: 700 }}>{t('Room total')}: {formatCurrency(total)}</Typography>
         </Stack>
 
-        <Stack spacing={1.5}>
-          {rows.map((row, index) => {
-            const rate = rateOf(row);
-            const issues = issuesOf(row);
-            const fields = rate ? getDimensionFields(rate.type) : [];
-            const amount = amountOf(row);
-            const showIssue = row.touched && row.rateId && !isUntouched(row) && issues.length > 0;
-            return (
-              <Box
-                key={row.key}
-                onBlur={(event) => onRowBlur(event, row)}
-                sx={(theme) => {
-                  const flagged = showIssue || (shake && unfinished.includes(row));
-                  return {
-                    border: 1,
-                    borderStyle: row.itemId ? 'solid' : 'dashed', // a saved entry is solid, a row still to fill is dashed
-                    borderColor: flagged ? 'error.main' : 'divider',
-                    borderRadius: 2,
-                    p: 1.25,
-                    bgcolor: row.itemId ? alpha(theme.palette.primary.main, 0.05) : 'action.hover',
-                    // dark mode: the sheet and the rows were the same dark; lift the rows and strengthen their edge
-                    ...theme.applyStyles('dark', { bgcolor: alpha('#ffffff', row.itemId ? 0.08 : 0.04), borderColor: flagged ? theme.palette.error.main : alpha('#ffffff', 0.3) })
-                  };
-                }}
-              >
-                <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ pt: 1.25, minWidth: 18, fontWeight: 700 }}>{index + 1}</Typography>
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <WorkItemPicker
-                      compact
-                      rates={quoted.filter((rate) => !rate.archived || rate.id === row.rateId)}
-                      value={row.rateId}
-                      recentIds={recentIds}
-                      inputProps={{ 'data-sheet-input': 'item', 'data-row': row.key, enterKeyHint: 'next' }}
-                      onChange={(rateId) => { patch(row.key, { rateId, touched: true }); focusRowFirstField(row.key); }}
-                    />
+        {/* The form */}
+        <Box sx={{ border: 1, borderColor: editing ? 'primary.main' : 'divider', borderRadius: 2, p: 1.25, bgcolor: 'action.hover' }}>
+          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, display: 'block', mb: 0.75 }}>
+            {editing ? t('Changing an entry') : t('New entry')}
+          </Typography>
+          {!form.itemId && recentIds.length > 0 && (
+            <Stack direction="row" sx={{ gap: 0.75, mb: 1, overflowX: 'auto', pb: 0.25 }}>
+              {recentIds.map((id) => {
+                const recent = quoted.find((entryRate) => entryRate.id === id);
+                return <Chip key={id} size="small" variant={form.rateId === id ? 'filled' : 'outlined'} color={form.rateId === id ? 'primary' : 'default'} label={recent.name} onClick={() => pickRate(id)} sx={{ flexShrink: 0 }} />;
+              })}
+            </Stack>
+          )}
+          <WorkItemPicker
+            compact
+            rates={quoted.filter((entryRate) => !entryRate.archived || entryRate.id === form.rateId)}
+            value={form.rateId}
+            recentIds={recentIds}
+            inputProps={{ 'data-sheet-input': 'item', enterKeyHint: 'next' }}
+            onChange={pickRate}
+          />
+          {rate && (
+            <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+              {usesCount(rate.type) && <Field label={t('Nos')} value={form.count} name="count" onChange={(value) => { update({ count: value }); setTouched(true); }} />}
+              {fields.map((field) => (
+                <Field key={field.key} label={t(SHORT_LABELS[field.key] || field.label)} value={form[field.key]} name={field.key} unit="ft.in" onChange={(value) => { update({ [field.key]: value }); setTouched(true); }} />
+              ))}
+              {!usesCount(rate.type) && <Field label={t('Qty ({unit})', { unit: rate.unit })} value={form.quantity} name="quantity" onChange={(value) => { update({ quantity: value }); setTouched(true); }} />}
+            </Stack>
+          )}
+          {rate && (
+            <Stack direction="row" sx={{ mt: 0.75, alignItems: 'center', justifyContent: 'space-between' }}>
+              <Typography variant="caption" color={touched && pending && issues.length ? 'error' : 'text.secondary'} sx={{ flex: 1, minWidth: 0 }}>
+                {touched && pending && issues.length ? issues[0] : issues.length ? '' : `${getItemQuantity(form, rate)} ${rate.unit} × ${formatCurrency(rate.rate)}`}
+              </Typography>
+              <Typography variant="subtitle1" color={amount === null ? 'text.disabled' : 'primary'} sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>{amount === null ? '—' : formatCurrency(amount)}</Typography>
+            </Stack>
+          )}
+          {rate && <NoteField key={form.itemId || 'new'} value={form.note} onChange={(value) => update({ note: value })} />}
+          <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+            {editing && <Button onClick={() => { setForm({ ...BLANK }); setTouched(false); }}>{t('Cancel')}</Button>}
+            <Button fullWidth variant="contained" disabled={!rate} onClick={add}>{editing ? t('Save changes') : t('Add entry')}</Button>
+          </Stack>
+        </Box>
+
+        {/* What is already in the room */}
+        {area.items.length > 0 && (
+          <Box sx={{ mt: 1.5 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>{t('In this room')}</Typography>
+            {area.items.map((item, index) => {
+              const itemRate = resolveRate(item, quoted);
+              return (
+                <Stack key={item.id} direction="row" sx={{ alignItems: 'center', borderBottom: 1, borderColor: 'divider', bgcolor: form.itemId === item.id ? 'action.selected' : 'transparent' }}>
+                  <Box component="button" type="button" onClick={() => { setForm(formFromItem(item)); setTouched(false); focusField(); }} aria-label={t('Change entry {number}', { number: index + 1 })}
+                    sx={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 0, p: 0, py: 0.9, color: 'inherit', font: 'inherit', cursor: 'pointer' }}>
+                    <Stack direction="row" sx={{ justifyContent: 'space-between', gap: 1 }}>
+                      <Typography variant="body2" noWrap sx={{ fontWeight: 600 }}>{itemRate.name}{item.note ? ` · ${item.note}` : ''}</Typography>
+                      <Typography variant="body2" color="primary" sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>{formatCurrency(getLineAmount(item, itemRate))}</Typography>
+                    </Stack>
+                    <Typography variant="caption" color="text.secondary" component="div" noWrap>{describeMeasurement(item, itemRate)} · {getItemQuantity(item, itemRate)} {itemRate.unit} × {formatCurrency(itemRate.rate)}</Typography>
                   </Box>
-                  <Typography variant="subtitle2" color={amount === null ? 'text.disabled' : 'primary'} sx={{ pt: 1, minWidth: 64, textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    {amount === null ? '—' : formatCurrency(amount)}
-                  </Typography>
+                  <IconButton aria-label={t('Delete entry {number}', { number: index + 1 })} onClick={() => remove(item)} color="error" size="small"><DeleteIcon fontSize="small" /></IconButton>
                 </Stack>
-
-                {rate && (
-                  <Stack direction="row" spacing={1} sx={{ mt: 1, ml: 3.25 }}>
-                    {usesCount(rate.type) && (
-                      <Field label={t('Nos')} value={row.count} row={row} name="count" onChange={(value) => patch(row.key, { count: value, touched: true })} />
-                    )}
-                    {fields.map((field) => (
-                      <Field key={field.key} label={t(SHORT_LABELS[field.key] || field.label)} value={row[field.key]} row={row} name={field.key} unit="ft.in" onChange={(value) => patch(row.key, { [field.key]: value, touched: true })} />
-                    ))}
-                    {!usesCount(rate.type) && (
-                      <Field label={t('Qty ({unit})', { unit: rate.unit })} value={row.quantity} row={row} name="quantity" onChange={(value) => patch(row.key, { quantity: value, touched: true })} />
-                    )}
-                  </Stack>
-                )}
-
-                {rate && !issues.length && (
-                  <Typography variant="caption" color="text.secondary" component="div" sx={{ mt: 0.5, ml: 3.25 }}>
-                    {getItemQuantity(row, rate)} {rate.unit} × {formatCurrency(rate.rate)}
-                  </Typography>
-                )}
-                {showIssue && <Typography variant="caption" color="error" component="div" sx={{ mt: 0.5, ml: 3.25 }}>{issues[0]}</Typography>}
-
-                {rate && (
-                  <Stack direction="row" sx={{ mt: 0.5, ml: 3.25, alignItems: 'center' }}>
-                    <NoteField row={row} onChange={(value) => patch(row.key, { note: value, touched: true })} />
-                    <IconButton aria-label={t('Repeat entry {number}', { number: index + 1 })} onClick={() => repeatRow(row)} disabled={Boolean(issues.length)} sx={{ width: 44, height: 44 }}><ContentCopyIcon fontSize="small" /></IconButton>
-                    <IconButton aria-label={t('Delete entry {number}', { number: index + 1 })} onClick={() => removeRow(row)} color="error" sx={{ width: 44, height: 44 }}><DeleteIcon fontSize="small" /></IconButton>
-                  </Stack>
-                )}
-              </Box>
-            );
-          })}
-        </Stack>
+              );
+            })}
+          </Box>
+        )}
       </Box>
     </ResponsiveDialog>
   );
 }
 
-/** One short numeric box of a row; Next on the keyboard moves on. */
-function Field({ label, value, row, name, unit, onChange }) {
+/** One short numeric box; Next on the keyboard moves on, and Enter in the last one adds the entry. */
+function Field({ label, value, name, unit, onChange }) {
   return (
     <TextField
       size="small"
@@ -342,26 +247,26 @@ function Field({ label, value, row, name, unit, onChange }) {
       inputMode="decimal"
       placeholder={unit ? '0.0' : ''}
       onChange={onChange}
-      slotProps={{ htmlInput: { 'data-sheet-input': name, 'data-row': row.key, enterKeyHint: 'next', onFocus: (event) => event.target.select(), style: { minHeight: 28 } }, inputLabel: { shrink: true } }}
+      slotProps={{ htmlInput: { 'data-sheet-input': name, enterKeyHint: 'next', onFocus: (event) => event.target.select(), style: { minHeight: 28 } }, inputLabel: { shrink: true } }}
       sx={{ flex: 1, minWidth: 0 }}
     />
   );
 }
 
-/** The note is hidden until wanted, so rows stay short. */
-function NoteField({ row, onChange }) {
-  const [open, setOpen] = useState(Boolean(row.note));
+/** The note is hidden until wanted, so the form stays short. */
+function NoteField({ value, onChange }) {
+  const [open, setOpen] = useState(Boolean(value));
   if (!open) {
-    return <Link component="button" type="button" underline="hover" variant="caption" onClick={() => setOpen(true)} sx={{ flex: 1, textAlign: 'left' }}>{t('+ Note')}</Link>;
+    return <Link component="button" type="button" underline="hover" variant="caption" onClick={() => setOpen(true)} sx={{ display: 'block', mt: 0.5 }}>{t('+ Note')}</Link>;
   }
   return (
     <TextField
       size="small"
-      value={row.note}
+      value={value}
       placeholder={t('Note (optional)')}
       onChange={onChange}
-      slotProps={{ htmlInput: { 'data-sheet-input': 'note', 'data-row': row.key, enterKeyHint: 'next', 'aria-label': t('Note (optional)') } }}
-      sx={{ flex: 1 }}
+      slotProps={{ htmlInput: { 'data-sheet-input': 'note', enterKeyHint: 'done', 'aria-label': t('Note (optional)') } }}
+      sx={{ mt: 0.75 }}
     />
   );
 }

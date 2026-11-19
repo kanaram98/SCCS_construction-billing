@@ -136,3 +136,12 @@ test('delete everything moves records to the bin, and emptying the bin removes t
   assert.equal(empty.quotations.length, 0);
   assert.equal(empty.rates.length, 1);
 });
+
+test('delete everything works step by step and counts what it will delete', async () => {
+  const { deleteStep, wipeCounts } = await import('../../src/domain/history.js');
+  const raw = { bills: [{ id: 'e', kind: 'estimate' }, { id: 'b' }], quotations: [], projects: [{ id: 'p' }], advances: [], expenses: [], clients: [], labour: { workers: [{ id: 'w' }] }, log: [] };
+  assert.deepEqual(wipeCounts(raw), { estimates: 1, bills: 1, quotations: 0, advances: 0, expenses: 0, projects: 1, clients: 0, workers: 1 });
+  const after = deleteStep(raw, 'estimates', new Date());
+  assert.ok(after.bills.find((bill) => bill.id === 'e').deletedAt);
+  assert.equal(after.bills.find((bill) => bill.id === 'b').deletedAt, undefined);
+});

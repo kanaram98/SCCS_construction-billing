@@ -1401,5 +1401,22 @@ export default {
   'Everything is deleted.': 'सब कुछ हट गया।',
   'Not on any project yet ({count})': 'अभी किसी प्रोजेक्ट पर नहीं ({count})',
   'They show on no project until you add them. Tap Add to put one on this project.': 'जब तक आप जोड़ेंगे नहीं, वे किसी प्रोजेक्ट पर नहीं दिखेंगे। इस प्रोजेक्ट पर लाने के लिए जोड़ें दबाएँ।',
-  'Type DELETE to confirm': 'पक्का करने के लिए DELETE लिखें'
+  'Type DELETE to confirm': 'पक्का करने के लिए DELETE लिखें',
+  'Deleting everything…': 'सब कुछ हटाया जा रहा है…',
+  'Emptying the recycle bin…': 'रीसायकल बिन खाली हो रहा है…',
+  'Finished': 'पूरा हुआ',
+  'Recycle bin emptied.': 'रीसायकल बिन खाली हो गया।',
+  'Saving to the cloud…': 'क्लाउड में सेव हो रहा है…',
+  'none': 'कोई नहीं',
+  '{count} deleted': '{count} हटे',
+  'Workers and attendance': 'मज़दूर और हाज़िरी',
+  'A new item is added to this quotation only, not to your standard rates.': 'नया आइटम सिर्फ़ इसी कोटेशन में जुड़ेगा, आपकी स्टैंडर्ड दरों में नहीं।',
+  'Change entry {number}': 'एंट्री {number} बदलें',
+  'Changing an entry': 'एंट्री बदल रहे हैं',
+  'Choose from your standard rates': 'अपनी स्टैंडर्ड दरों में से चुनें',
+  'In this room': 'इस कमरे में',
+  'New entry': 'नई एंट्री',
+  'New item for this quotation': 'इस कोटेशन के लिए नया आइटम',
+  'No matching work item in this price list.': 'इस दाम सूची में कोई मेल खाता काम का आइटम नहीं।',
+  'Save changes': 'बदलाव सेव करें'
 };

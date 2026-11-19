@@ -21,7 +21,7 @@ export default function RateFormDialog({ open, rate, priceOnly = false, onSave, 
   );
 }
 
-function RateForm({ rate, priceOnly, onSave, onClose }) {
+export function RateForm({ rate, priceOnly = false, submitLabel = '', onSave, onClose }) {
   const [values, setValues] = useState(() => (rate ? { ...rate } : { ...EMPTY_RATE }));
   const [touched, setTouched] = useState({});
   const [submitted, setSubmitted] = useState(false);
@@ -56,7 +56,7 @@ function RateForm({ rate, priceOnly, onSave, onClose }) {
       </Grid>
       <Grid size={12} sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
         <Button onClick={onClose}>{t('Cancel')}</Button>
-        <Button type="submit" variant="contained">{rate ? t('Save') : t('Add item')}</Button>
+        <Button type="submit" variant="contained">{submitLabel || (rate ? t('Save') : t('Add item'))}</Button>
       </Grid>
     </Grid>
   );

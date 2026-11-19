@@ -127,31 +127,32 @@ describe('Protected bills and prices', () => {
     await screen.findByRole('tab', { name: 'Ground floor' });
     await user.click(screen.getAllByRole('button', { name: 'Add or edit entries' })[0]);
     const sheet = await screen.findByRole('dialog');
-    const boxes = within(sheet).getAllByRole('combobox', { name: /Work item/ });
-    await user.click(boxes[boxes.length - 1]);
+    await user.click(within(sheet).getByRole('combobox', { name: /Work item/ }));
     await user.click(await screen.findByRole('option', { name: /Floor tiles/ }));
-    const lastField = (label) => { const all = within(sheet).getAllByLabelText(label); return all[all.length - 1]; };
+    const lastField = (label) => within(sheet).getByLabelText(label);
     await user.type(lastField('Length'), '10');
     await user.type(lastField('Width'), '10');
+    await user.click(within(sheet).getByRole('button', { name: 'Add entry' }));
     await user.click(within(sheet).getByRole('button', { name: 'Done' }));
     await waitFor(() => expect(savedState().bills[0].sections[0].areas[0].items).toHaveLength(3));
     expect(savedState().bills[0].sections[0].areas[0].items.at(-1).rate).toBe(70);
   });
 
-  it('a new work item can be made while building a quotation, and joins the standard rates too', async () => {
+  it('a new item made in a quotation lives in that quotation only, in one small popup', async () => {
     const quotation = { id: 'q1', projectId: 'p1', number: 'Q-0001', rev: 1, name: 'Villa', status: 'draft', lines: [{ rateId: 'floor-tiles', name: 'Floor tiles', unit: 'sqft', type: 'area', rate: 70 }] };
     const { user } = renderApp({ ...SAMPLE_STATE, projects: [PROJECT], quotations: [quotation] });
     await goTo(user, 'Quotation');
     await user.click(await screen.findByText(/Q-0001 · Villa/));
     await user.click(await screen.findByRole('button', { name: 'Add item' }));
-    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Make a new work item' }));
-    const form = await screen.findByRole('dialog', { name: 'Add work item' });
-    await user.type(within(form).getByLabelText(/Item name/), 'Wall putty');
-    await user.type(within(form).getByLabelText(/^Unit/), 'sqft');
-    await user.type(within(form).getByLabelText(/Rate/), '12');
-    await user.click(within(form).getByRole('button', { name: 'Add item' }));
+    const popup = await screen.findByRole('dialog');
+    await user.click(within(popup).getByRole('button', { name: 'New item for this quotation' }));
+    expect(screen.getAllByRole('dialog')).toHaveLength(1); // the same popup, not a second one
+    await user.type(within(popup).getByLabelText(/Item name/), 'Wall putty');
+    await user.type(within(popup).getByLabelText(/^Unit/), 'sqft');
+    await user.type(within(popup).getByLabelText(/Rate/), '12');
+    await user.click(within(popup).getByRole('button', { name: 'Add to quotation' }));
     await waitFor(() => expect(savedState().quotations[0].lines.some((entry) => entry.name === 'Wall putty' && entry.rate === 12)).toBe(true));
-    expect(savedState().rates.some((rate) => rate.name === 'Wall putty')).toBe(true);
+    expect(savedState().rates.some((rate) => rate.name === 'Wall putty')).toBe(false); // not in the standard rates
   });
 
   it('a bill cannot be marked ready while its quotation is still a draft', async () => {

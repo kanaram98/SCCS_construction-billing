@@ -53,13 +53,12 @@ describe('Bills screen', () => {
 });
 
 describe('Entry screen', () => {
-  /** Chooses a work item in the last row of the open entry sheet. */
+  /** Chooses a work item in the entry form. */
   async function pickInLastRow(user, dialog, name) {
-    const boxes = within(dialog).getAllByRole('combobox', { name: /Work item/ });
-    await user.click(boxes[boxes.length - 1]);
+    await user.click(within(dialog).getByRole('combobox', { name: /Work item/ }));
     await user.click(await screen.findByRole('option', { name: new RegExp(name) }));
   }
-  const lastField = (dialog, label) => { const all = within(dialog).getAllByLabelText(label); return all[all.length - 1]; };
+  const lastField = (dialog, label) => within(dialog).getByLabelText(label);
 
   it('shows one floor at a time and adds a measured entry in the entry sheet', async () => {
     const { user } = renderApp(SAMPLE_STATE);
@@ -74,6 +73,7 @@ describe('Entry screen', () => {
     await user.type(lastField(dialog, 'Width'), '5.0');
     // the amount of the row and the room total update while typing: 10'6" x 5' = 52.5 sqft x Rs 85 = Rs 4,463
     expect(within(dialog).getAllByText('₹4,463').length).toBeGreaterThan(0);
+    await user.click(within(dialog).getByRole('button', { name: 'Add entry' }));
     await user.click(within(dialog).getByRole('button', { name: 'Done' }));
 
     // new total Rs 19,161, and the entry was saved
@@ -81,7 +81,7 @@ describe('Entry screen', () => {
     expect(savedState().bills[0].sections[0].areas[0].items).toHaveLength(3);
   });
 
-  it('moves to the next field and the next row with Enter, saving each complete row', async () => {
+  it('Enter in the last box adds the entry and keeps the work item for the next one', async () => {
     const { user } = renderApp(SAMPLE_STATE);
     await goTo(user, 'Entry');
     await user.click((await screen.findAllByRole('button', { name: 'Add or edit entries' }))[0]);
@@ -89,10 +89,10 @@ describe('Entry screen', () => {
     await pickInLastRow(user, dialog, 'Gas hole');
     // after choosing the item the cursor is in the first number box
     await waitFor(() => expect(document.activeElement.dataset.sheetInput).toBe('count')); // a count item has only Nos
-    await user.keyboard('{Enter}'); // last field of the row: saved, and a new row gets the cursor
+    await user.keyboard('{Enter}'); // last box: the entry is added
     await waitFor(() => expect(savedState().bills[0].sections[0].areas[0].items).toHaveLength(3));
-    await waitFor(() => expect(document.activeElement.dataset.sheetInput).toBe('item'));
-    expect(within(dialog).getAllByRole('combobox', { name: /Work item/ })).toHaveLength(4); // 2 saved, 1 just added, 1 new empty
+    expect(within(dialog).getByRole('combobox', { name: /Work item/ }).value).toMatch(/Gas hole/); // ready to repeat
+    expect(within(dialog).getAllByRole('button', { name: /^Change entry/ })).toHaveLength(3);
   });
 
   it('flags a bad measurement and will not finish with an unfinished row', async () => {
@@ -114,9 +114,10 @@ describe('Entry screen', () => {
     await goTo(user, 'Entry');
     await user.click((await screen.findAllByRole('button', { name: /^Floor tiles/ }))[0]);
     const dialog = await screen.findByRole('dialog');
-    const length = within(dialog).getAllByLabelText('Length')[0];
+    const length = within(dialog).getByLabelText('Length');
     await user.clear(length);
     await user.type(length, '20');
+    await user.click(within(dialog).getByRole('button', { name: 'Save changes' }));
     await user.click(within(dialog).getByRole('button', { name: 'Done' }));
     await waitFor(() => expect(savedState().bills[0].sections[0].areas[0].items.find((item) => item.type === 'area').length).toBe('20'));
   });
@@ -461,6 +462,24 @@ describe('History and recycle bin', () => {
     await user.click(within(history).getByRole('button', { name: 'Close' }));
     expect(await screen.findByText('Bill 2 · Office fitout')).toBeTruthy();
   });
+
+  it('Delete everything shows its progress, keeps the app working and leaves nothing behind', async () => {
+    const { user } = renderApp(SAMPLE_STATE);
+    await goTo(user, 'Bills');
+    await user.click(await screen.findByRole('button', { name: 'History' }));
+    const history = await screen.findByRole('dialog');
+    await user.click(within(history).getByRole('tab', { name: 'Recently deleted' }));
+    await user.click(await within(history).findByRole('button', { name: 'Delete everything…' }));
+    const ask = (await screen.findAllByRole('dialog')).at(-1);
+    await user.type(within(ask).getByLabelText(/Type DELETE/), 'DELETE');
+    await user.click(within(ask).getByRole('button', { name: 'Delete everything' }));
+    expect(await screen.findByText('Deleting everything…')).toBeTruthy();
+    expect(await screen.findByText('Everything is deleted.', {}, { timeout: 15000 })).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Done' }));
+    await waitFor(() => expect(savedState().bills.filter((bill) => !bill.deletedAt)).toHaveLength(1)); // one blank bill to work in
+    expect(savedState().bills.filter((bill) => bill.deletedAt)).toHaveLength(0);
+    expect(screen.getAllByRole('heading', { name: 'Bills', hidden: true }).length).toBeGreaterThan(0); // no blank screen
+  }, 30000);
 
   it('undoes an edit to firm details from Settings', async () => {
     const { user } = renderApp(SAMPLE_STATE);

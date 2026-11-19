@@ -13,21 +13,31 @@ import { useCloud } from '../account/CloudProvider.jsx';
 import { isQuotationFinal, quotationLabel, quotationRates, quotationUsage } from '../../domain/quotations.js';
 import { tr as t } from '../../i18n/translate.js';
 import RatesTable from './RatesTable.jsx';
-import RateFormDialog from './RateFormDialog.jsx';
+import RateFormDialog, { RateForm } from './RateFormDialog.jsx';
 import QuotationActions from './QuotationActions.jsx';
 import QuotationSheet from './QuotationSheet.jsx';
 import { useQuotationExport } from './useQuotationExport.js';
 
-/** Add an existing work item to the quotation, or make a new one (which also joins the standard rates). */
-function AddItemForm({ rates, onAdd, onNew, onClose }) {
+/**
+ * One small popup: pick a work item from the standard rates, or switch (in the same popup) to type a
+ * new item that belongs to this quotation only.
+ */
+function AddItemForm({ rates, onAdd, onAddNew, onClose }) {
   const [rateId, setRateId] = useState('');
+  const [mode, setMode] = useState(rates.length ? 'pick' : 'new');
+  if (mode === 'new') {
+    return (
+      <>
+        <Typography variant="caption" color="text.secondary" component="p" sx={{ mb: 0.5 }}>{t('A new item is added to this quotation only, not to your standard rates.')}</Typography>
+        <RateForm submitLabel={t('Add to quotation')} onSave={(values) => { onAddNew(values); onClose(); }} onClose={rates.length ? () => setMode('pick') : onClose} />
+      </>
+    );
+  }
   return (
     <div style={{ paddingTop: 8 }}>
-      {rates.length > 0 && (
-        <SelectField label={t('Work item')} value={rateId} placeholder={t('Choose a work item')} options={rates.map((rate) => ({ value: rate.id, label: `${rate.name} · ${rate.unit}` }))} onChange={setRateId} />
-      )}
+      <SelectField label={t('Work item')} value={rateId} placeholder={t('Choose from your standard rates')} options={rates.map((rate) => ({ value: rate.id, label: `${rate.name} · ${rate.unit}` }))} onChange={setRateId} />
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
-        <Button onClick={() => { onClose(); onNew(); }}>{t('Make a new work item')}</Button>
+        <Button onClick={() => setMode('new')}>{t('New item for this quotation')}</Button>
         <div style={{ display: 'flex', gap: 8 }}>
           <Button onClick={onClose}>{t('Cancel')}</Button>
           <Button variant="contained" disabled={!rateId} onClick={() => { onAdd(rateId); onClose(); }}>{t('Add to quotation')}</Button>
@@ -49,7 +59,6 @@ export default function QuotationDetail({ quotationId, onBack }) {
   const quotation = data.quotations.find((entry) => entry.id === quotationId);
   const [editing, setEditing] = useState(null); // a line whose price is being changed
   const [adding, setAdding] = useState(false);
-  const [making, setMaking] = useState(false); // a brand-new work item for this quotation
   const [renaming, setRenaming] = useState(false);
   const rates = useMemo(() => (quotation ? quotationRates(quotation) : []), [quotation]);
   const project = data.projects.find((entry) => entry.id === quotation?.projectId);
@@ -138,25 +147,18 @@ export default function QuotationDetail({ quotationId, onBack }) {
       <QuotationSheet quotation={settings} rates={rates} exporter={exporter} draft={!final} showClient={false} />
 
       <RateFormDialog
-        open={Boolean(editing) || making}
-        rate={making ? null : editing}
-        priceOnly={Boolean(editing) && !making}
+        open={Boolean(editing)}
+        rate={editing}
+        priceOnly
         onSave={(values) => {
-          if (making) {
-            const rate = actions.rates.add(values);
-            actions.quotations.addLine(quotation.id, rate);
-            notify(t('{name} added.', { name: values.name }));
-            setMaking(false);
-          } else {
-            actions.quotations.setPrice(quotation.id, editing.id, values.rate);
-            notify(t('{name} price updated in this quotation.', { name: editing.name }));
-            setEditing(null);
-          }
+          actions.quotations.setPrice(quotation.id, editing.id, values.rate);
+          notify(t('{name} price updated in this quotation.', { name: editing.name }));
+          setEditing(null);
         }}
-        onClose={() => { setEditing(null); setMaking(false); }}
+        onClose={() => setEditing(null)}
       />
       <ResponsiveDialog open={adding} title={t('Add item')} onClose={() => setAdding(false)} maxWidth="xs">
-        {adding && <AddItemForm rates={missing} onAdd={(rateId) => actions.quotations.addLine(quotation.id, rateId)} onNew={() => setMaking(true)} onClose={() => setAdding(false)} />}
+        {adding && <AddItemForm rates={missing} onAdd={(rateId) => actions.quotations.addLine(quotation.id, rateId)} onAddNew={(values) => { actions.quotations.addNewLine(quotation.id, values); notify(t('{name} added.', { name: values.name })); }} onClose={() => setAdding(false)} />}
       </ResponsiveDialog>
       <RenameDialog open={renaming} title={t('Rename quotation')} label={t('Quotation name')} value={quotation.name} onSave={(name) => actions.quotations.rename(quotation.id, name)} onClose={() => setRenaming(false)} />
     </section>

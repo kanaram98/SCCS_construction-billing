@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
+import CircularProgress from '@mui/material/CircularProgress';
+import LinearProgress from '@mui/material/LinearProgress';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import Stack from '@mui/material/Stack';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
@@ -15,7 +18,7 @@ import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 import { EmptyState, ResponsiveDialog, SelectField, TextField, useConfirm, useNotify } from '../../components/ui';
 import { useBilling } from '../../state/BillingContext.jsx';
-import { RECYCLE_DAYS, recycleBin, undoBlocker } from '../../domain/history.js';
+import { RECYCLE_DAYS, WIPE_STEPS, recycleBin, undoBlocker, wipeCounts } from '../../domain/history.js';
 import { hasMoney, isFinal, isFrozen } from '../../domain/bill-guard.js';
 import { HISTORY_FILTERS, describeHistoryEntry, matchesFilter, recordName } from '../../domain/history-log.js';
 import { formatLogTime } from '../../domain/labour-log.js';
@@ -100,29 +103,47 @@ function RecycleBin({ filter }) {
   const items = recycleBin(raw).filter((item) => matchesFilter(item.entity, filter));
 
   const [wiping, setWiping] = useState(false);
-  const [emptying, setEmptying] = useState(false);
   const [word, setWord] = useState('');
+  const [run, setRun] = useState(null); // { steps: [{ id, label, count, state }], phase: 'steps' | 'sync' | 'empty' | 'done' }
 
-  // After "Delete everything", wait until the deletions have reached the cloud, then empty the bin.
-  useEffect(() => {
-    if (!emptying) return undefined;
+  const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  /** Deletes step by step so each kind shows as it goes, waits for the cloud, then empties the bin. */
+  async function wipeEverything() {
+    const counts = wipeCounts(raw);
+    let steps = WIPE_STEPS.map((step) => ({ id: step.id, label: step.label, count: counts[step.id], state: 'wait' }));
+    const show = (phase) => setRun({ steps, phase });
+    const mark = (id, state) => { steps = steps.map((step) => (step.id === id ? { ...step, state } : step)); };
+    show('steps');
+    for (const step of steps) {
+      mark(step.id, 'busy');
+      show('steps');
+      await pause(400);
+      if (step.count) actions.history.deleteStep(step.id);
+      await pause(250);
+      mark(step.id, 'done');
+      show('steps');
+    }
+    show('sync');
     const started = Date.now();
-    const timer = setInterval(async () => {
-      if (Date.now() - started < 2500) return;
-      if ((await cloud.pendingChanges()) > 0 && Date.now() - started < 60000) return;
-      clearInterval(timer);
-      actions.history.emptyRecycleBin();
-      setEmptying(false);
-      notify(t('Everything is deleted.'), 'success');
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [emptying]); // eslint-disable-line react-hooks/exhaustive-deps
+    await pause(2500);
+    while ((await cloud.pendingChanges()) > 0 && Date.now() - started < 60000) await pause(1000);
+    show('empty');
+    await pause(500);
+    actions.history.emptyRecycleBin();
+    await pause(400);
+    show('done');
+  }
+
+  const running = Boolean(run) && run.phase !== 'done';
+  const doneCount = run ? run.steps.filter((step) => step.state === 'done').length : 0;
+  const progress = !run ? 0 : run.phase === 'done' ? 100 : run.phase === 'empty' ? 92 : run.phase === 'sync' ? 80 : Math.round((doneCount / run.steps.length) * 70);
 
   const eraseTools = canPurge && (
     <>
       <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
-        <Button size="small" color="error" variant="outlined" disabled={emptying} onClick={() => { setWord(''); setWiping(true); }}>{emptying ? t('Deleting… keep this open') : t('Delete everything…')}</Button>
-        {items.length > 0 && <Button size="small" color="error" disabled={emptying} onClick={() => setEmptying(true)}>{t('Empty recycle bin')}</Button>}
+        <Button size="small" color="error" variant="outlined" disabled={running} onClick={() => { setWord(''); setWiping(true); }}>{t('Delete everything…')}</Button>
+        {items.length > 0 && <Button size="small" color="error" disabled={running} onClick={() => { actions.history.emptyRecycleBin(); notify(t('Recycle bin emptied.'), 'success'); }}>{t('Empty recycle bin')}</Button>}
       </Stack>
       <Dialog open={wiping} onClose={() => setWiping(false)} maxWidth="xs" fullWidth>
         <DialogTitle>{t('Delete everything?')}</DialogTitle>
@@ -132,7 +153,33 @@ function RecycleBin({ filter }) {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setWiping(false)}>{t('Cancel')}</Button>
-          <Button color="error" variant="contained" disabled={word.trim() !== 'DELETE'} onClick={() => { setWiping(false); actions.history.deleteEverything(); setEmptying(true); }}>{t('Delete everything')}</Button>
+          <Button color="error" variant="contained" disabled={word.trim() !== 'DELETE'} onClick={() => { setWiping(false); wipeEverything(); }}>{t('Delete everything')}</Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={Boolean(run)} maxWidth="xs" fullWidth disableEscapeKeyDown>
+        <DialogTitle>{run?.phase === 'done' ? t('Everything is deleted.') : t('Deleting everything…')}</DialogTitle>
+        <DialogContent>
+          <LinearProgress variant="determinate" value={progress} sx={{ mb: 2, height: 8, borderRadius: 4 }} />
+          {run?.steps.map((step) => (
+            <Stack key={step.id} direction="row" spacing={1} sx={{ alignItems: 'center', py: 0.5 }}>
+              <Box sx={{ width: 24, display: 'flex', justifyContent: 'center' }}>
+                {step.state === 'done' ? <CheckCircleIcon color="success" fontSize="small" /> : step.state === 'busy' ? <CircularProgress size={18} /> : <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: 'divider' }} />}
+              </Box>
+              <Typography variant="body2" sx={{ flex: 1 }}>{t(step.label)}</Typography>
+              <Typography variant="caption" color="text.secondary">{step.state === 'done' ? (step.count ? t('{count} deleted', { count: step.count }) : t('none')) : step.count}</Typography>
+            </Stack>
+          ))}
+          {run && run.phase !== 'steps' && (
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center', pt: 1.5 }}>
+              {run.phase === 'done' ? <CheckCircleIcon color="success" fontSize="small" /> : <CircularProgress size={18} />}
+              <Typography variant="body2">
+                {run.phase === 'sync' ? t('Saving to the cloud…') : run.phase === 'empty' ? t('Emptying the recycle bin…') : t('Finished')}
+              </Typography>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button disabled={run?.phase !== 'done'} onClick={() => setRun(null)}>{t('Done')}</Button>
         </DialogActions>
       </Dialog>
     </>
