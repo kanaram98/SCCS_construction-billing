@@ -1,6 +1,6 @@
-import { omImage } from './om-image.js';
+import { OM_PNG, OM_RATIO } from './om-sign.js';
 
-const OM_HEIGHT = 7;
+const OM_HEIGHT = 7; // mm
 
 /**
  * Letterhead drawn with jsPDF, matching the on-screen Letterhead component:
@@ -31,10 +31,10 @@ export function drawLetterhead(doc, { firm, title, meta, billTo, margin, fontSiz
   const pageWidth = doc.internal.pageSize.getWidth();
   const right = pageWidth - margin;
   let top = margin;
-  const sign = om ? omImage() : '';
-  if (sign) {
-    doc.addImage(sign, 'PNG', (pageWidth - OM_HEIGHT) / 2, top - 1, OM_HEIGHT, OM_HEIGHT, 'om-sign', 'FAST');
-    top += OM_HEIGHT;
+  if (om) {
+    const width = OM_HEIGHT * OM_RATIO;
+    doc.addImage(OM_PNG, 'PNG', (pageWidth - width) / 2, top, width, OM_HEIGHT, 'om-sign', 'FAST');
+    top += OM_HEIGHT + 1.5;
   }
 
   // Logo (left) and firm details (right)
