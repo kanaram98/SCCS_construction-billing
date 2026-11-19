@@ -1,7 +1,7 @@
-import { useMemo, useRef, useState } from 'react';
+import { createContext, useContext, useMemo, useRef, useState } from 'react';
 import { useBilling } from '../../state/BillingContext.jsx';
 import { useConfirm } from '../../components/ui';
-import { dayLabel, isMonthClosed, liveLabour, localToday, monthLabel, shiftDate } from '../../domain/labour.js';
+import { dayLabel, isMonthClosed, labourOfSite, liveLabour, localToday, monthLabel, shiftDate } from '../../domain/labour.js';
 import { getLanguage, tr as t } from '../../i18n/translate.js';
 
 /** Attendance older than this many days asks for confirmation before changing. */
@@ -11,10 +11,21 @@ export const OLD_ATTENDANCE_DAYS = 7;
  * Labour data for screens: `labour` without deleted items, `raw` with them
  * (history, recycle bin), and the labour actions.
  */
+const SiteContext = createContext('');
+/** The project the Labour page is showing; every tab reads it. */
+export const LabourSiteProvider = SiteContext.Provider;
+export const useLabourSite = () => useContext(SiteContext);
+
+/**
+ * `labour` is the chosen project's workers, attendance and payments; `allLabour` is everything
+ * (to see whether a worker is marked at another project). `raw` also has deleted items.
+ */
 export function useLabour() {
   const { data, actions } = useBilling();
-  const labour = useMemo(() => liveLabour(data.labour), [data.labour]);
-  return { labour, raw: data.labour, firm: data.firm, actions: actions.labour };
+  const siteId = useContext(SiteContext);
+  const allLabour = useMemo(() => liveLabour(data.labour), [data.labour]);
+  const labour = useMemo(() => labourOfSite(allLabour, siteId), [allLabour, siteId]);
+  return { labour, allLabour, raw: data.labour, firm: data.firm, actions: actions.labour };
 }
 
 /**

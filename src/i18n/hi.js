@@ -1390,5 +1390,16 @@ export default {
   'Yesterday’s attendance copied. Fix anyone who is different.': 'कल की हाज़िरी कॉपी हो गई। जो अलग हो उसे ठीक करें।',
   '{count} marked present': '{count} हाज़िर',
   '{name} moved to {project}.': '{name} को {project} में भेज दिया।',
-  '{name}: running bills': '{name}: रनिंग बिल'
+  '{name}: running bills': '{name}: रनिंग बिल',
+  'All bills, estimates, quotations, projects, advances, expenses, clients and workers are deleted for good. Your rates, templates and firm details stay. This cannot be undone.': 'सभी बिल, एस्टिमेट, कोटेशन, प्रोजेक्ट, एडवांस, खर्च, क्लाइंट और मज़दूर हमेशा के लिए हट जाएँगे। आपकी दरें, टेम्पलेट और फर्म की जानकारी रहेगी। यह वापस नहीं होगा।',
+  'Delete everything': 'सब कुछ हटाएँ',
+  'Delete everything?': 'सब कुछ हटाएँ?',
+  'Delete everything…': 'सब कुछ हटाएँ…',
+  'Deleting… keep this open': 'हट रहा है… इसे खुला रखें',
+  'Empty recycle bin': 'रीसायकल बिन खाली करें',
+  'Every tab below shows this project only. Switch project to work on another.': 'नीचे हर टैब सिर्फ़ इसी प्रोजेक्ट का दिखाता है। दूसरे पर काम करने के लिए प्रोजेक्ट बदलें।',
+  'Everything is deleted.': 'सब कुछ हट गया।',
+  'Not on any project yet ({count})': 'अभी किसी प्रोजेक्ट पर नहीं ({count})',
+  'They show on no project until you add them. Tap Add to put one on this project.': 'जब तक आप जोड़ेंगे नहीं, वे किसी प्रोजेक्ट पर नहीं दिखेंगे। इस प्रोजेक्ट पर लाने के लिए जोड़ें दबाएँ।',
+  'Type DELETE to confirm': 'पक्का करने के लिए DELETE लिखें'
 };

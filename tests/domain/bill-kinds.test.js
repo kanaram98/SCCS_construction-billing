@@ -36,7 +36,7 @@ test('converting an estimate creates a new bill with fresh ids', () => {
   assert.equal(bill.sections[0].areas[0].items[0].count, 2);
 });
 
-test('next running bill keeps project details and room structure without entries', () => {
+test('next running bill keeps project details and name but starts completely empty', () => {
   const first = { id: 'b1', number: '1', projectId: 'p1', projectName: 'Tower', client: 'Ravi', taxRate: '18', gstEnabled: true, sections: withCount(3) };
   const { bill: second, sourcePatch } = createNextRunningBill([first], first);
   assert.deepEqual(sourcePatch, { raSeriesId: 'b1', raNumber: 1 });
@@ -46,8 +46,7 @@ test('next running bill keeps project details and room structure without entries
   assert.equal(second.projectName, 'Tower');
   assert.equal(second.projectId, 'p1'); // stays linked to the same project, so reports include it
   assert.equal(second.taxRate, '18');
-  assert.equal(second.sections[0].areas[0].name, 'Hall');
-  assert.deepEqual(second.sections[0].areas[0].items, []);
+  assert.deepEqual(second.sections, []);
 
   const firstAsRa = { ...first, ...sourcePatch };
   const { bill: third, sourcePatch: noChange } = createNextRunningBill([firstAsRa, second], second);

@@ -547,7 +547,24 @@ function createHistoryActions({ setRaw }) {
   return {
     undo: (entryId) => apply(history.undoEntry, entryId),
     restore: (entity, id) => apply(history.restoreRecord, entity, id),
-    purge: (entity, id) => apply(history.purgeRecord, entity, id)
+    purge: (entity, id) => apply(history.purgeRecord, entity, id),
+    /** Admin: moves every bill, quotation, project, advance, expense, client and worker to the recycle bin. */
+    deleteEverything: () => setRaw((raw) => {
+      const now = new Date();
+      const cleared = history.deleteEverything(raw, now);
+      const labour = (cleared.labour?.workers || []).filter((worker) => !worker.deletedAt)
+        .reduce((current, worker) => labourOps.deleteWorker(current, worker.id, now), cleared.labour);
+      return { ...cleared, labour };
+    }),
+    /** Admin: permanently removes everything in the recycle bin. */
+    emptyRecycleBin: () => setRaw((raw) => {
+      const now = new Date();
+      const cleared = history.emptyRecycleBin(raw);
+      let labour = cleared.labour;
+      for (const worker of (labour?.workers || []).filter((entry) => entry.deletedAt)) labour = labourOps.purgeDeletedWorker(labour, worker.id, now);
+      for (const payment of (labour?.payments || []).filter((entry) => entry.deletedAt)) labour = labourOps.purgeDeletedPayment(labour, payment.id, now);
+      return { ...cleared, labour };
+    })
   };
 }
 

@@ -6,7 +6,7 @@
  * - Running bills share a `raSeriesId`; each has an `raNumber` (RA 1, RA 2…)
  *   and prints a running account of work and payments to date.
  */
-import { cloneSections, createArea, createBill, createSection, getNextBillNumber } from './factories.js';
+import { cloneSections, createBill, getNextBillNumber } from './factories.js';
 import { getBillTotals } from './calculations.js';
 import { newId } from './ids.js';
 import { getPrintDocument } from './print-settings.js';
@@ -100,8 +100,8 @@ export function nextRunningBlocker(bills, bill) {
 }
 
 /**
- * Starts the next running bill after `source`: same project, client and
- * settings, the same floors/rooms with no entries yet.
+ * Starts the next running bill after `source`: same project, client, name and settings, but a
+ * fresh empty bill: no floors, rooms or entries (each running bill is only the work done since the last).
  * @returns {{ bill: object, sourcePatch: object }} sourcePatch turns a plain bill into RA 1
  */
 export function createNextRunningBill(bills, source) {
@@ -128,8 +128,7 @@ export function createNextRunningBill(bills, source) {
     name: source.name,
     raSeriesId: seriesId,
     raNumber,
-    sections: (source.sections || []).map((section) =>
-      createSection(section.name, (section.areas || []).map((area) => createArea(area.name))))
+    sections: []
   };
   return { bill, sourcePatch: source.raSeriesId ? {} : { raSeriesId: seriesId, raNumber: 1 } };
 }

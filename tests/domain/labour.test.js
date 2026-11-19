@@ -147,7 +147,7 @@ test('a project view keeps its own and unassigned marks and hides other projects
   assert.equal(markedElsewhere(labour, '2026-11-02', 'w3', 'pa'), '');
 });
 
-test('workers belong to projects; unassigned ones show everywhere; project wages add up', async () => {
+test('workers belong to projects; unassigned ones show on no project; project wages add up', async () => {
   const { workerOnSite, unassignedWorkers, labourCostOfProject } = await import('../../src/domain/labour.js');
   const labour = {
     workers: [{ id: 'a', active: true, projectIds: ['p1'] }, { id: 'b', active: true, projectIds: [] }, { id: 'c', active: true, projectIds: ['p2'] }],
@@ -155,7 +155,7 @@ test('workers belong to projects; unassigned ones show everywhere; project wages
   };
   assert.equal(workerOnSite(labour, labour.workers[0], 'p1'), true);
   assert.equal(workerOnSite(labour, labour.workers[0], 'p2'), false);
-  assert.equal(workerOnSite(labour, labour.workers[1], 'p2'), true); // not assigned yet
+  assert.equal(workerOnSite(labour, labour.workers[1], 'p2'), false); // not assigned yet
   assert.equal(workerOnSite(labour, labour.workers[2], 'p1'), true); // already marked at p1
   assert.deepEqual(unassignedWorkers(labour).map((worker) => worker.id), ['b']);
   assert.equal(labourCostOfProject(labour, 'p1'), 1300);

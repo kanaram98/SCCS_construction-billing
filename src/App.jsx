@@ -1,6 +1,4 @@
 import { Suspense, lazy, useCallback, useEffect, useState } from 'react';
-import { useEdgeSwipe } from './hooks/useEdgeSwipe.js';
-import { useIsMobile } from './hooks/useIsMobile.js';
 import Box from '@mui/material/Box';
 import LinearProgress from '@mui/material/LinearProgress';
 import Container from '@mui/material/Container';
@@ -84,9 +82,7 @@ const LIMITED_VIEWS = { labour: [VIEWS.labour, VIEWS.expenses, VIEWS.settings], 
 
 function AppShell({ view: chosenView, setView }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const mobile = useIsMobile();
   const openMenu = useCallback(() => setMenuOpen(true), []);
-  useEdgeSwipe(openMenu, mobile && !menuOpen);
   const { data, bill, saveStatus, storageError, actions } = useBilling();
   const installer = useInstallPrompt();
   const cloud = useCloud();
@@ -140,7 +136,7 @@ function AppShell({ view: chosenView, setView }) {
         onOpenSearch={allowed ? undefined : () => setSearchOpen(true)}
       />
       {!allowed && <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} onOpenResult={openResult} />}
-      <MainNav activeView={view} onNavigate={navigate} views={allowed} open={menuOpen} onClose={() => setMenuOpen(false)} onOpen={() => setMenuOpen(true)} />
+      <MainNav activeView={view} onNavigate={navigate} views={allowed} open={menuOpen} onClose={() => setMenuOpen(false)} />
       {!data.meta?.onboarded && cloud.access === 'full' && <WelcomeDialog onNavigate={navigate} />}
       <Box
         component="main"

@@ -30,9 +30,8 @@ import { getLanguage, tr as t } from '../../i18n/translate.js';
 import { DayTile, MonthCalendar } from '../../components/DayGrid.jsx';
 import MonthBar from './MonthBar.jsx';
 import ClosedMonthNotice from './ClosedMonthNotice.jsx';
-import { useLabour, useMonthLock, useOldDateGuard } from './useLabour.js';
+import { useLabour, useLabourSite, useMonthLock, useOldDateGuard } from './useLabour.js';
 import { useCloud } from '../account/CloudProvider.jsx';
-import { useActiveProject } from '../../hooks/useActiveProject.js';
 import { CONTRACTOR_TIMESHEET_DAYS } from '../../domain/permissions.js';
 import { Notice, useNotify } from '../../components/ui';
 
@@ -42,7 +41,7 @@ const unitLabel = (units) => UNIT_LABELS[units] ?? formatUnits(units);
 /** Workers to show on a day: everyone working, plus anyone who left but was marked that day. */
 function workersOn(labour, date, siteId = '') {
   const marks = labour.attendance[date] || {};
-  return labour.workers.filter((worker) => (worker.active || marks[worker.id]) && (marks[worker.id] || workerOnSite(labour, worker, siteId)));
+  return labour.workers.filter((worker) => (worker.active || marks[worker.id]) && workerOnSite(labour, worker, siteId));
 }
 
 // ── Calendar ──────────────────────────────────────────────────────────
@@ -91,7 +90,7 @@ function WorkerRow({ worker, mark, onMark, disabled }) {
 
 /** Everyone's attendance for one day, with ◀ ▶ to move between days of the month. */
 function DaySheet({ date, month, siteId, onDateChange, onClose }) {
-  const { labour: allLabour, actions } = useLabour();
+  const { allLabour, actions } = useLabour();
   const { data } = useBilling();
   const labour = useMemo(() => labourForSite(allLabour, siteId), [allLabour, siteId]);
   const undoable = useUndoable();
@@ -162,7 +161,7 @@ function DaySheet({ date, month, siteId, onDateChange, onClose }) {
  * attendance. One worker selected: tap a day to pick their mark directly.
  */
 export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
-  const { labour, actions } = useLabour();
+  const { allLabour: labour, actions } = useLabour();
   const allowOld = useOldDateGuard();
   const lock = useMonthLock();
   const closed = lock.isClosed(month);
@@ -170,7 +169,7 @@ export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
   const today = localToday();
   const { data } = useBilling();
   const [workerId, setWorkerId] = useState('all');
-  const [siteId, setSite] = useActiveProject(data.projects);
+  const siteId = useLabourSite();
   const notify = useNotify();
   const siteLabour = useMemo(() => labourForSite(labour, siteId), [labour, siteId]);
   const [openDate, setOpenDate] = useState(null);
@@ -257,16 +256,7 @@ export default function AttendanceTab({ month, onMonthChange, onAddWorkers }) {
       <MonthBar month={month} onChange={onMonthChange} />
       <ClosedMonthNotice month={month} />
 
-      {data.projects.length > 0 ? (
-        <SelectField
-          label={t('Project / site')}
-          value={siteId}
-          options={data.projects.filter((project) => project.status === 'running' || project.id === siteId).map((project) => ({ value: project.id, label: project.name }))}
-          helperText={t('You see and change this project’s attendance only. Switch project to work on another.')}
-          onChange={setSite}
-          sx={{ mb: 1.5 }}
-        />
-      ) : (
+      {data.projects.length === 0 && (
         <Notice tone="info">{t('Add a project in Projects to keep attendance and labour cost for each site.')}</Notice>
       )}
       <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', pb: 1, mb: 1, mx: -0.5, px: 0.5 }}>

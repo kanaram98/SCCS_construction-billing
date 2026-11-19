@@ -8,7 +8,12 @@ import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
 import RestoreIcon from '@mui/icons-material/Restore';
 import UndoIcon from '@mui/icons-material/Undo';
-import { EmptyState, ResponsiveDialog, SelectField, useConfirm, useNotify } from '../../components/ui';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
+import { EmptyState, ResponsiveDialog, SelectField, TextField, useConfirm, useNotify } from '../../components/ui';
 import { useBilling } from '../../state/BillingContext.jsx';
 import { RECYCLE_DAYS, recycleBin, undoBlocker } from '../../domain/history.js';
 import { hasMoney, isFinal, isFrozen } from '../../domain/bill-guard.js';
@@ -94,7 +99,46 @@ function RecycleBin({ filter }) {
   const notify = useNotify();
   const items = recycleBin(raw).filter((item) => matchesFilter(item.entity, filter));
 
-  if (!items.length) return <EmptyState title={t('Nothing deleted')} description={t('Deleted bills, rates, clients and templates stay here for {days} days so you can restore them.', { days: RECYCLE_DAYS })} compact />;
+  const [wiping, setWiping] = useState(false);
+  const [emptying, setEmptying] = useState(false);
+  const [word, setWord] = useState('');
+
+  // After "Delete everything", wait until the deletions have reached the cloud, then empty the bin.
+  useEffect(() => {
+    if (!emptying) return undefined;
+    const started = Date.now();
+    const timer = setInterval(async () => {
+      if (Date.now() - started < 2500) return;
+      if ((await cloud.pendingChanges()) > 0 && Date.now() - started < 60000) return;
+      clearInterval(timer);
+      actions.history.emptyRecycleBin();
+      setEmptying(false);
+      notify(t('Everything is deleted.'), 'success');
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [emptying]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const eraseTools = canPurge && (
+    <>
+      <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
+        <Button size="small" color="error" variant="outlined" disabled={emptying} onClick={() => { setWord(''); setWiping(true); }}>{emptying ? t('Deleting… keep this open') : t('Delete everything…')}</Button>
+        {items.length > 0 && <Button size="small" color="error" disabled={emptying} onClick={() => setEmptying(true)}>{t('Empty recycle bin')}</Button>}
+      </Stack>
+      <Dialog open={wiping} onClose={() => setWiping(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>{t('Delete everything?')}</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 1.5 }}>{t('All bills, estimates, quotations, projects, advances, expenses, clients and workers are deleted for good. Your rates, templates and firm details stay. This cannot be undone.')}</DialogContentText>
+          <TextField label={t('Type DELETE to confirm')} value={word} onChange={setWord} autoFocus />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setWiping(false)}>{t('Cancel')}</Button>
+          <Button color="error" variant="contained" disabled={word.trim() !== 'DELETE'} onClick={() => { setWiping(false); actions.history.deleteEverything(); setEmptying(true); }}>{t('Delete everything')}</Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
+
+  if (!items.length) return <>{eraseTools}<EmptyState title={t('Nothing deleted')} description={t('Deleted bills, rates, clients and templates stay here for {days} days so you can restore them.', { days: RECYCLE_DAYS })} compact /></>;
 
   async function purge(item, name) {
     const ok = await confirm({ title: t('Delete forever?'), message: `${name}. ${t('This cannot be undone.')}`, confirmLabel: t('Delete forever'), danger: true });
@@ -109,6 +153,7 @@ function RecycleBin({ filter }) {
 
   return (
     <>
+      {eraseTools}
       <Typography variant="caption" color="text.secondary" component="p" sx={{ mb: 1 }}>
         {t('Items are deleted for good {days} days after you delete them.', { days: RECYCLE_DAYS })}
       </Typography>

@@ -398,18 +398,30 @@ export function labourForSite(labour, siteId) {
 
 /**
  * Whether a worker belongs on a project's sheet: they are assigned to it, or have already been marked there.
- * A worker assigned to no project yet (saved before workers belonged to projects) shows on every project
- * until they are assigned, so nobody disappears.
+ * A worker assigned to no project yet shows only in the Workers tab, under "not on any project", until assigned.
  */
 export function workerOnSite(labour, worker, siteId) {
   if (!siteId) return true;
   const assigned = worker.projectIds || [];
-  if (!assigned.length || assigned.includes(siteId)) return true;
+  if (assigned.includes(siteId)) return true;
   return Object.values(labour.attendance || {}).some((marks) => marks[worker.id]?.projectId === siteId);
 }
 
 /** Workers not assigned to any project yet. */
 export const unassignedWorkers = (labour) => labour.workers.filter((worker) => worker.active && !(worker.projectIds || []).length);
+
+/** The labour data of one project: its workers, their marks at it, and their payments. */
+export function labourOfSite(labour, siteId) {
+  if (!siteId) return labour;
+  const workers = labour.workers.filter((worker) => workerOnSite(labour, worker, siteId));
+  const ids = new Set(workers.map((worker) => worker.id));
+  const attendance = {};
+  for (const [date, marks] of Object.entries(labourForSite(labour, siteId).attendance)) {
+    const kept = Object.fromEntries(Object.entries(marks).filter(([workerId]) => ids.has(workerId)));
+    if (Object.keys(kept).length) attendance[date] = kept;
+  }
+  return { ...labour, workers, attendance, payments: labour.payments.filter((payment) => ids.has(payment.workerId)) };
+}
 
 /** Wages earned on a project: the attendance marked at it, at the wage each was marked with. */
 export function labourCostOfProject(labour, projectId) {

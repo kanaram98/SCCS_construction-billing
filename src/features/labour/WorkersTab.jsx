@@ -11,12 +11,11 @@ import Typography from '@mui/material/Typography';
 import AddIcon from '@mui/icons-material/Add';
 import EngineeringIcon from '@mui/icons-material/EngineeringOutlined';
 import { ActionMenu, EmptyState, useConfirm, useNotify } from '../../components/ui';
-import { useLabour } from './useLabour.js';
+import { useLabour, useLabourSite } from './useLabour.js';
 import { useCloud } from '../account/CloudProvider.jsx';
 import { localToday, unassignedWorkers, workerBalance, workerHasRecords, workerOnSite } from '../../domain/labour.js';
 import { useBilling } from '../../state/BillingContext.jsx';
-import { useActiveProject } from '../../hooks/useActiveProject.js';
-import { Notice, ResponsiveDialog, SelectField } from '../../components/ui';
+import { ResponsiveDialog } from '../../components/ui';
 import { formatCurrency } from '../../domain/formatters.js';
 import { tr as t } from '../../i18n/translate.js';
 import WorkerDialog from './WorkerDialog.jsx';
@@ -32,9 +31,9 @@ export function balanceText(balance) {
 
 /** Worker list: add, edit, pay, mark as left, delete. */
 export default function WorkersTab() {
-  const { labour, actions } = useLabour();
+  const { labour, allLabour, actions } = useLabour();
   const { data } = useBilling();
-  const [siteId, setSite] = useActiveProject(data.projects);
+  const siteId = useLabourSite();
   const confirm = useConfirm();
   const notify = useNotify();
   const canEditWorker = useCloud().can('editWorker');
@@ -44,10 +43,8 @@ export default function WorkersTab() {
   const [moving, setMoving] = useState(null);
   const [deleting, setDeleting] = useState(null); // a worker with records, awaiting typed confirmation
   const byName = (a, b) => a.name.localeCompare(b.name);
-  const toPay = labour.workers.filter((worker) => worker.active && workerBalance(labour, worker.id) > 0).sort((a, b) => workerBalance(labour, b.id) - workerBalance(labour, a.id));
-  const toPayTotal = toPay.reduce((sum, worker) => sum + workerBalance(labour, worker.id), 0);
   const onSite = (worker) => workerOnSite(labour, worker, siteId);
-  const unassigned = unassignedWorkers(labour);
+  const unassigned = unassignedWorkers(allLabour);
   const working = labour.workers.filter((worker) => worker.active && onSite(worker)).sort(byName);
   const left = labour.workers.filter((worker) => !worker.active && onSite(worker)).sort((a, b) => String(b.leftOn || '').localeCompare(String(a.leftOn || '')) || byName(a, b));
 
@@ -145,38 +142,12 @@ export default function WorkersTab() {
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => setEditing('new')}>{t('Add worker')}</Button>
       </Stack>
 
-      {data.projects.length > 0 && (
-        <SelectField
-          label={t('Project / site')}
-          value={siteId}
-          options={data.projects.filter((project) => project.status === 'running' || project.id === siteId).map((project) => ({ value: project.id, label: project.name }))}
-          onChange={setSite}
-        />
-      )}
-      {unassigned.length > 0 && data.projects.length > 0 && (
-        <Notice tone="warning">{t('{count} workers are not on any project yet, so they show on every project. Tap a worker and tick the project they work on.', { count: unassigned.length })}</Notice>
-      )}
       {!canEditWorker && (
         <Typography variant="caption" color="text.secondary" component="p" sx={{ mb: 1 }}>
           {t('You can add workers and mark them as left. Only the admin can change wages or details, or delete a worker.')}
         </Typography>
       )}
-      {toPay.length > 0 && (
-        <Card sx={{ mb: 2 }}>
-          <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'baseline', px: 2, pt: 1.5 }}>
-            <Typography variant="subtitle1">{t('To pay')}</Typography>
-            <Typography variant="subtitle1" color="warning.dark">{formatCurrency(toPayTotal)}</Typography>
-          </Stack>
-          <List dense disablePadding>
-            {toPay.slice(0, 8).map((worker) => (
-              <ListItem key={worker.id} secondaryAction={<Button size="small" variant="outlined" onClick={() => setPaying(worker)} aria-label={t('Pay {name}', { name: worker.name })}>{t('Pay')}</Button>}>
-                <ListItemText primary={worker.name} secondary={balanceText(workerBalance(labour, worker.id))} />
-              </ListItem>
-            ))}
-          </List>
-        </Card>
-      )}
-      {!labour.workers.length ? (
+      {!labour.workers.length && !unassigned.length ? (
         <EmptyState icon={<EngineeringIcon fontSize="large" />} title={t('No workers yet')} description={t('Add your workers with their daily wage, then mark attendance every day.')} />
       ) : (
         <>
@@ -185,6 +156,21 @@ export default function WorkersTab() {
             <>
               <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 2, mb: 1 }}>{t('Left workers ({count})', { count: left.length })}</Typography>
               {renderList(left)}
+            </>
+          )}
+          {unassigned.length > 0 && data.projects.length > 0 && (
+            <>
+              <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 2, mb: 0.5 }}>{t('Not on any project yet ({count})', { count: unassigned.length })}</Typography>
+              <Typography variant="caption" color="text.secondary" component="p" sx={{ mb: 1 }}>{t('They show on no project until you add them. Tap Add to put one on this project.')}</Typography>
+              <Card>
+                <List disablePadding>
+                  {unassigned.map((worker) => (
+                    <ListItem key={worker.id} divider secondaryAction={<Button size="small" variant="outlined" onClick={() => actions.updateWorker(worker.id, { projectIds: [siteId] })}>{t('Add')}</Button>}>
+                      <ListItemText primary={worker.name} secondary={[worker.role, t('{amount}/day', { amount: formatCurrency(worker.dailyWage) })].filter(Boolean).join(' · ')} />
+                    </ListItem>
+                  ))}
+                </List>
+              </Card>
             </>
           )}
         </>

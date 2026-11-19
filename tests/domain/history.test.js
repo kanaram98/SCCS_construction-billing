@@ -124,3 +124,15 @@ test('loading saved data adds metadata and empties the recycle bin after 30 days
   assert.deepEqual(state.bills.map((bill) => bill.id), ['b1', 'recent']);
   assert.deepEqual([state.bills[0].version, state.bills[0].deletedAt], [1, null]);
 });
+
+test('delete everything moves records to the bin, and emptying the bin removes them for good', async () => {
+  const { deleteEverything, emptyRecycleBin } = await import('../../src/domain/history.js');
+  const raw = { bills: [{ id: 'b', version: 1 }], quotations: [{ id: 'q', version: 1 }], projects: [], advances: [], expenses: [], clients: [], rates: [{ id: 'r', version: 1 }], templates: [], log: [] };
+  const wiped = deleteEverything(raw, new Date('2026-01-01T00:00:00Z'));
+  assert.ok(wiped.bills[0].deletedAt && wiped.quotations[0].deletedAt);
+  assert.equal(wiped.rates[0].deletedAt, undefined); // rates stay
+  const empty = emptyRecycleBin(wiped);
+  assert.equal(empty.bills.length, 0);
+  assert.equal(empty.quotations.length, 0);
+  assert.equal(empty.rates.length, 1);
+});

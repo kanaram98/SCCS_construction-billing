@@ -189,6 +189,23 @@ export function purgeRecord(raw, entity, id, now = new Date()) {
     { entity, action: 'purge', refId: id, label: labelOf(entity, record) }, now);
 }
 
+/** What "Delete everything" clears. Rates, saved templates and the firm's details stay. */
+export const WIPE_COLLECTIONS = Object.freeze(['bills', 'quotations', 'projects', 'advances', 'expenses', 'clients']);
+
+/** Moves every live bill, quotation, project, advance, expense and client to the recycle bin. */
+export function deleteEverything(raw, now = new Date()) {
+  return WIPE_COLLECTIONS.reduce((current, entity) => (raw[entity] || [])
+    .filter((record) => !record.deletedAt)
+    .reduce((inner, record) => deleteRecord(inner, entity, record.id, now), current), raw);
+}
+
+/** Permanently removes everything in the recycle bin (the records were already deleted and uploaded). */
+export function emptyRecycleBin(raw) {
+  const next = { ...raw };
+  for (const entity of COLLECTIONS) next[entity] = (raw[entity] || []).filter((record) => !record.deletedAt);
+  return next;
+}
+
 /** Deleted records, newest first. */
 export function recycleBin(raw) {
   return COLLECTIONS.flatMap((entity) => (raw[entity] || [])
