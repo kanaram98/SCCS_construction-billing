@@ -36,7 +36,7 @@ export default function AppHeader({ subtitle, saveStatus, canInstall, onInstall,
       color="inherit"
       elevation={0}
       className="no-print"
-      sx={{ borderBottom: 1, borderColor: 'divider', pl: { md: `${DRAWER_WIDTH}px` } }}
+      sx={{ borderBottom: '3px solid transparent', borderImage: 'linear-gradient(90deg, #f7a547 0%, #ec6b35 55%, #9fc140 80%, #5a8f3c 100%) 1', pl: { md: `${DRAWER_WIDTH}px` } }}
     >
       <Toolbar sx={{ gap: 1.5, pt: 'env(safe-area-inset-top)' }}>
         <IconButton aria-label={t('Menu')} onClick={onOpenMenu} edge="start" sx={{ display: { md: 'none' }, mr: -0.5 }}>

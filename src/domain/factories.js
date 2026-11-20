@@ -60,7 +60,14 @@ export function createItem(rate, values = {}) {
 /** Copies items with fresh ids. */
 export function cloneItems(items = []) {
   // An item of a final bill is detached from its rate; the copy follows the live rate again.
-  return items.map(({ sourceRateId, ...item }) => ({ ...item, id: newId(), ...(sourceRateId && !item.rateId ? { rateId: sourceRateId } : {}) }));
+  const fresh = new Map(items.map((item) => [item.id, newId()]));
+  return items.map(({ sourceRateId, linkedTo, ...item }) => ({
+    ...item,
+    id: fresh.get(item.id),
+    // An entry that shares another entry's measurement keeps sharing it in the copy, when that entry is copied too.
+    ...(linkedTo && fresh.has(linkedTo) ? { linkedTo: fresh.get(linkedTo) } : {}),
+    ...(sourceRateId && !item.rateId ? { rateId: sourceRateId } : {})
+  }));
 }
 
 /** Deep-copies a section/area tree with fresh ids at every level. */

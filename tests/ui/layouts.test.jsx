@@ -86,4 +86,33 @@ describe('Entering the room of a new bill', () => {
     expect(within(dialog).queryByRole('button', { name: /what the bill shows by floor/ })).toBeNull();
     expect(within(dialog).queryByText(/on the bill/)).toBeNull();
   });
+  it('the small button on an entry opens a pop-up where several works are chosen for that measurement in one go', async () => {
+    const { user } = renderApp(roomBill());
+    await goTo(user, 'Entry');
+    await user.click((await screen.findAllByRole('button', { name: 'Add or edit entries' }))[0]);
+    const dialog = await screen.findByRole('dialog');
+    const before = within(dialog).getAllByRole('button', { name: /^Change entry/ }).length;
+    await user.click(within(dialog).getByRole('button', { name: 'Add another work on the measurement of entry 1' }));
+    const popup = (await screen.findAllByRole('dialog')).find((entry) => within(entry).queryByText('Add works on this measurement'));
+    expect(within(popup).getByRole('button', { name: 'Choose works' }).hasAttribute('disabled')).toBe(true);
+    const chips = within(popup).getAllByRole('button').filter((button) => button.hasAttribute('aria-pressed'));
+    await user.click(chips[0]);
+    await user.click(chips[1]);
+    await user.click(within(popup).getByRole('button', { name: 'Add 2 works' }));
+    await waitFor(() => expect(within(screen.getByRole('dialog')).getAllByRole('button', { name: /^Change entry/ }).length).toBe(before + 2));
+  });
+
+  it('the total of a work item in the room can carry other works as one entry each', async () => {
+    const { user } = renderApp(roomBill());
+    await goTo(user, 'Entry');
+    await user.click((await screen.findAllByRole('button', { name: 'Add or edit entries' }))[0]);
+    const dialog = await screen.findByRole('dialog');
+    const before = within(dialog).getAllByRole('button', { name: /^Change entry/ }).length;
+    await user.click(within(dialog).getByRole('button', { name: /^Add works on the total of Floor tiles/ }));
+    const popup = (await screen.findAllByRole('dialog')).find((entry) => within(entry).queryByText('Add works on this measurement'));
+    const chips = within(popup).getAllByRole('button').filter((button) => button.hasAttribute('aria-pressed'));
+    await user.click(chips[0]);
+    await user.click(within(popup).getByRole('button', { name: 'Add 1 work' }));
+    await waitFor(() => expect(within(screen.getByRole('dialog')).getAllByRole('button', { name: /^Change entry/ }).length).toBe(before + 1));
+  });
 });

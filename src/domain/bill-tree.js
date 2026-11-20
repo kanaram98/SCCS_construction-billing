@@ -29,11 +29,26 @@ export function updateArea(bill, sectionId, areaId, updater) {
   }));
 }
 
+/** The measurement an entry carries (the numbers a formula uses). */
+export const MEASUREMENT_KEYS = ['count', 'length', 'width', 'height', 'quantity'];
+
+/**
+ * Changes one entry. Entries that share its measurement (linkedTo) follow its numbers, so a door measured once can
+ * carry several works (granite, dhar polish ...) and stays right when the door is corrected.
+ */
 export function updateItem(bill, sectionId, areaId, itemId, patch) {
-  return updateArea(bill, sectionId, areaId, (area) => ({
-    ...area,
-    items: area.items.map((item) => item.id === itemId ? { ...item, ...patch } : item)
-  }));
+  return updateArea(bill, sectionId, areaId, (area) => {
+    const source = area.items.find((item) => item.id === itemId);
+    const updated = source ? { ...source, ...patch } : null;
+    const shared = updated && !updated.linkedTo ? Object.fromEntries(MEASUREMENT_KEYS.map((key) => [key, updated[key]])) : null;
+    return {
+      ...area,
+      items: area.items.map((item) => {
+        if (item.id === itemId) return updated;
+        return shared && item.linkedTo === itemId ? { ...item, ...shared } : item;
+      })
+    };
+  });
 }
 
 export function appendSection(bill, section) {
@@ -84,7 +99,8 @@ export function removeArea(bill, sectionId, areaId) {
 export function removeItem(bill, sectionId, areaId, itemId) {
   return updateArea(bill, sectionId, areaId, (area) => ({
     ...area,
-    items: area.items.filter((item) => item.id !== itemId)
+    // Entries that shared the removed entry's measurement keep its numbers on their own.
+    items: area.items.filter((item) => item.id !== itemId).map(({ linkedTo, ...item }) => (linkedTo === itemId ? item : { ...item, ...(linkedTo ? { linkedTo } : {}) }))
   }));
 }
 

@@ -1,7 +1,8 @@
 import { createTheme } from '@mui/material/styles';
 
 /**
- * App theme: mobile-first, touch-friendly sizes, brand navy + amber.
+ * App theme: mobile-first, touch-friendly sizes, in the colours of the SCCS logo
+ * (orange, amber, leaf green and the charcoal of the lettering).
  * Light and dark colour schemes; the active one follows the device setting
  * unless the user picks one (stored by MUI in localStorage).
  */
@@ -10,20 +11,20 @@ const theme = createTheme({
   colorSchemes: {
     light: {
       palette: {
-        primary: { main: '#1f3a5f' },
-        secondary: { main: '#f5a800', contrastText: '#17202b' },
-        background: { default: '#f1f3f6', paper: '#ffffff' },
-        text: { primary: '#17202b', secondary: '#647184' },
-        divider: '#dde2e9'
+        primary: { main: '#cc4c15', contrastText: '#ffffff' },
+        secondary: { main: '#4f8a3c', contrastText: '#ffffff' },
+        background: { default: '#f6f3ef', paper: '#ffffff' },
+        text: { primary: '#2d2d2f', secondary: '#6b6b70' },
+        divider: '#e4e0da'
       }
     },
     dark: {
       palette: {
-        primary: { main: '#8fb4e3' },
-        secondary: { main: '#f5b829', contrastText: '#17202b' },
-        background: { default: '#0f141a', paper: '#18202a' },
-        text: { primary: '#e6ebf1', secondary: '#9aa8b8' },
-        divider: '#2b3644'
+        primary: { main: '#f7a547', contrastText: '#2a1606' },
+        secondary: { main: '#9fc140', contrastText: '#1a2410' },
+        background: { default: '#141415', paper: '#1e1e20' },
+        text: { primary: '#ececee', secondary: '#a8a8ae' },
+        divider: '#343437'
       }
     }
   },
@@ -48,7 +49,18 @@ const theme = createTheme({
     },
     MuiAccordionSummary: { styleOverrides: { content: { minWidth: 0 } } },
     MuiBottomNavigationAction: { styleOverrides: { root: { minWidth: 0, paddingInline: 4 } } },
-    MuiListItemButton: { styleOverrides: { root: { borderRadius: 10 } } },
+    // Menu entries: a soft logo-orange wash on hover and for the page you are on, with an orange edge.
+    MuiListItemButton: {
+      styleOverrides: {
+        root: {
+          borderRadius: 10,
+          '&:hover': { backgroundColor: 'rgba(236, 107, 53, 0.09)' },
+          '&.Mui-selected': { backgroundColor: 'rgba(236, 107, 53, 0.16)', boxShadow: 'inset 3px 0 0 #ec6b35' },
+          '&.Mui-selected:hover': { backgroundColor: 'rgba(236, 107, 53, 0.24)' },
+          '&.Mui-selected .MuiListItemIcon-root': { color: '#ec6b35' }
+        }
+      }
+    },
     MuiSnackbar: { defaultProps: { anchorOrigin: { vertical: 'bottom', horizontal: 'center' } } }
   }
 });

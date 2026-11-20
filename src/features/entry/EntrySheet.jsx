@@ -8,23 +8,27 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import CalculateIcon from '@mui/icons-material/CalculateOutlined';
 import DeleteIcon from '@mui/icons-material/DeleteOutlined';
+import PlaylistAddIcon from '@mui/icons-material/PlaylistAddOutlined';
 import { ResponsiveDialog, TextField, useConfirm, useNotify } from '../../components/ui';
 import { useBilling } from '../../state/BillingContext.jsx';
 import { billStyleOf, getAreaTotal, getItemQuantity, getLineAmount, groupItemLines } from '../../domain/calculations.js';
 import { ENTRY_FORMULAS, UNIT_CHOICES, describeMeasurement, formulaLabel, getDimensionFields, measuredAs, resolveRate, usesCount } from '../../domain/rates.js';
 import { validateEntry } from '../../domain/validation.js';
+import { MEASUREMENT_KEYS } from '../../domain/bill-tree.js';
 import { formatCurrency, formatQuantity } from '../../domain/formatters.js';
 import { quotedRates } from '../../domain/quotations.js';
 import { tr as t, trn } from '../../i18n/translate.js';
 import FeetInchCalculator from './FeetInchCalculator.jsx';
+import AddWorksDialog from './AddWorksDialog.jsx';
 import WorkItemPicker from './WorkItemPicker.jsx';
 
 const SHORT_LABELS = { length: 'Length', width: 'Width', height: 'Height' };
 const FIELD_KEYS = ['count', 'length', 'width', 'height', 'quantity', 'note', 'calc', 'calcUnit'];
-const BLANK = { itemId: null, rateId: '', calc: '', calcUnit: '', count: '1', length: '', width: '', height: '', quantity: '1', note: '' };
+const BLANK = { itemId: null, linkedTo: '', rateId: '', calc: '', calcUnit: '', count: '1', length: '', width: '', height: '', quantity: '1', note: '' };
 
 const formFromItem = (item) => ({
   itemId: item.id,
+  linkedTo: item.linkedTo ?? '',
   rateId: item.rateId,
   calc: item.calc ?? '',
   calcUnit: item.calcUnit ?? '',
@@ -37,7 +41,7 @@ const formFromItem = (item) => ({
 });
 
 /** Nothing typed beyond the work item itself. */
-const isUntouched = (form) => !form.length && !form.width && !form.height && !form.note && form.count === '1' && form.quantity === '1';
+const isUntouched = (form) => !form.linkedTo && !form.length && !form.width && !form.height && !form.note && form.count === '1' && form.quantity === '1';
 
 /**
  * Add the entries of one room. A small form at the top (work item, measurements, Add) and the entries
@@ -61,6 +65,8 @@ function SheetBody({ section, area, focusItemId, onClose }) {
   const [touched, setTouched] = useState(false);
   const [showFormulas, setShowFormulas] = useState(false);
   const [calculator, setCalculator] = useState(false);
+  /** What the pop-up is adding works to: { item } (one entry's measurement) or { group } (the total of a work item in this room). */
+  const [shareFrom, setShareFrom] = useState(null);
 
   // New entries are priced from the bill's quotation (or the standard rates); a saved entry keeps its own price.
   const quoted = useMemo(() => quotedRates(data.rates, data.quotations.find((entryQuotation) => entryQuotation.id === bill.quotationId)), [data.rates, data.quotations, bill.quotationId]);
@@ -68,15 +74,21 @@ function SheetBody({ section, area, focusItemId, onClose }) {
   // The work item as priced. The entry may measure it its own way (form.calc); `rate` is the work item as measured here.
   const baseRate = form.rateId ? (editing && editing.rateId === form.rateId ? resolveRate({ ...editing, calc: '', calcUnit: '' }, quoted) : quoted.find((entryRate) => entryRate.id === form.rateId) || null) : null;
   const rate = baseRate ? measuredAs(baseRate, form.calc, form.calcUnit) : baseRate;
-  const issues = rate ? validateEntry(form, rate) : [];
-  const amount = rate && !issues.length ? getLineAmount(form, rate) : null;
+  /** The entry whose measurement this one shares (another work on the same door, floor area ...). */
+  const source = form.linkedTo ? area.items.find((item) => item.id === form.linkedTo && item.id !== form.itemId) || null : null;
+  const measure = source ? { ...form, ...Object.fromEntries(MEASUREMENT_KEYS.map((key) => [key, source[key] ?? ''])) } : form;
+  const nameOf = (item) => `${item.name}${item.note ? ` · ${item.note}` : ''}`;
+  const issues = rate ? validateEntry(measure, rate) : [];
+  const amount = rate && !issues.length ? getLineAmount(measure, rate) : null;
   const fields = rate ? getDimensionFields(rate.type) : [];
   const roomStyle = billStyleOf(bill) === 'room';
   const total = getAreaTotal(area, quoted, billStyleOf(bill));
   const [floorOpen, setFloorOpen] = useState(false);
-  /** In a room-style bill, entries of the same work item are listed together under the line the bill shows for them. */
-  const roomGroups = useMemo(() => (roomStyle ? groupItemLines(area.items, quoted) : []), [roomStyle, area.items, quoted]);
-  const orderedItems = roomStyle ? roomGroups.flatMap((group) => group.items) : area.items;
+  /** Entries of the same work item are listed together under their total (in a new-style bill, the line the bill shows for them). */
+  const roomGroups = useMemo(() => groupItemLines(area.items, quoted), [area.items, quoted]);
+  const orderedItems = roomGroups.flatMap((group) => group.items);
+  /** Entries that belong to a group header, so they can be tinted like it. */
+  const inGroup = new Set(roomGroups.filter((group) => group.items.length > 1).flatMap((group) => group.items));
   const groupOfFirst = new Map(roomGroups.filter((group) => group.items.length > 1).map((group) => [group.items[0], group]));
   /** All the lines of this floor, as the "By floor" layout of the bill shows them. */
   const floorLines = useMemo(() => {
@@ -112,7 +124,7 @@ function SheetBody({ section, area, focusItemId, onClose }) {
   function save() {
     setTouched(true);
     if (!rate || !form.rateId || issues.length) return false;
-    const values = { ...Object.fromEntries(FIELD_KEYS.map((key) => [key, form[key]])), calc: form.calc === baseRate.type ? '' : form.calc, calcUnit: rate.type === 'direct' && form.calcUnit.trim() !== baseRate.unit ? form.calcUnit.trim() : '', name: baseRate.name, unit: baseRate.unit, type: baseRate.type, rate: baseRate.rate };
+    const values = { ...Object.fromEntries(FIELD_KEYS.map((key) => [key, measure[key]])), ...(source ? { linkedTo: source.id } : editing?.linkedTo ? { linkedTo: '' } : {}), calc: form.calc === baseRate.type ? '' : form.calc, calcUnit: rate.type === 'direct' && form.calcUnit.trim() !== baseRate.unit ? form.calcUnit.trim() : '', name: baseRate.name, unit: baseRate.unit, type: baseRate.type, rate: baseRate.rate };
     if (form.itemId) entry.updateItem(section.id, area.id, form.itemId, values);
     else if (!entry.addItem(section.id, area.id, form.rateId, values)) return false;
     return true;
@@ -122,6 +134,7 @@ function SheetBody({ section, area, focusItemId, onClose }) {
     const wasEditing = Boolean(form.itemId);
     if (!save()) return;
     if (wasEditing) setForm({ ...BLANK });
+    else if (source) setForm({ ...BLANK, linkedTo: source.id }); // the next work on the same measurement
     else setForm({ ...BLANK, rateId: form.rateId, calc: form.calc, calcUnit: form.calcUnit }); // same work item, way of measuring and unit again; only the measurements are cleared
     setTouched(false);
     if (wasEditing) window.setTimeout(() => bodyRef.current?.querySelector('[data-sheet-input="item"]')?.focus(), 40);
@@ -133,6 +146,22 @@ function SheetBody({ section, area, focusItemId, onClose }) {
     if (!ok) return;
     entry.removeItem(section.id, area.id, item.id);
     if (form.itemId === item.id) setForm({ ...BLANK });
+  }
+
+  /** One new entry per chosen work item, all sharing the numbers of the entry the pop-up was opened from. */
+  function addWorks(rateIds) {
+    const { item: from, group } = shareFrom;
+    rateIds.forEach((rateId) => {
+      if (from) {
+        entry.addItem(section.id, area.id, rateId, Object.fromEntries([['linkedTo', from.id], ...MEASUREMENT_KEYS.map((key) => [key, from[key] ?? ''])]));
+        return;
+      }
+      // The total of a work item: one entry of that quantity, in the unit of the total.
+      const base = quoted.find((entryRate) => entryRate.id === rateId);
+      entry.addItem(section.id, area.id, rateId, { calc: base.type === 'direct' ? '' : 'direct', calcUnit: group.unit !== base.unit ? group.unit : '', count: 1, quantity: String(group.quantity), note: t('Total of {name}', { name: group.name }) });
+    });
+    setShareFrom(null);
+    notify(trn(rateIds.length, '{count} work added on {name}.', '{count} works added on {name}.', { name: from ? nameOf(from) : group.name }));
   }
 
   function onKeyDown(event) {
@@ -186,18 +215,10 @@ function SheetBody({ section, area, focusItemId, onClose }) {
         </Stack>
 
         {/* The form */}
-        <Box sx={{ border: 1, borderColor: editing ? 'primary.main' : 'divider', borderRadius: 2, p: 1.25, bgcolor: 'action.hover' }}>
+        <Box sx={{ border: 1, borderColor: editing ? 'primary.main' : 'divider', borderRadius: 2, p: 1.25, bgcolor: 'background.default' }}>
           <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, display: 'block', mb: 0.75 }}>
             {editing ? t('Changing an entry') : t('New entry')}
           </Typography>
-          {!form.itemId && recentIds.length > 0 && (
-            <Stack direction="row" sx={{ gap: 0.75, mb: 1, overflowX: 'auto', pb: 0.25 }}>
-              {recentIds.map((id) => {
-                const recent = quoted.find((entryRate) => entryRate.id === id);
-                return <Chip key={id} size="small" variant={form.rateId === id ? 'filled' : 'outlined'} color={form.rateId === id ? 'primary' : 'default'} label={recent.name} onClick={() => pickRate(id)} sx={{ flexShrink: 0 }} />;
-              })}
-            </Stack>
-          )}
           <WorkItemPicker
             compact
             rates={quoted.filter((entryRate) => !entryRate.archived || entryRate.id === form.rateId)}
@@ -240,7 +261,12 @@ function SheetBody({ section, area, focusItemId, onClose }) {
               )}
             </Box>
           )}
-          {rate && (
+          {rate && source && (
+            <Typography variant="body2" sx={{ mt: 1 }}>{t('Uses the measurement of {name}', { name: nameOf(source) })}: <strong>{describeMeasurement(source, resolveRate(source, quoted))}</strong>{' '}
+              <Link component="button" type="button" underline="hover" variant="body2" onClick={() => update({ linkedTo: '', ...Object.fromEntries(MEASUREMENT_KEYS.map((key) => [key, source[key] ?? ''])) })}>{t('Measure separately')}</Link>
+            </Typography>
+          )}
+          {rate && !source && (
             <Stack direction="row" sx={{ mt: 1, gap: 1, flexWrap: 'wrap', alignItems: 'flex-end' }}>
               {usesCount(rate.type) && <Field label={t('Nos')} value={form.count} name="count" onChange={(value) => { update({ count: value }); setTouched(true); }} />}
               {fields.map((field) => (
@@ -252,7 +278,7 @@ function SheetBody({ section, area, focusItemId, onClose }) {
           {rate && (
             <Stack direction="row" sx={{ mt: 0.75, alignItems: 'center', justifyContent: 'space-between' }}>
               <Typography variant="caption" color={touched && pending && issues.length ? 'error' : 'text.secondary'} sx={{ flex: 1, minWidth: 0 }}>
-                {touched && pending && issues.length ? issues[0] : issues.length ? '' : `${describeMeasurement(form, rate)} → ${formatQuantity(getItemQuantity(form, rate), rate.type)} ${rate.unit} × ${formatCurrency(rate.rate)}`}
+                {touched && pending && issues.length ? issues[0] : issues.length ? '' : `${describeMeasurement(measure, rate)} → ${formatQuantity(getItemQuantity(measure, rate), rate.type)} ${rate.unit} × ${formatCurrency(rate.rate)}`}
               </Typography>
               <Typography variant="subtitle1" color={amount === null ? 'text.disabled' : 'primary'} sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>{amount === null ? '—' : formatCurrency(amount)}</Typography>
             </Stack>
@@ -275,20 +301,22 @@ function SheetBody({ section, area, focusItemId, onClose }) {
               return (
                 <Fragment key={item.id}>
                 {group && (
-                  <Stack direction="row" sx={{ justifyContent: 'space-between', gap: 1, pt: 0.75, borderBottom: 1, borderColor: 'divider', pb: 0.25 }}>
-                    <Typography variant="caption" sx={{ fontWeight: 700 }} noWrap>{group.name} · {formatQuantity(group.quantity, group.type)} {group.unit}</Typography>
-                    <Typography variant="caption" color="primary" sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>{t('{amount} on the bill', { amount: formatCurrency(group.amount) })}</Typography>
+                  <Stack direction="row" sx={(theme) => ({ justifyContent: 'space-between', alignItems: 'center', gap: 1, mt: 0.75, px: 1, py: 0.25, borderRadius: 1.5, borderLeft: '3px solid #5a8f3c', bgcolor: 'rgba(90, 143, 60, 0.12)', color: '#3f6b28', ...theme.applyStyles('dark', { borderLeftColor: '#9fc140', bgcolor: 'rgba(159, 193, 64, 0.14)', color: '#c3e07a' }) })}>
+                    <Typography variant="caption" sx={{ fontWeight: 700, flex: 1, minWidth: 0 }} noWrap>{group.name} · {formatQuantity(group.quantity, group.type)} {group.unit}</Typography>
+                    {roomStyle && <Typography variant="caption" sx={{ fontWeight: 700, whiteSpace: 'nowrap', color: 'inherit' }}>{t('{amount} on the bill', { amount: formatCurrency(group.amount) })}</Typography>}
+                    <IconButton aria-label={t('Add works on the total of {name}', { name: group.name })} title={t('Add works on this total')} onClick={() => setShareFrom({ group })} color="inherit" size="small" sx={{ p: 0.25 }}><PlaylistAddIcon fontSize="small" /></IconButton>
                   </Stack>
                 )}
-                <Stack direction="row" sx={{ alignItems: 'center', borderBottom: 1, borderColor: 'divider', bgcolor: form.itemId === item.id ? 'action.selected' : 'transparent' }}>
+                <Stack direction="row" sx={(theme) => ({ alignItems: 'center', borderBottom: 1, borderColor: 'divider', bgcolor: 'transparent', ...(inGroup.has(item) ? { pl: 1, borderLeft: '3px solid #5a8f3c', bgcolor: 'rgba(90, 143, 60, 0.06)', ...theme.applyStyles('dark', { borderLeftColor: '#9fc140', bgcolor: 'rgba(159, 193, 64, 0.07)' }) } : {}), ...(form.itemId === item.id ? { bgcolor: 'action.selected' } : {}) })}>
                   <Box component="button" type="button" onClick={() => { setForm(formFromItem(item)); setTouched(false); focusField(); }} aria-label={t('Change entry {number}', { number: index + 1 })}
                     sx={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 0, p: 0, py: 0.9, color: 'inherit', font: 'inherit', cursor: 'pointer' }}>
                     <Stack direction="row" sx={{ justifyContent: 'space-between', gap: 1 }}>
-                      <Typography variant="body2" noWrap sx={{ fontWeight: 600 }}>{itemRate.name}{item.note ? ` · ${item.note}` : ''}</Typography>
+                      <Typography variant="body2" noWrap sx={{ fontWeight: 600 }}>{item.linkedTo ? '↳ ' : ''}{itemRate.name}{item.note ? ` · ${item.note}` : ''}</Typography>
                       <Typography variant="body2" color="primary" sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>{formatCurrency(getLineAmount(item, itemRate))}</Typography>
                     </Stack>
                     <Typography variant="caption" color="text.secondary" component="div" noWrap>{describeMeasurement(item, itemRate)} · {formatQuantity(getItemQuantity(item, itemRate), itemRate.type)} {itemRate.unit} × {formatCurrency(itemRate.rate)}</Typography>
                   </Box>
+                  <IconButton aria-label={t('Add another work on the measurement of entry {number}', { number: index + 1 })} title={t('Add another work on this measurement')} onClick={() => setShareFrom({ item: area.items.find((entryItem) => entryItem.id === item.linkedTo) || item })} color="primary" size="small"><PlaylistAddIcon fontSize="small" /></IconButton>
                   <IconButton aria-label={t('Delete entry {number}', { number: index + 1 })} onClick={() => remove(item)} color="error" size="small"><DeleteIcon fontSize="small" /></IconButton>
                 </Stack>
                 </Fragment>
@@ -317,6 +345,15 @@ function SheetBody({ section, area, focusItemId, onClose }) {
         onUseQuantity={rate && !usesCount(rate.type) ? (value) => { update({ quantity: value }); setTouched(true); } : undefined}
         onClose={() => setCalculator(false)}
       />
+      {shareFrom && (
+        <AddWorksDialog
+          title={shareFrom.group ? t('{name} · total of {count} entries', { name: shareFrom.group.name, count: shareFrom.group.items.length }) : nameOf(shareFrom.item)}
+          measurement={shareFrom.group ? `${formatQuantity(shareFrom.group.quantity, shareFrom.group.type)} ${shareFrom.group.unit}` : describeMeasurement(shareFrom.item, resolveRate(shareFrom.item, quoted))}
+          rates={quoted.filter((entryRate) => !entryRate.archived)}
+          onAdd={addWorks}
+          onClose={() => setShareFrom(null)}
+        />
+      )}
     </ResponsiveDialog>
   );
 }

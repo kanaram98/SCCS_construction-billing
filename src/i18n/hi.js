@@ -1502,5 +1502,19 @@ export default {
   'Round off': 'राउंड ऑफ',
   '{item} · {place} total (goes to the bill)': '{item} · {place} कुल (बिल में जाता है)',
   '{amount} on the bill': 'बिल में {amount}',
-  '{floor} · what the bill shows by floor': '{floor} · बिल में मंज़िल के अनुसार क्या दिखेगा'
+  '{floor} · what the bill shows by floor': '{floor} · बिल में मंज़िल के अनुसार क्या दिखेगा',
+  'Uses the measurement of {name}': '{name} की नाप इस्तेमाल हो रही है',
+  'Add another work on the measurement of entry {number}': 'एंट्री {number} की नाप पर दूसरा काम जोड़ें',
+  'Add works on this measurement': 'इसी नाप पर काम जोड़ें',
+  'Add {count} work': '{count} काम जोड़ें',
+  'Add {count} works': '{count} काम जोड़ें',
+  'Choose works': 'काम चुनें',
+  'Measure separately': 'अलग से नापें',
+  'Add another work on this measurement': 'इसी नाप पर दूसरा काम जोड़ें',
+  '{count} work added on {name}.': '{name} पर {count} काम जोड़ा गया।',
+  '{count} works added on {name}.': '{name} पर {count} काम जोड़े गए।',
+  'Total of {name}': '{name} का कुल',
+  '{name} · total of {count} entries': '{name} · {count} एंट्री का कुल',
+  'Add works on the total of {name}': '{name} के कुल पर काम जोड़ें',
+  'Add works on this total': 'इसी कुल पर काम जोड़ें'
 };
