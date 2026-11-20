@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
@@ -10,7 +10,7 @@ import CalculateIcon from '@mui/icons-material/CalculateOutlined';
 import DeleteIcon from '@mui/icons-material/DeleteOutlined';
 import { ResponsiveDialog, TextField, useConfirm, useNotify } from '../../components/ui';
 import { useBilling } from '../../state/BillingContext.jsx';
-import { getItemQuantity, getLineAmount } from '../../domain/calculations.js';
+import { billStyleOf, getAreaTotal, getItemQuantity, getLineAmount, groupItemLines } from '../../domain/calculations.js';
 import { ENTRY_FORMULAS, UNIT_CHOICES, describeMeasurement, formulaLabel, getDimensionFields, measuredAs, resolveRate, usesCount } from '../../domain/rates.js';
 import { validateEntry } from '../../domain/validation.js';
 import { formatCurrency, formatQuantity } from '../../domain/formatters.js';
@@ -71,7 +71,19 @@ function SheetBody({ section, area, focusItemId, onClose }) {
   const issues = rate ? validateEntry(form, rate) : [];
   const amount = rate && !issues.length ? getLineAmount(form, rate) : null;
   const fields = rate ? getDimensionFields(rate.type) : [];
-  const total = area.items.reduce((sum, item) => sum + getLineAmount(item, resolveRate(item, quoted)), 0);
+  const roomStyle = billStyleOf(bill) === 'room';
+  const total = getAreaTotal(area, quoted, billStyleOf(bill));
+  const [floorOpen, setFloorOpen] = useState(false);
+  /** In a room-style bill, entries of the same work item are listed together under the line the bill shows for them. */
+  const roomGroups = useMemo(() => (roomStyle ? groupItemLines(area.items, quoted) : []), [roomStyle, area.items, quoted]);
+  const orderedItems = roomStyle ? roomGroups.flatMap((group) => group.items) : area.items;
+  const groupOfFirst = new Map(roomGroups.filter((group) => group.items.length > 1).map((group) => [group.items[0], group]));
+  /** All the lines of this floor, as the "By floor" layout of the bill shows them. */
+  const floorLines = useMemo(() => {
+    if (!roomStyle) return [];
+    const live = (bill.sections || []).find((entry) => entry.id === section.id) || section;
+    return groupItemLines((live.areas || []).flatMap((entry) => (entry.id === area.id ? area.items : entry.items || [])), quoted);
+  }, [roomStyle, bill.sections, section, area, quoted]);
 
   /** Work items used lately in this bill, newest first. */
   const recentIds = useMemo(() => {
@@ -256,10 +268,19 @@ function SheetBody({ section, area, focusItemId, onClose }) {
         {area.items.length > 0 && (
           <Box sx={{ mt: 1.5 }}>
             <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>{t('In this room')}</Typography>
-            {area.items.map((item, index) => {
+            {orderedItems.map((item) => {
+              const index = area.items.indexOf(item);
               const itemRate = resolveRate(item, quoted);
+              const group = groupOfFirst.get(item);
               return (
-                <Stack key={item.id} direction="row" sx={{ alignItems: 'center', borderBottom: 1, borderColor: 'divider', bgcolor: form.itemId === item.id ? 'action.selected' : 'transparent' }}>
+                <Fragment key={item.id}>
+                {group && (
+                  <Stack direction="row" sx={{ justifyContent: 'space-between', gap: 1, pt: 0.75, borderBottom: 1, borderColor: 'divider', pb: 0.25 }}>
+                    <Typography variant="caption" sx={{ fontWeight: 700 }} noWrap>{group.name} · {formatQuantity(group.quantity, group.type)} {group.unit}</Typography>
+                    <Typography variant="caption" color="primary" sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>{t('{amount} on the bill', { amount: formatCurrency(group.amount) })}</Typography>
+                  </Stack>
+                )}
+                <Stack direction="row" sx={{ alignItems: 'center', borderBottom: 1, borderColor: 'divider', bgcolor: form.itemId === item.id ? 'action.selected' : 'transparent' }}>
                   <Box component="button" type="button" onClick={() => { setForm(formFromItem(item)); setTouched(false); focusField(); }} aria-label={t('Change entry {number}', { number: index + 1 })}
                     sx={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 0, p: 0, py: 0.9, color: 'inherit', font: 'inherit', cursor: 'pointer' }}>
                     <Stack direction="row" sx={{ justifyContent: 'space-between', gap: 1 }}>
@@ -270,8 +291,22 @@ function SheetBody({ section, area, focusItemId, onClose }) {
                   </Box>
                   <IconButton aria-label={t('Delete entry {number}', { number: index + 1 })} onClick={() => remove(item)} color="error" size="small"><DeleteIcon fontSize="small" /></IconButton>
                 </Stack>
+                </Fragment>
               );
             })}
+          </Box>
+        )}
+        {roomStyle && floorLines.length > 0 && (
+          <Box sx={{ mt: 1.5, borderRadius: 2, bgcolor: 'primary.dark', color: 'primary.contrastText', p: 1.25 }}>
+            <Box component="button" type="button" onClick={() => setFloorOpen((open) => !open)} aria-expanded={floorOpen} sx={{ all: 'unset', cursor: 'pointer', display: 'block', width: '100%', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', opacity: 0.9 }}>
+              {floorOpen ? '▾' : '▸'} {t('{floor} · what the bill shows by floor', { floor: section.name })}
+            </Box>
+            {floorOpen && floorLines.map((line) => (
+              <Stack key={line.key} direction="row" sx={{ justifyContent: 'space-between', gap: 1, py: 0.4, mt: 0.4, borderTop: 1, borderColor: 'rgba(255,255,255,.25)' }}>
+                <Typography variant="body2" noWrap>{line.name}</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>{formatQuantity(line.quantity, line.type)} {line.unit} · {formatCurrency(line.amount)}</Typography>
+              </Stack>
+            ))}
           </Box>
         )}
       </Box>

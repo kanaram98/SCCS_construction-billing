@@ -35,6 +35,8 @@ const ROW_STYLES = Object.freeze({
   sectionTotal: { fillColor: COLORS.subtleFill, fontStyle: 'bold' },
   words: { fontStyle: 'italic' },
   total: { fontStyle: 'bold' },
+  groupTotal: { fillColor: [255, 244, 236], fontStyle: 'bold' },
+  round: { fillColor: [255, 244, 236], fontStyle: 'bolditalic' },
   grandTotal: { fillColor: COLORS.bandFill, textColor: 255, fontStyle: 'bold' }
 });
 
@@ -188,7 +190,12 @@ function renderDocument(doc, documentType, { bill, rates, firm, settings, includ
     autoTable(doc, {
       head: [columns],
       // Single-cell rows (headings, amount in words) span the full width.
-      body: rows.map((row) => (row.cells.length === 1 ? [{ content: row.cells[0], colSpan: columns.length }] : row.cells)),
+      body: rows.map((row) => {
+        if (row.cells.length === 1) return [{ content: row.cells[0], colSpan: columns.length }];
+        // The total of a group of entries spans the item columns and keeps its quantity and unit.
+        if (row.kind === 'groupTotal') return [{ content: row.cells[0], colSpan: columns.length - 2 }, row.cells[row.cells.length - 2], row.cells[row.cells.length - 1]];
+        return row.cells;
+      }),
       startY: chunkIndex === 0 || settings.headerMode === 'all' ? headerBottom : margin,
       margin: {
         left: margin,

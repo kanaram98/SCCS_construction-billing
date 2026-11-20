@@ -22,6 +22,8 @@ const ROW_CLASSES = {
   total: 'area-total-row',
   sectionTotal: 'section-total-row',
   grandTotal: 'grand-row',
+  groupTotal: 'group-total-row',
+  round: 'round-row',
   words: 'words-row'
 };
 

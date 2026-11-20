@@ -16,7 +16,7 @@ import Box from '@mui/material/Box';
 import EditIcon from '@mui/icons-material/EditOutlined';
 import { ActionMenu, useConfirm } from '../../components/ui';
 import RenameDialog from '../../components/ui/RenameDialog.jsx';
-import { getAreaTotal } from '../../domain/calculations.js';
+import { billStyleOf, getAreaTotal } from '../../domain/calculations.js';
 import { isEntryLocked, lockState } from '../../domain/bill-guard.js';
 import { useUndoable } from '../../hooks/useUndoable.js';
 import GroupSummary from './GroupSummary.jsx';
@@ -96,7 +96,7 @@ export default function AreaPanel({ section, area, index, sections, open, visibl
           variant="area"
           name={area.name}
           meta={trn(area.items.length, '{count} entry', '{count} entries')}
-          total={getAreaTotal(area, data.rates)}
+          total={getAreaTotal(area, data.rates, billStyleOf(bill))}
         />
         {!readOnly && <Box onClick={(event) => event.stopPropagation()} onFocus={(event) => event.stopPropagation()} sx={{ display: 'flex', alignItems: 'center' }}>
           <ActionMenu

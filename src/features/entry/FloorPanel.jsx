@@ -15,7 +15,7 @@ import { useBilling } from '../../state/BillingContext.jsx';
 import { useUndoable } from '../../hooks/useUndoable.js';
 import { ActionMenu, useConfirm } from '../../components/ui';
 import RenameDialog from '../../components/ui/RenameDialog.jsx';
-import { countSectionItems, getSectionTotal } from '../../domain/calculations.js';
+import { billStyleOf, countSectionItems, getSectionTotal } from '../../domain/calculations.js';
 import { formatCurrency } from '../../domain/formatters.js';
 import { tr as t, trn } from '../../i18n/translate.js';
 import { isEntryLocked, lockState } from '../../domain/bill-guard.js';
@@ -84,7 +84,7 @@ export default function FloorPanel({ section, sections, disclosure, levelName, s
             {trn(section.areas.length, '{count} area', '{count} areas')} · {trn(itemCount, '{count} entry', '{count} entries')}
           </Typography>
         </Box>
-        <Typography variant="subtitle1" color="primary" sx={{ whiteSpace: 'nowrap' }}>{formatCurrency(getSectionTotal(section, data.rates))}</Typography>
+        <Typography variant="subtitle1" color="primary" sx={{ whiteSpace: 'nowrap' }}>{formatCurrency(getSectionTotal(section, data.rates, billStyleOf(bill)))}</Typography>
         {!readOnly && <ActionMenu
           label={t('Actions for {name}', { name: section.name })}
           items={[

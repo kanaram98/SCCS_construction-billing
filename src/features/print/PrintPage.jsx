@@ -45,6 +45,8 @@ export default function PrintPage({ focus = {} }) {
   const print = actions.print;
   const [tab, setTab] = useState(TABS.preview);
   const [previewingPrint, setPreviewingPrint] = useState(false);
+  /** How the bill and the measurement sheet are laid out for this print: { bill, measurement } (not saved; each print starts in the bill's own layout). */
+  const [layouts, setLayouts] = useState({});
 
   const exportErrors = useMemo(
     () => getExportErrors({ bill, bills: data.bills, rates, firm }),
@@ -55,7 +57,9 @@ export default function PrintPage({ focus = {} }) {
     ? printSettings.previewDocument
     : selectedDocuments[0] || 'bill';
   const runningAccount = useMemo(() => getRunningAccount(data.bills, bill, rates), [data.bills, bill, rates]);
-  const pdfExporter = usePdfExport({ bill, rates, firm, printSettings, exportErrors, selectedDocuments, runningAccount });
+  /** The saved print settings plus this print's layouts; only used to draw documents, never saved. */
+  const renderSettings = useMemo(() => ({ ...printSettings, layouts }), [printSettings, layouts]);
+  const pdfExporter = usePdfExport({ bill, rates, firm, printSettings: renderSettings, exportErrors, selectedDocuments, runningAccount });
   /** Print first shows what will print; "Print now" in that preview opens the browser print dialog. */
   const exporter = {
     ...pdfExporter,
@@ -104,7 +108,8 @@ export default function PrintPage({ focus = {} }) {
               bill={bill}
               firm={firm}
               rates={rates}
-              printSettings={printSettings}
+              printSettings={renderSettings}
+              onLayoutChange={(documentType, layout) => (documentType === 'summary' ? print.update({ summaryDetail: layout === 'floor' ? 'section' : 'area' }) : setLayouts((current) => ({ ...current, [documentType]: layout })))}
               selectedDocuments={selectedDocuments}
               previewDocument={previewDocument}
               exportErrors={exportErrors}
@@ -159,7 +164,7 @@ export default function PrintPage({ focus = {} }) {
         bill={bill}
         firm={firm}
         rates={rates}
-        printSettings={printSettings}
+        printSettings={renderSettings}
         selectedDocuments={selectedDocuments}
         runningAccount={runningAccount}
       />
@@ -172,7 +177,7 @@ export default function PrintPage({ focus = {} }) {
             bill={bill}
             firm={firm}
             rates={rates}
-            printSettings={printSettings}
+            printSettings={renderSettings}
             documentType={documentType}
             signatureVisible={isSignatureVisible(printSettings, index, selectedDocuments.length)}
             runningAccount={runningAccount}

@@ -211,6 +211,10 @@ describe('what the contractor (your father) can and cannot do', () => {
     await assertSucceeds(put(as(ADMIN), bill, { ...bill.data, version: bill.data.version + 1, updatedBy: ADMIN.uid, status: 'ready', readyAt: NOW, quotationId: 'q1', quotationLabel: 'Q-0001' }));
     await assertFails(put(as(ADMIN), bill, { ...bill.data, version: bill.data.version + 1, updatedBy: ADMIN.uid, audit: 'x' }));
     await assertSucceeds(put(as(ADMIN), bill, { ...bill.data, version: bill.data.version + 2, updatedBy: ADMIN.uid, firmSnapshot: { name: 'SCCS' } }));
+    // how a bill adds up: a new bill is 'room', an older one 'entry'; nothing else
+    await assertSucceeds(put(as(ADMIN), bill, { ...bill.data, version: bill.data.version + 3, updatedBy: ADMIN.uid, billStyle: 'room' }));
+    await assertSucceeds(put(as(ADMIN), bill, { ...bill.data, version: bill.data.version + 4, updatedBy: ADMIN.uid, billStyle: 'entry' }));
+    await assertFails(put(as(ADMIN), bill, { ...bill.data, version: bill.data.version + 5, updatedBy: ADMIN.uid, billStyle: 'floor' }));
     const rate = find(docs, 'rates');
     await assertSucceeds(put(as(ADMIN), rate, { ...rate.data, version: rate.data.version + 1, updatedBy: ADMIN.uid, archived: true }));
     await assertFails(put(as(ADMIN), rate, { ...rate.data, version: rate.data.version + 2, updatedBy: ADMIN.uid, archived: 'yes' }));

@@ -20,6 +20,8 @@
 .paper .section-band td { background: #293d57; color: white; font-weight: 700; }
 .paper .area-band td { background: #e6e9ed; font-weight: 700; }
 .paper .section-total-row td, .paper .area-total-row td { background: #eef0f2; font-weight: 700; }
+.paper .group-total-row td { background: #fff4ec; font-weight: 700; border-top: 1.5px solid #ec6b35; }
+.paper .round-row td { background: #fff4ec; font-style: italic; font-weight: 700; }
 .paper .grand-row { background: #293d57; color: white; font-size: 17px; font-weight: 700; }
 .paper .words-row td { font-style: italic; }
 .paper .print-repeat-header { display: none; }

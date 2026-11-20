@@ -152,7 +152,7 @@ service cloud.firestore {
       return fields(recordKeys().concat(['number', 'date', 'projectName', 'clientId', 'client', 'clientPhone',
           'clientAddress', 'clientGstin', 'firstLevelName', 'secondLevelName', 'discount', 'taxRate',
           'gstEnabled', 'gstType', 'advance', 'payments', 'footer', 'sections']),
-          ['order', 'kind', 'isSample', 'projectId', 'raSeriesId', 'raNumber', 'convertedBillId', 'sourceEstimateId', 'advanceAdjustments', 'final', 'finalizedAt', 'name', 'firmSnapshot', 'status', 'readyAt', 'submittedAt', 'settledOn', 'settlement', 'quotationId', 'quotationLabel', 'cancelled', 'cancelledAt', 'cancelReason', 'audit'])
+          ['order', 'kind', 'isSample', 'projectId', 'raSeriesId', 'raNumber', 'convertedBillId', 'sourceEstimateId', 'advanceAdjustments', 'final', 'finalizedAt', 'name', 'firmSnapshot', 'status', 'readyAt', 'submittedAt', 'settledOn', 'settlement', 'quotationId', 'quotationLabel', 'billStyle', 'cancelled', 'cancelledAt', 'cancelReason', 'audit'])
         && validMeta(id)
         && str(d.number, 30) && str(d.date, 10)
         && (!('kind' in d) || d.kind in ['bill', 'estimate'])
@@ -173,6 +173,7 @@ service cloud.firestore {
         && (!('status' in d) || d.status in ['draft', 'ready', 'submitted']) && optStr(d, 'readyAt', 40) && optStr(d, 'submittedAt', 40) && optStr(d, 'settledOn', 40)
         && (!('settlement' in d) || (d.settlement is map && d.settlement.kind in ['carry', 'discount', 'due'] && d.settlement.amount is number))
         && optStr(d, 'quotationId', 100) && optStr(d, 'quotationLabel', 200)
+        && (!('billStyle' in d) || d.billStyle in ['entry', 'room'])
         && (!('cancelled' in d) || d.cancelled is bool) && optStr(d, 'cancelledAt', 40) && optStr(d, 'cancelReason', 5000)
         && (!('audit' in d) || (d.audit is list && d.audit.size() <= 100));
     }

@@ -1494,5 +1494,13 @@ export default {
   'Choose the project this worker works on.': 'चुनें कि यह कारीगर किस प्रोजेक्ट पर काम करता है।',
   'Create a project first, then add workers to it.': 'पहले एक प्रोजेक्ट बनाएँ, फिर उसमें कारीगर जोड़ें।',
   'Its {things} ({amount}) will be deleted too. Be sure the money was returned or moved to another project. Undo brings them back.': 'इसके {things} ({amount}) भी हट जाएँगे। पक्का करें कि पैसा लौटाया गया या दूसरे प्रोजेक्ट में डाला गया। पूर्ववत करने पर वापस आ जाएँगे।',
-  'No workers on this project yet': 'इस प्रोजेक्ट पर अभी कोई कारीगर नहीं'
+  'No workers on this project yet': 'इस प्रोजेक्ट पर अभी कोई कारीगर नहीं',
+  'Layout': 'लेआउट',
+  'By room': 'कमरे के अनुसार',
+  'By floor': 'मंज़िल के अनुसार',
+  'Every entry': 'हर एंट्री अलग',
+  'Round off': 'राउंड ऑफ',
+  '{item} · {place} total (goes to the bill)': '{item} · {place} कुल (बिल में जाता है)',
+  '{amount} on the bill': 'बिल में {amount}',
+  '{floor} · what the bill shows by floor': '{floor} · बिल में मंज़िल के अनुसार क्या दिखेगा'
 };

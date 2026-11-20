@@ -39,7 +39,8 @@ const withRecordMeta = (item, by) => ({
 
 /** Fields every item must have; saved data from older versions of the app can lack some. */
 const REQUIRED_DEFAULTS = {
-  bills: () => { const { id: _id, ...fields } = createBill(); return fields; },
+  // A bill saved before bill styles existed adds up entry by entry; only new bills are made with the 'room' style.
+  bills: () => { const { id: _id, ...fields } = createBill(); return { ...fields, billStyle: 'entry' }; },
   clients: () => ({ name: '', phone: '', address: '', gstin: '' }),
   rates: () => ({ name: '', unit: 'nos', type: 'count', rate: 0 }),
   templates: () => ({ name: '', type: 'area' }),

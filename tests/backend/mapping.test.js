@@ -98,3 +98,16 @@ test('roles: the contractor does daily work, admin-only tools stay with the admi
   }
   assert.equal(can(undefined, 'editBill'), false);
 });
+
+test('a bill saved before bill styles existed stays the older entry-by-entry kind when uploaded and when read, so its total does not change', async () => {
+  const { billStyleOf } = await import('../../src/domain/calculations.js');
+  const state = buildSampleState();
+  const older = { ...state, bills: state.bills.map(({ billStyle: _gone, ...bill }) => bill) };
+  const docs = toDocuments(older, { by: 'u1' });
+  const bill = docs.find((entry) => entry.collection === 'bills');
+  assert.equal(bill.data.billStyle, 'entry'); // written as the older kind, not as the new default
+  assert.equal(toDocuments(state, { by: 'u1' }).find((entry) => entry.collection === 'bills').data.billStyle, 'room'); // a new bill keeps its style
+  const { billStyle: _style, ...withoutStyle } = bill.data;
+  const read = fromDocuments([{ ...bill, exists: true, data: withoutStyle }], {}, new Date());
+  assert.equal(billStyleOf(read.bills[0]), 'entry');
+});

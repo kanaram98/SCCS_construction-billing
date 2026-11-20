@@ -170,6 +170,7 @@ export const billSchema = z.strictObject({
   /** The quotation this bill or estimate is priced from, and its label (Q-0003 v2) saved with the bill. */
   quotationId: z.string().max(LIMITS.id).optional(),
   quotationLabel: short.optional(),
+  billStyle: z.enum(['entry', 'room']).optional(),
   cancelled: z.boolean().optional(),
   cancelledAt: isoTime.optional(),
   cancelReason: long.optional(),

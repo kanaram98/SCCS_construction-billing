@@ -24,6 +24,8 @@ export function createBill(number = '1', { gstEnabled = false } = {}) {
     advance: '',
     payments: [],
     footer: '',
+    // New bills add up room by room (see billStyleOf in calculations.js); a bill with no style is an older one.
+    billStyle: 'room',
     sections: []
   };
 }

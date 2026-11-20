@@ -12,11 +12,15 @@ import { IssuesAlert, SelectField } from '../../components/ui';
 import { getPrintDocument, isSignatureVisible } from '../../domain/print-settings.js';
 import DocumentPreview, { getPaperWidthPx } from './preview/DocumentPreview.jsx';
 import FitToWidth from './preview/FitToWidth.jsx';
+import { BILL_LAYOUTS, layoutOptions, resolveLayout } from '../../domain/bill-layout.js';
 import { getLanguage, tr as t, trn } from '../../i18n/translate.js';
 
 /** Export actions on top, the scaled page preview straight below. */
-export default function PreviewTab({ bill, firm, rates, printSettings, selectedDocuments, previewDocument, exportErrors, exporter, onPreviewChange, onSignatureLayoutChange, runningAccount, onBillLanguageChange }) {
+export default function PreviewTab({ bill, firm, rates, printSettings, selectedDocuments, previewDocument, exportErrors, exporter, onPreviewChange, onSignatureLayoutChange, runningAccount, onBillLanguageChange, onLayoutChange }) {
   const billLanguage = resolveBillLanguage(printSettings, getLanguage());
+  // Layout of the document being previewed: the bill and the measurement sheet by room or by floor, the summary by its detail setting.
+  const layoutChoices = previewDocument === 'summary' ? ['room', 'floor'] : previewDocument === 'bill' || previewDocument === 'measurement' ? layoutOptions(bill) : [];
+  const layoutValue = previewDocument === 'summary' ? (printSettings.summaryDetail === 'section' ? 'floor' : 'room') : resolveLayout(bill, printSettings.layouts, previewDocument);
   return (
     <>
       <Stack direction="row" spacing={1} sx={{ mb: 1.5, alignItems: 'center' }}>
@@ -59,6 +63,15 @@ export default function PreviewTab({ bill, firm, rates, printSettings, selectedD
           <ToggleButton value="hi" sx={{ px: 2 }}>हिंदी</ToggleButton>
         </ToggleButtonGroup>
       </Stack>
+
+      {layoutChoices.length > 0 && (
+        <Stack direction="row" spacing={1} sx={{ mb: 1.5, alignItems: 'center' }}>
+          <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>{t('Layout')}</Typography>
+          <ToggleButtonGroup size="small" exclusive color="primary" value={layoutValue} onChange={(_event, value) => value && onLayoutChange(previewDocument, value)} aria-label={t('Layout')}>
+            {layoutChoices.map((choice) => <ToggleButton key={choice} value={choice} sx={{ px: 2, textTransform: 'none' }}>{t(BILL_LAYOUTS[choice])}</ToggleButton>)}
+          </ToggleButtonGroup>
+        </Stack>
+      )}
 
       <IssuesAlert issues={exportErrors} severity="error" suffix={t('to fix before export')} />
 

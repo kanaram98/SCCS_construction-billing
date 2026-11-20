@@ -34,12 +34,39 @@ export function getItemsTotal(items, rates) {
   return (items || []).reduce((sum, item) => sum + getLineAmount(item, resolveRate(item, rates)), 0);
 }
 
-export function getAreaTotal(area, rates) {
-  return getItemsTotal(area.items, rates);
+/**
+ * The lines of a group of entries (a room, or a floor's rooms together): entries of the same work item with the
+ * same unit and price are added into one line. The quantity is the sum of the entries' quantities and the amount is
+ * that quantity × the price, rounded to a rupee, so a line always reads as quantity × rate.
+ * @returns {{ key: string, rateId?: string, name: string, unit: string, rate: number, type: string, quantity: number, amount: number, items: object[] }[]}
+ */
+export function groupItemLines(items, rates) {
+  const groups = new Map();
+  for (const item of items || []) {
+    const rate = resolveRate(item, rates);
+    const key = `${item.rateId || item.name || ''}|${rate.unit || ''}|${nonNegativeNumber(rate.rate)}`;
+    const group = groups.get(key) || { key, rateId: item.rateId, name: rate.name || item.name, unit: rate.unit || '', rate: nonNegativeNumber(rate.rate), type: rate.type, quantity: 0, items: [] };
+    group.quantity += getItemQuantity(item, rate);
+    group.items.push(item);
+    groups.set(key, group);
+  }
+  return [...groups.values()].map((group) => {
+    const quantity = roundTo2(group.quantity);
+    return { ...group, quantity, amount: Math.round(quantity * group.rate) };
+  });
 }
 
-export function getSectionTotal(section, rates) {
-  return (section.areas || []).reduce((sum, area) => sum + getAreaTotal(area, rates), 0);
+/** How a bill adds up: 'room' (new bills: one line per work item in each room) or 'entry' (older bills: every entry). */
+export const billStyleOf = (bill) => (bill?.billStyle === 'room' ? 'room' : 'entry');
+
+export function getAreaTotal(area, rates, style = 'entry') {
+  return style === 'room'
+    ? groupItemLines(area.items, rates).reduce((sum, line) => sum + line.amount, 0)
+    : getItemsTotal(area.items, rates);
+}
+
+export function getSectionTotal(section, rates, style = 'entry') {
+  return (section.areas || []).reduce((sum, area) => sum + getAreaTotal(area, rates, style), 0);
 }
 
 /** Whether GST applies to this bill. Bills saved before the switch existed keep their GST. */
@@ -48,7 +75,8 @@ export function hasGst(bill) {
 }
 
 export function getBillTotals(bill, rates) {
-  const subtotal = (bill.sections || []).reduce((sum, section) => sum + getSectionTotal(section, rates), 0);
+  const style = billStyleOf(bill);
+  const subtotal = (bill.sections || []).reduce((sum, section) => sum + getSectionTotal(section, rates, style), 0);
   const discount = nonNegativeNumber(bill.discount);
   const taxRate = hasGst(bill) ? Math.min(100, nonNegativeNumber(bill.taxRate)) : 0;
   const tax = Math.round(Math.max(0, subtotal - discount) * taxRate / 100);
@@ -114,7 +142,19 @@ export function summarizeBill(bill, rates) {
 /** Groups every entry in the bill by work item, summing quantities and amounts. */
 export function aggregateItemTotals(bill, rates) {
   const grouped = new Map();
-  (bill.sections || []).forEach((section) => (section.areas || []).forEach((area) =>
+  const roomStyle = billStyleOf(bill) === 'room';
+  (bill.sections || []).forEach((section) => (section.areas || []).forEach((area) => {
+    if (roomStyle) {
+      // A room-style bill adds up room by room, so the item totals are the sum of the room lines and tie to the bill.
+      groupItemLines(area.items, rates).forEach((line) => {
+        const key = line.rateId || line.name || `item-${grouped.size}`;
+        const group = grouped.get(key) || { name: line.name, unit: line.unit, type: line.type, rate: line.rate, quantity: 0, amount: 0 };
+        group.quantity += line.quantity;
+        group.amount += line.amount;
+        grouped.set(key, group);
+      });
+      return;
+    }
     (area.items || []).forEach((item) => {
       const rate = resolveRate(item, rates);
       const key = item.rateId || item.name || `item-${grouped.size}`;
@@ -129,7 +169,8 @@ export function aggregateItemTotals(bill, rates) {
       group.quantity += getItemQuantity(item, rate);
       group.amount += getLineAmount(item, rate);
       grouped.set(key, group);
-    })));
+    });
+  }));
   return [...grouped.values()].map((group) => ({ ...group, quantity: roundTo2(group.quantity) }));
 }
 
